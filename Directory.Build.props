@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <MoVersion>0.9.0</MoVersion>
+    <MoVersion>0.9.1</MoVersion>
     <MoVersionFull>$(MoVersion).0</MoVersionFull>
   </PropertyGroup>
 </Project>
