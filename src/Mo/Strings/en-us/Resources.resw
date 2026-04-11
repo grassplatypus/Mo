@@ -120,7 +120,7 @@ Press Delete or Backspace to clear. Escape to cancel.</value></data>
   <!-- About -->
   <data name="AboutSection" xml:space="preserve"><value>About</value></data>
   <data name="AboutName" xml:space="preserve"><value>Mo — Monitor Profile Manager</value></data>
-  <data name="AboutVersion" xml:space="preserve"><value>Version 1.0.0</value></data>
+  <data name="AboutVersion" xml:space="preserve"><value>Version 0.9.0</value></data>
   <data name="AboutDescription" xml:space="preserve"><value>Save and restore your multi-monitor configurations with one click.</value></data>
 
   <!-- Profile Editor -->

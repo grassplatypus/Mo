@@ -4,7 +4,7 @@ namespace Mo.Services;
 
 public sealed class UpdateService : IUpdateService
 {
-    private const string CurrentVersion = "1.0.0";
+    private const string CurrentVersion = "0.9.0";
     private const string GitHubApiUrl = "https://api.github.com/repos/Mo-app/Mo/releases/latest";
 
     public async Task<(bool available, string? version, string? url)> CheckForUpdateAsync()
