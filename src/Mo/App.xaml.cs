@@ -1,5 +1,3 @@
-using System.Reflection;
-using System.Runtime.InteropServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -67,7 +65,7 @@ public partial class App : Application
         _isShowingErrorDialog = true;
         try
         {
-            var detail = BuildErrorReport(ex);
+            var detail = SystemInfoHelper.BuildErrorReport(ex);
 
             var detailBox = new TextBox
             {
@@ -131,83 +129,7 @@ public partial class App : Application
         }
     }
 
-    private static string BuildErrorReport(Exception ex)
-    {
-        var version = UpdateService.CurrentVersion;
-        var os = Environment.OSVersion.VersionString;
-        var arch = RuntimeInformation.ProcessArchitecture.ToString();
-        var now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-
-        var sb = new System.Text.StringBuilder();
-        sb.AppendLine($"Mo v{version} | {os} | {arch}");
-        sb.AppendLine($"Time: {now}");
-        sb.AppendLine($".NET: {RuntimeInformation.FrameworkDescription}");
-
-        // System hardware info
-        try
-        {
-            sb.AppendLine($"CPU: {Environment.ProcessorCount} cores");
-            sb.AppendLine($"Memory: {GC.GetGCMemoryInfo().TotalAvailableMemoryBytes / 1024 / 1024} MB total");
-        }
-        catch { }
-
-        // Monitor info
-        try
-        {
-            var displayService = Services?.GetService<IDisplayService>();
-            if (displayService != null)
-            {
-                var monitors = displayService.GetCurrentConfiguration();
-                sb.AppendLine($"Monitors: {monitors.Count}");
-                foreach (var m in monitors)
-                {
-                    var name = string.IsNullOrEmpty(m.FriendlyName) ? "Unknown" : m.FriendlyName;
-                    var rot = m.Rotation != Models.DisplayRotation.None ? $" {(int)m.Rotation}°" : "";
-                    var primary = m.IsPrimary ? " [Primary]" : "";
-                    sb.AppendLine($"  - {name}: {m.Width}x{m.Height} @ {m.RefreshRateHz:F0}Hz pos({m.PositionX},{m.PositionY}){rot}{primary}");
-                    if (!string.IsNullOrEmpty(m.DevicePath))
-                        sb.AppendLine($"    Path: {m.DevicePath[..Math.Min(m.DevicePath.Length, 80)]}");
-                }
-            }
-        }
-        catch { sb.AppendLine("Monitors: (failed to enumerate)"); }
-
-        // GPU info via adapter descriptions
-        try
-        {
-            using var searcher = new System.Management.ManagementObjectSearcher("SELECT Name, DriverVersion, AdapterRAM FROM Win32_VideoController");
-            foreach (System.Management.ManagementObject obj in searcher.Get())
-            {
-                var name = obj["Name"]?.ToString() ?? "Unknown GPU";
-                var driver = obj["DriverVersion"]?.ToString() ?? "?";
-                var vram = obj["AdapterRAM"] is uint ram ? $"{ram / 1024 / 1024} MB" : "?";
-                sb.AppendLine($"GPU: {name} (Driver: {driver}, VRAM: {vram})");
-            }
-        }
-        catch { }
-
-        sb.AppendLine(new string('-', 50));
-        sb.AppendLine($"Exception: {ex.GetType().FullName}");
-        sb.AppendLine($"Message: {ex.Message}");
-        sb.AppendLine();
-        sb.AppendLine("Stack Trace:");
-        sb.AppendLine(ex.StackTrace ?? "(none)");
-
-        var inner = ex.InnerException;
-        var depth = 0;
-        while (inner != null && depth < 3)
-        {
-            sb.AppendLine();
-            sb.AppendLine($"--- Inner Exception [{depth}] ---");
-            sb.AppendLine($"Exception: {inner.GetType().FullName}");
-            sb.AppendLine($"Message: {inner.Message}");
-            sb.AppendLine(inner.StackTrace ?? "(none)");
-            inner = inner.InnerException;
-            depth++;
-        }
-
-        return sb.ToString();
-    }
+    // BuildErrorReport and BuildFullReport are in SystemInfoHelper
 
     // ── Logging ──
 
@@ -219,7 +141,7 @@ public partial class App : Application
             var logDir = GetLogDirectory();
             Directory.CreateDirectory(logDir);
             var logFile = Path.Combine(logDir, $"crash_{DateTime.Now:yyyyMMdd}.log");
-            var entry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{source}]\n{BuildErrorReport(ex)}\n===\n\n";
+            var entry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{source}]\n{SystemInfoHelper.BuildErrorReport(ex)}\n===\n\n";
             File.AppendAllText(logFile, entry);
         }
         catch { }

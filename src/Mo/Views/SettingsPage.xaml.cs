@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml.Controls;
 using Mo.Helpers;
 using Mo.Services;
 using Mo.ViewModels;
+using Windows.ApplicationModel.DataTransfer;
 
 namespace Mo.Views;
 
@@ -30,19 +31,30 @@ public sealed partial class SettingsPage : Page
         };
         ThemeCombo.SelectedIndex = themeIndex;
         _themeLoaded = true;
+
+        // Load system info (async-like to not block UI)
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            try
+            {
+                SystemInfoBox.Text = SystemInfoHelper.BuildFullReport();
+            }
+            catch
+            {
+                SystemInfoBox.Text = "(Failed to load system info)";
+            }
+        });
     }
 
     private void ThemeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!_themeLoaded) return;
-
         var theme = ThemeCombo.SelectedIndex switch
         {
             1 => "Light",
             2 => "Dark",
             _ => "System",
         };
-
         ViewModel.Theme = theme;
         App.MainWindow.ApplyTheme(theme);
     }
@@ -56,14 +68,9 @@ public sealed partial class SettingsPage : Page
             var (available, version, _) = await updateService.CheckForUpdateAsync();
 
             UpdateStatusText.Visibility = Visibility.Visible;
-            if (available)
-            {
-                UpdateStatusText.Text = ResourceHelper.GetString("UpdateAvailable", version ?? "");
-            }
-            else
-            {
-                UpdateStatusText.Text = ResourceHelper.GetString("UpToDate");
-            }
+            UpdateStatusText.Text = available
+                ? ResourceHelper.GetString("UpdateAvailable", version ?? "")
+                : ResourceHelper.GetString("UpToDate");
         }
         catch
         {
@@ -73,6 +80,14 @@ public sealed partial class SettingsPage : Page
         {
             CheckNowButton.IsEnabled = true;
         }
+    }
+
+    private void CopySystemInfo_Click(object sender, RoutedEventArgs e)
+    {
+        var dp = new DataPackage();
+        dp.SetText(SystemInfoBox.Text);
+        Clipboard.SetContent(dp);
+        CopySystemInfoBtn.Content = ResourceHelper.GetString("Copied");
     }
 
     private void ApplyLocalization()
@@ -96,6 +111,8 @@ public sealed partial class SettingsPage : Page
         AboutName.Text = ResourceHelper.GetString("AboutName");
         AboutVersion.Text = $"Version {UpdateService.CurrentVersion}";
         AboutDesc.Text = ResourceHelper.GetString("AboutDescription");
+        SystemInfoTitle.Text = ResourceHelper.GetString("SystemInfoSection");
+        CopySystemInfoBtn.Content = ResourceHelper.GetString("CopyErrorInfo");
 
         ThemeCombo.Items.Clear();
         ThemeCombo.Items.Add(ResourceHelper.GetString("ThemeSystem"));

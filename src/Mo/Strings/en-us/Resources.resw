@@ -181,6 +181,9 @@ Press Delete or Backspace to clear. Escape to cancel.</value></data>
   <data name="TrayExit" xml:space="preserve"><value>Exit</value></data>
   <data name="TrayTooltip" xml:space="preserve"><value>Mo — Monitor Profile Manager</value></data>
 
+  <!-- System Info -->
+  <data name="SystemInfoSection" xml:space="preserve"><value>System Information</value></data>
+
   <!-- Error Dialog -->
   <data name="UnhandledErrorTitle" xml:space="preserve"><value>An unexpected error occurred</value></data>
   <data name="UnhandledErrorDesc" xml:space="preserve"><value>Mo encountered an unhandled error. You can copy the details below for bug reporting.</value></data>

@@ -110,6 +110,28 @@
                 </StackPanel>
             </Grid>
 
+            <!-- System Info -->
+            <TextBlock x:Name="SystemInfoTitle" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,24,0,8" />
+
+            <Grid Padding="16" CornerRadius="8"
+                  Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                <StackPanel Spacing="8">
+                    <TextBox
+                        x:Name="SystemInfoBox"
+                        IsReadOnly="True"
+                        AcceptsReturn="True"
+                        TextWrapping="Wrap"
+                        FontFamily="Consolas"
+                        FontSize="11"
+                        MinHeight="120"
+                        MaxHeight="500"
+                        BorderThickness="0"
+                        Background="Transparent" />
+                    <Button x:Name="CopySystemInfoBtn" Click="CopySystemInfo_Click" HorizontalAlignment="Left" />
+                </StackPanel>
+            </Grid>
+
         </StackPanel>
     </ScrollViewer>
 </Page>
