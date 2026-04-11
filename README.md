@@ -1,32 +1,12 @@
 # Mo — Monitor Profile Manager
 
-[![CI](https://github.com/jaegyun-lee/Mo/actions/workflows/ci.yml/badge.svg)](https://github.com/jaegyun-lee/Mo/actions/workflows/ci.yml)
+[![CI](https://github.com/grassplatypus/Mo/actions/workflows/ci.yml/badge.svg)](https://github.com/grassplatypus/Mo/actions/workflows/ci.yml)
 
 Save and restore your multi-monitor configurations — positions, rotation, refresh rate, resolution, brightness, color, audio, wallpaper, and more — with one click.
 
 <p align="center">
   <strong>WinUI 3</strong> · <strong>Fluent Design</strong> · <strong>System Tray</strong> · <strong>한국어/English</strong>
 </p>
-
-## Why Mo?
-
-Existing tools like [similar tools](https://github.com/Nuzair46/similar tools) only manage monitor on/off states. **Mo goes further:**
-
-| Feature | similar tools | Mo |
-|---|:---:|:---:|
-| Monitor on/off toggle | O | O |
-| Monitor position (left/right/above) | X | **O** |
-| Rotation (0°/90°/180°/270°) | X | **O** |
-| Refresh rate per monitor | X | **O** |
-| Brightness / Contrast (DDC/CI) | X | **O** |
-| RGB Color Gain | X | **O** |
-| Audio output switching | X | **O** |
-| Wallpaper per profile | X | **O** |
-| WallpaperEngine / Lively support | X | **O** |
-| Auto-switch on monitor change | X | **O** |
-| Schedule-based switching | X | **O** |
-| Global hotkeys | X | **O** |
-| Export / Import profiles | X | **O** |
 
 ## Features
 
@@ -59,12 +39,12 @@ Existing tools like [similar tools](https://github.com/Nuzair46/similar tools) o
 
 ### From Releases
 
-Download the latest `.zip` from [Releases](https://github.com/jaegyun-lee/Mo/releases) and run `Mo.exe`.
+Download the latest `.zip` from [Releases](https://github.com/grassplatypus/Mo/releases) and run `Mo.exe`.
 
 ### Build from Source
 
 ```bash
-git clone https://github.com/jaegyun-lee/Mo.git
+git clone https://github.com/grassplatypus/Mo.git
 cd Mo
 dotnet build Mo.slnx -c Debug -p:Platform=x64
 dotnet test tests/Mo.Core.Tests/

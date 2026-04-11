@@ -6,7 +6,7 @@ namespace Mo.Services;
 public sealed class UpdateService : IUpdateService
 {
     // Will be updated after GitHub repo is created
-    private const string GitHubOwner = "jaegyun-lee";
+    private const string GitHubOwner = "grassplatypus";
     private const string GitHubRepo = "Mo";
     private static readonly string GitHubApiUrl = $"https://api.github.com/repos/{GitHubOwner}/{GitHubRepo}/releases/latest";
 
