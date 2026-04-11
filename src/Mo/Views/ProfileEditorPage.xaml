@@ -143,6 +143,32 @@
                     <ComboBox Grid.Column="1" x:Name="NightLightCombo" Width="160" SelectionChanged="NightLightCombo_SelectionChanged" />
                 </Grid>
 
+                <!-- Live Wallpaper -->
+                <Grid x:Name="LiveWallpaperCard" Padding="16" CornerRadius="8" Visibility="Collapsed"
+                      Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                    <StackPanel Spacing="6">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock x:Name="LiveWpLabel" />
+                                <TextBlock x:Name="LiveWpProviderText" Opacity="0.6" Style="{StaticResource CaptionTextBlockStyle}" />
+                            </StackPanel>
+                            <Button Grid.Column="1" x:Name="LiveWpClearBtn" Click="LiveWpClear_Click" />
+                        </Grid>
+                        <ItemsControl x:Name="LiveWpEntries">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" Opacity="0.5" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,2" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Grid>
+
                 <!-- Auto-switch -->
                 <Grid Padding="16" CornerRadius="8"
                       Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"

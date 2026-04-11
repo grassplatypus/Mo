@@ -43,6 +43,7 @@ public partial class App : Application
         services.AddSingleton<IScheduleService, ScheduleService>();
         services.AddSingleton<IUpdateService, UpdateService>();
         services.AddSingleton<ExportImportService>();
+        services.AddSingleton<ILiveWallpaperService, LiveWallpaperService>();
 
         services.AddTransient<ProfileListViewModel>();
         services.AddTransient<SettingsViewModel>();

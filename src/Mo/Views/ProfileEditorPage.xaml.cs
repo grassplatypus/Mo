@@ -63,6 +63,24 @@ public sealed partial class ProfileEditorPage : Page
         };
         NightLightCombo.SelectedIndex = nlIndex;
 
+        // Live wallpaper
+        if (_profile.LiveWallpaper is { Provider: not LiveWallpaperProvider.None, Entries.Count: > 0 })
+        {
+            LiveWallpaperCard.Visibility = Visibility.Visible;
+            LiveWpProviderText.Text = _profile.LiveWallpaper.Provider switch
+            {
+                LiveWallpaperProvider.WallpaperEngine => "Wallpaper Engine",
+                LiveWallpaperProvider.Lively => "Lively Wallpaper",
+                _ => "",
+            };
+            LiveWpEntries.ItemsSource = _profile.LiveWallpaper.Entries
+                .Select(e => $"Monitor {e.MonitorIndex}: {Path.GetFileName(e.FilePath)}").ToList();
+        }
+        else
+        {
+            LiveWallpaperCard.Visibility = Visibility.Collapsed;
+        }
+
         // Auto-switch
         AutoSwitchToggle.IsOn = _profile.AutoSwitch;
 
@@ -193,6 +211,13 @@ public sealed partial class ProfileEditorPage : Page
         };
     }
 
+    private void LiveWpClear_Click(object sender, RoutedEventArgs e)
+    {
+        if (_profile == null) return;
+        _profile.LiveWallpaper = null;
+        LiveWallpaperCard.Visibility = Visibility.Collapsed;
+    }
+
     private void AutoSwitchToggle_Toggled(object sender, RoutedEventArgs e)
     {
         if (_loading || _profile == null) return;
@@ -266,6 +291,8 @@ public sealed partial class ProfileEditorPage : Page
         ScheduleDescText.Text = ResourceHelper.GetString("ScheduleDesc");
         ScheduleTimeLabel.Text = ResourceHelper.GetString("ScheduleTime");
         ScheduleDaysLabel.Text = ResourceHelper.GetString("ScheduleDays");
+        LiveWpLabel.Text = ResourceHelper.GetString("LiveWallpaper");
+        LiveWpClearBtn.Content = ResourceHelper.GetString("WallpaperClear");
         CancelBtn.Content = ResourceHelper.GetString("Cancel");
         SaveBtn.Content = ResourceHelper.GetString("Save");
 

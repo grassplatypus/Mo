@@ -133,6 +133,9 @@ Press Delete or Backspace to clear. Escape to cancel.</value></data>
   <data name="RotationNone" xml:space="preserve"><value>None</value></data>
   <data name="NoMonitorsDetected" xml:space="preserve"><value>No monitors detected</value></data>
 
+  <!-- Live Wallpaper -->
+  <data name="LiveWallpaper" xml:space="preserve"><value>Live Wallpaper</value></data>
+
   <!-- Audio -->
   <data name="AudioDevice" xml:space="preserve"><value>Audio Output</value></data>
   <data name="AudioDeviceDesc" xml:space="preserve"><value>Default audio output device for this profile</value></data>

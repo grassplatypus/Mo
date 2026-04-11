@@ -30,8 +30,30 @@ public sealed class DisplayProfile
     // Schedule
     public ScheduleConfig? Schedule { get; set; }
 
+    // Live wallpaper (WallpaperEngine / Lively)
+    public LiveWallpaperConfig? LiveWallpaper { get; set; }
+
     [JsonIgnore]
     public int MonitorCount => Monitors.Count;
+}
+
+public sealed class LiveWallpaperConfig
+{
+    public LiveWallpaperProvider Provider { get; set; }
+    public List<LiveWallpaperEntry> Entries { get; set; } = [];
+}
+
+public enum LiveWallpaperProvider
+{
+    None,
+    WallpaperEngine,
+    Lively,
+}
+
+public sealed class LiveWallpaperEntry
+{
+    public int MonitorIndex { get; set; }
+    public string FilePath { get; set; } = string.Empty;
 }
 
 public sealed class ScheduleConfig

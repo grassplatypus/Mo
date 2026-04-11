@@ -133,6 +133,9 @@ Delete 또는 Backspace로 삭제. Escape로 취소.</value></data>
   <data name="RotationNone" xml:space="preserve"><value>없음</value></data>
   <data name="NoMonitorsDetected" xml:space="preserve"><value>감지된 모니터가 없습니다</value></data>
 
+  <!-- Live Wallpaper -->
+  <data name="LiveWallpaper" xml:space="preserve"><value>라이브 배경화면</value></data>
+
   <!-- Audio -->
   <data name="AudioDevice" xml:space="preserve"><value>오디오 출력</value></data>
   <data name="AudioDeviceDesc" xml:space="preserve"><value>이 프로필의 기본 오디오 출력 장치</value></data>

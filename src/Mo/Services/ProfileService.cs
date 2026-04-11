@@ -109,9 +109,15 @@ public sealed class ProfileService : IProfileService
             var wallpaperService = App.Services.GetRequiredService<IWallpaperService>();
             profile.WallpaperPath = wallpaperService.GetCurrentWallpaper();
         }
-        catch
+        catch { }
+
+        // Capture live wallpaper
+        try
         {
+            var liveWpService = App.Services.GetRequiredService<ILiveWallpaperService>();
+            profile.LiveWallpaper = liveWpService.CaptureCurrentConfig();
         }
+        catch { }
 
         await Task.CompletedTask;
         return profile;
@@ -148,9 +154,18 @@ public sealed class ProfileService : IProfileService
                     var wallpaperService = App.Services.GetRequiredService<IWallpaperService>();
                     wallpaperService.SetWallpaper(profile.WallpaperPath);
                 }
-                catch
+                catch { }
+            }
+
+            // Apply live wallpaper
+            if (profile.LiveWallpaper is { Provider: not Models.LiveWallpaperProvider.None, Entries.Count: > 0 })
+            {
+                try
                 {
+                    var liveWpService = App.Services.GetRequiredService<ILiveWallpaperService>();
+                    liveWpService.ApplyConfig(profile.LiveWallpaper);
                 }
+                catch { }
             }
 
             ProfileApplied?.Invoke(this, profile);

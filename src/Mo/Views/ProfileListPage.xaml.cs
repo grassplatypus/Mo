@@ -263,14 +263,33 @@ public sealed partial class ProfileListPage : Page
         var chkNightLight = new CheckBox { Content = ResourceHelper.GetString("NightLight"), IsChecked = false };
         var chkAutoSwitch = new CheckBox { Content = ResourceHelper.GetString("AutoSwitch"), IsChecked = false };
 
+        // Detect live wallpaper provider
+        CheckBox? chkLiveWallpaper = null;
+        try
+        {
+            var liveWpService = App.Services.GetRequiredService<ILiveWallpaperService>();
+            var provider = liveWpService.DetectProvider();
+            if (provider != Models.LiveWallpaperProvider.None)
+            {
+                var label = provider == Models.LiveWallpaperProvider.WallpaperEngine
+                    ? "Wallpaper Engine" : "Lively Wallpaper";
+                chkLiveWallpaper = new CheckBox { Content = $"{ResourceHelper.GetString("LiveWallpaper")} ({label})", IsChecked = true };
+            }
+        }
+        catch { }
+
+        var optionsPanel = new StackPanel { Spacing = 10 };
+        optionsPanel.Children.Add(nameBox);
+        optionsPanel.Children.Add(chkAudio);
+        optionsPanel.Children.Add(chkWallpaper);
+        if (chkLiveWallpaper != null) optionsPanel.Children.Add(chkLiveWallpaper);
+        optionsPanel.Children.Add(chkNightLight);
+        optionsPanel.Children.Add(chkAutoSwitch);
+
         var dialog = new ContentDialog
         {
             Title = ResourceHelper.GetString("SaveCurrent"),
-            Content = new StackPanel
-            {
-                Spacing = 10,
-                Children = { nameBox, chkAudio, chkWallpaper, chkNightLight, chkAutoSwitch }
-            },
+            Content = optionsPanel,
             PrimaryButtonText = ResourceHelper.GetString("Save"),
             CloseButtonText = ResourceHelper.GetString("Cancel"),
             DefaultButton = ContentDialogButton.Primary,
@@ -299,6 +318,10 @@ public sealed partial class ProfileListPage : Page
             profile.NightLightEnabled = null;
         }
         profile.AutoSwitch = chkAutoSwitch.IsChecked == true;
+        if (chkLiveWallpaper?.IsChecked != true)
+        {
+            profile.LiveWallpaper = null;
+        }
 
         await profileService.SaveProfileAsync(profile);
         ViewModel.RefreshIsEmpty();
