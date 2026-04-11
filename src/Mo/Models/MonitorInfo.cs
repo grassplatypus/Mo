@@ -50,6 +50,25 @@ public sealed class MonitorColorSettings
                              RedGain.HasValue || GreenGain.HasValue || BlueGain.HasValue;
 }
 
+/// <summary>
+/// Per-monitor DDC/CI capability flags. Not serialized — detected at runtime.
+/// </summary>
+public sealed class MonitorColorCapabilities
+{
+    public bool SupportsBrightness { get; set; }
+    public bool SupportsContrast { get; set; }
+    public bool SupportsRedGain { get; set; }
+    public bool SupportsGreenGain { get; set; }
+    public bool SupportsBlueGain { get; set; }
+
+    /// <summary>Laptop internal display brightness via WMI (not DDC/CI)</summary>
+    public bool SupportsWmiBrightness { get; set; }
+
+    public bool SupportsAny => SupportsBrightness || SupportsContrast ||
+                                SupportsRedGain || SupportsGreenGain || SupportsBlueGain ||
+                                SupportsWmiBrightness;
+}
+
 public enum DisplayRotation
 {
     None = 0,

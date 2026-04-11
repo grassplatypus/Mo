@@ -14,7 +14,9 @@ public sealed partial class ProfileEditorPage : Page
     private readonly INavigationService _navigationService;
     private DisplayProfile? _profile;
     private MonitorInfo? _selectedMonitor;
+    private int _selectedMonitorIndex = -1;
     private List<(string id, string name)> _audioDevices = [];
+    private List<MonitorColorCapabilities> _colorCaps = [];
     private bool _loading = true;
 
     public ProfileEditorPage()
@@ -46,6 +48,14 @@ public sealed partial class ProfileEditorPage : Page
         ProfileNameBox.Text = _profile.Name;
         DescriptionBox.Text = _profile.Description;
         LayoutCanvas.SetMonitors(_profile.Monitors);
+
+        // Detect color capabilities
+        try
+        {
+            var colorService = App.Services.GetRequiredService<IMonitorColorService>();
+            _colorCaps = colorService.DetectCapabilities();
+        }
+        catch { _colorCaps = []; }
 
         // Audio devices
         LoadAudioDevices();
@@ -153,10 +163,13 @@ public sealed partial class ProfileEditorPage : Page
         _selectedMonitor = monitor;
         if (monitor == null)
         {
+            _selectedMonitorIndex = -1;
             MonitorDetailsPanel.Visibility = Visibility.Collapsed;
             ColorSettingsPanel.Visibility = Visibility.Collapsed;
             return;
         }
+
+        _selectedMonitorIndex = _profile?.Monitors.IndexOf(monitor) ?? -1;
 
         MonitorDetailsPanel.Visibility = Visibility.Visible;
         DetailResolution.Text = monitor.ResolutionText;
@@ -165,16 +178,46 @@ public sealed partial class ProfileEditorPage : Page
             ? ResourceHelper.GetString("RotationNone") : $"{(int)monitor.Rotation}°";
         DetailPosition.Text = $"({monitor.PositionX}, {monitor.PositionY})";
 
-        // Color settings
-        var cs = monitor.ColorSettings;
-        ColorSettingsPanel.Visibility = Visibility.Visible;
+        // Color settings — enable/disable based on capabilities
+        var caps = _selectedMonitorIndex >= 0 && _selectedMonitorIndex < _colorCaps.Count
+            ? _colorCaps[_selectedMonitorIndex] : null;
+        var hasBri = caps?.SupportsBrightness == true || caps?.SupportsWmiBrightness == true;
+        var hasCon = caps?.SupportsContrast == true;
+        var hasR = caps?.SupportsRedGain == true;
+        var hasG = caps?.SupportsGreenGain == true;
+        var hasB = caps?.SupportsBlueGain == true;
+
+        bool anyColorSupport = hasBri || hasCon || hasR || hasG || hasB;
+        ColorSettingsPanel.Visibility = anyColorSupport ? Visibility.Visible : Visibility.Collapsed;
+
+        if (!anyColorSupport) return;
+
         _loading = true;
+        var cs = monitor.ColorSettings;
+
+        BrightnessSlider.IsEnabled = hasBri;
         BrightnessSlider.Value = cs?.Brightness ?? 50;
+
+        ContrastSlider.IsEnabled = hasCon;
         ContrastSlider.Value = cs?.Contrast ?? 50;
+
+        RedSlider.IsEnabled = hasR;
         RedSlider.Value = cs?.RedGain ?? 50;
+
+        GreenSlider.IsEnabled = hasG;
         GreenSlider.Value = cs?.GreenGain ?? 50;
+
+        BlueSlider.IsEnabled = hasB;
         BlueSlider.Value = cs?.BlueGain ?? 50;
+
         UpdateColorLabels();
+
+        // Show source hint (DDC/CI vs WMI)
+        if (caps?.SupportsWmiBrightness == true && caps?.SupportsBrightness != true)
+            BrightnessLabel.Text = ResourceHelper.GetString("Brightness") + " (WMI)";
+        else
+            BrightnessLabel.Text = ResourceHelper.GetString("Brightness");
+
         _loading = false;
     }
 
@@ -192,11 +235,14 @@ public sealed partial class ProfileEditorPage : Page
         if (_loading || _selectedMonitor == null) return;
 
         _selectedMonitor.ColorSettings ??= new MonitorColorSettings();
-        _selectedMonitor.ColorSettings.Brightness = (int)BrightnessSlider.Value;
-        _selectedMonitor.ColorSettings.Contrast = (int)ContrastSlider.Value;
-        _selectedMonitor.ColorSettings.RedGain = (int)RedSlider.Value;
-        _selectedMonitor.ColorSettings.GreenGain = (int)GreenSlider.Value;
-        _selectedMonitor.ColorSettings.BlueGain = (int)BlueSlider.Value;
+
+        // Only save values for supported (enabled) sliders
+        _selectedMonitor.ColorSettings.Brightness = BrightnessSlider.IsEnabled ? (int)BrightnessSlider.Value : null;
+        _selectedMonitor.ColorSettings.Contrast = ContrastSlider.IsEnabled ? (int)ContrastSlider.Value : null;
+        _selectedMonitor.ColorSettings.RedGain = RedSlider.IsEnabled ? (int)RedSlider.Value : null;
+        _selectedMonitor.ColorSettings.GreenGain = GreenSlider.IsEnabled ? (int)GreenSlider.Value : null;
+        _selectedMonitor.ColorSettings.BlueGain = BlueSlider.IsEnabled ? (int)BlueSlider.Value : null;
+
         UpdateColorLabels();
     }
 
