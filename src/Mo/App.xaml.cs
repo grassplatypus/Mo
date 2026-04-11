@@ -44,6 +44,7 @@ public partial class App : Application
         services.AddSingleton<IUpdateService, UpdateService>();
         services.AddSingleton<ExportImportService>();
         services.AddSingleton<ILiveWallpaperService, LiveWallpaperService>();
+        services.AddSingleton<IMonitorColorService, MonitorColorService>();
 
         services.AddTransient<ProfileListViewModel>();
         services.AddTransient<SettingsViewModel>();

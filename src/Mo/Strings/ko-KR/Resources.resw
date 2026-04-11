@@ -133,6 +133,11 @@ Delete 또는 Backspace로 삭제. Escape로 취소.</value></data>
   <data name="RotationNone" xml:space="preserve"><value>없음</value></data>
   <data name="NoMonitorsDetected" xml:space="preserve"><value>감지된 모니터가 없습니다</value></data>
 
+  <!-- Monitor Color -->
+  <data name="MonitorColor" xml:space="preserve"><value>밝기 및 색감</value></data>
+  <data name="Brightness" xml:space="preserve"><value>밝기</value></data>
+  <data name="Contrast" xml:space="preserve"><value>대비</value></data>
+
   <!-- Live Wallpaper -->
   <data name="LiveWallpaper" xml:space="preserve"><value>라이브 배경화면</value></data>
 

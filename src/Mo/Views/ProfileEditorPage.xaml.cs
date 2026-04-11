@@ -13,6 +13,7 @@ public sealed partial class ProfileEditorPage : Page
     private readonly IProfileService _profileService;
     private readonly INavigationService _navigationService;
     private DisplayProfile? _profile;
+    private MonitorInfo? _selectedMonitor;
     private List<(string id, string name)> _audioDevices = [];
     private bool _loading = true;
 
@@ -149,13 +150,54 @@ public sealed partial class ProfileEditorPage : Page
 
     private void LayoutCanvas_MonitorSelected(object? sender, MonitorInfo? monitor)
     {
-        if (monitor == null) { MonitorDetailsPanel.Visibility = Visibility.Collapsed; return; }
+        _selectedMonitor = monitor;
+        if (monitor == null)
+        {
+            MonitorDetailsPanel.Visibility = Visibility.Collapsed;
+            ColorSettingsPanel.Visibility = Visibility.Collapsed;
+            return;
+        }
+
         MonitorDetailsPanel.Visibility = Visibility.Visible;
         DetailResolution.Text = monitor.ResolutionText;
         DetailRefreshRate.Text = $"{monitor.RefreshRateHz:F1} Hz";
         DetailRotation.Text = monitor.Rotation == DisplayRotation.None
             ? ResourceHelper.GetString("RotationNone") : $"{(int)monitor.Rotation}°";
         DetailPosition.Text = $"({monitor.PositionX}, {monitor.PositionY})";
+
+        // Color settings
+        var cs = monitor.ColorSettings;
+        ColorSettingsPanel.Visibility = Visibility.Visible;
+        _loading = true;
+        BrightnessSlider.Value = cs?.Brightness ?? 50;
+        ContrastSlider.Value = cs?.Contrast ?? 50;
+        RedSlider.Value = cs?.RedGain ?? 50;
+        GreenSlider.Value = cs?.GreenGain ?? 50;
+        BlueSlider.Value = cs?.BlueGain ?? 50;
+        UpdateColorLabels();
+        _loading = false;
+    }
+
+    private void UpdateColorLabels()
+    {
+        BrightnessValue.Text = $"{(int)BrightnessSlider.Value}";
+        ContrastValue.Text = $"{(int)ContrastSlider.Value}";
+        RedValue.Text = $"{(int)RedSlider.Value}";
+        GreenValue.Text = $"{(int)GreenSlider.Value}";
+        BlueValue.Text = $"{(int)BlueSlider.Value}";
+    }
+
+    private void ColorSlider_Changed(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+    {
+        if (_loading || _selectedMonitor == null) return;
+
+        _selectedMonitor.ColorSettings ??= new MonitorColorSettings();
+        _selectedMonitor.ColorSettings.Brightness = (int)BrightnessSlider.Value;
+        _selectedMonitor.ColorSettings.Contrast = (int)ContrastSlider.Value;
+        _selectedMonitor.ColorSettings.RedGain = (int)RedSlider.Value;
+        _selectedMonitor.ColorSettings.GreenGain = (int)GreenSlider.Value;
+        _selectedMonitor.ColorSettings.BlueGain = (int)BlueSlider.Value;
+        UpdateColorLabels();
     }
 
     private void AudioCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -291,6 +333,9 @@ public sealed partial class ProfileEditorPage : Page
         ScheduleDescText.Text = ResourceHelper.GetString("ScheduleDesc");
         ScheduleTimeLabel.Text = ResourceHelper.GetString("ScheduleTime");
         ScheduleDaysLabel.Text = ResourceHelper.GetString("ScheduleDays");
+        ColorTitle.Text = ResourceHelper.GetString("MonitorColor");
+        BrightnessLabel.Text = ResourceHelper.GetString("Brightness");
+        ContrastLabel.Text = ResourceHelper.GetString("Contrast");
         LiveWpLabel.Text = ResourceHelper.GetString("LiveWallpaper");
         LiveWpClearBtn.Content = ResourceHelper.GetString("WallpaperClear");
         CancelBtn.Content = ResourceHelper.GetString("Cancel");

@@ -93,6 +93,55 @@
                     </StackPanel>
                 </Grid>
 
+                <!-- Color Settings (shown when a monitor is selected) -->
+                <Grid x:Name="ColorSettingsPanel" Padding="16" CornerRadius="8" Visibility="Collapsed"
+                      Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                    <StackPanel Spacing="12">
+                        <TextBlock x:Name="ColorTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="80" /><ColumnDefinition Width="*" /><ColumnDefinition Width="40" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="BrightnessLabel" VerticalAlignment="Center" />
+                            <Slider Grid.Column="1" x:Name="BrightnessSlider" Minimum="0" Maximum="100" ValueChanged="ColorSlider_Changed" />
+                            <TextBlock Grid.Column="2" x:Name="BrightnessValue" VerticalAlignment="Center" HorizontalAlignment="Right" />
+                        </Grid>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="80" /><ColumnDefinition Width="*" /><ColumnDefinition Width="40" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="ContrastLabel" VerticalAlignment="Center" />
+                            <Slider Grid.Column="1" x:Name="ContrastSlider" Minimum="0" Maximum="100" ValueChanged="ColorSlider_Changed" />
+                            <TextBlock Grid.Column="2" x:Name="ContrastValue" VerticalAlignment="Center" HorizontalAlignment="Right" />
+                        </Grid>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="80" /><ColumnDefinition Width="*" /><ColumnDefinition Width="40" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="R" VerticalAlignment="Center" Foreground="#FF4444" FontWeight="Bold" />
+                            <Slider Grid.Column="1" x:Name="RedSlider" Minimum="0" Maximum="100" ValueChanged="ColorSlider_Changed" />
+                            <TextBlock Grid.Column="2" x:Name="RedValue" VerticalAlignment="Center" HorizontalAlignment="Right" />
+                        </Grid>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="80" /><ColumnDefinition Width="*" /><ColumnDefinition Width="40" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="G" VerticalAlignment="Center" Foreground="#44BB44" FontWeight="Bold" />
+                            <Slider Grid.Column="1" x:Name="GreenSlider" Minimum="0" Maximum="100" ValueChanged="ColorSlider_Changed" />
+                            <TextBlock Grid.Column="2" x:Name="GreenValue" VerticalAlignment="Center" HorizontalAlignment="Right" />
+                        </Grid>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="80" /><ColumnDefinition Width="*" /><ColumnDefinition Width="40" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="B" VerticalAlignment="Center" Foreground="#4488FF" FontWeight="Bold" />
+                            <Slider Grid.Column="1" x:Name="BlueSlider" Minimum="0" Maximum="100" ValueChanged="ColorSlider_Changed" />
+                            <TextBlock Grid.Column="2" x:Name="BlueValue" VerticalAlignment="Center" HorizontalAlignment="Right" />
+                        </Grid>
+                    </StackPanel>
+                </Grid>
+
                 <!-- Extras Section -->
                 <TextBlock x:Name="ExtrasTitle" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,8,0,0" />
 

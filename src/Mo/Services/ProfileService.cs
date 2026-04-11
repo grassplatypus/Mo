@@ -119,6 +119,19 @@ public sealed class ProfileService : IProfileService
         }
         catch { }
 
+        // Capture monitor color settings (brightness, contrast, RGB gain)
+        try
+        {
+            var colorService = App.Services.GetRequiredService<IMonitorColorService>();
+            var colorSettings = colorService.CaptureAllMonitors();
+            for (int i = 0; i < Math.Min(profile.Monitors.Count, colorSettings.Count); i++)
+            {
+                if (colorSettings[i].HasValues)
+                    profile.Monitors[i].ColorSettings = colorSettings[i];
+            }
+        }
+        catch { }
+
         await Task.CompletedTask;
         return profile;
     }
@@ -156,6 +169,20 @@ public sealed class ProfileService : IProfileService
                 }
                 catch { }
             }
+
+            // Apply monitor color settings
+            try
+            {
+                var colorService = App.Services.GetRequiredService<IMonitorColorService>();
+                var entries = profile.Monitors
+                    .Select((m, i) => (index: i, settings: m.ColorSettings))
+                    .Where(e => e.settings is { HasValues: true })
+                    .Select(e => (e.index, e.settings!))
+                    .ToList();
+                if (entries.Count > 0)
+                    colorService.ApplyAll(entries);
+            }
+            catch { }
 
             // Apply live wallpaper
             if (profile.LiveWallpaper is { Provider: not Models.LiveWallpaperProvider.None, Entries.Count: > 0 })

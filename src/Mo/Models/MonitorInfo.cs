@@ -23,6 +23,9 @@ public sealed class MonitorInfo
     public bool IsPrimary { get; set; }
     public bool HdrEnabled { get; set; }
 
+    // Color & Brightness (DDC/CI via dxva2)
+    public MonitorColorSettings? ColorSettings { get; set; }
+
     // Raw CCD identifiers (for apply)
     public long AdapterId { get; set; }
     public uint SourceId { get; set; }
@@ -30,6 +33,21 @@ public sealed class MonitorInfo
 
     public double RefreshRateHz => RefreshRateDenominator == 0 ? 0 : (double)RefreshRateNumerator / RefreshRateDenominator;
     public string ResolutionText => $"{Width} x {Height}";
+}
+
+public sealed class MonitorColorSettings
+{
+    // DDC/CI values (0-100 range from monitor)
+    public int? Brightness { get; set; }
+    public int? Contrast { get; set; }
+
+    // RGB Drive (gain) — per-channel color adjustment (0-100)
+    public int? RedGain { get; set; }
+    public int? GreenGain { get; set; }
+    public int? BlueGain { get; set; }
+
+    public bool HasValues => Brightness.HasValue || Contrast.HasValue ||
+                             RedGain.HasValue || GreenGain.HasValue || BlueGain.HasValue;
 }
 
 public enum DisplayRotation

@@ -278,11 +278,14 @@ public sealed partial class ProfileListPage : Page
         }
         catch { }
 
+        var chkColor = new CheckBox { Content = ResourceHelper.GetString("MonitorColor"), IsChecked = true };
+
         var optionsPanel = new StackPanel { Spacing = 10 };
         optionsPanel.Children.Add(nameBox);
         optionsPanel.Children.Add(chkAudio);
         optionsPanel.Children.Add(chkWallpaper);
         if (chkLiveWallpaper != null) optionsPanel.Children.Add(chkLiveWallpaper);
+        optionsPanel.Children.Add(chkColor);
         optionsPanel.Children.Add(chkNightLight);
         optionsPanel.Children.Add(chkAutoSwitch);
 
@@ -318,6 +321,11 @@ public sealed partial class ProfileListPage : Page
             profile.NightLightEnabled = null;
         }
         profile.AutoSwitch = chkAutoSwitch.IsChecked == true;
+        if (chkColor.IsChecked != true)
+        {
+            foreach (var m in profile.Monitors)
+                m.ColorSettings = null;
+        }
         if (chkLiveWallpaper?.IsChecked != true)
         {
             profile.LiveWallpaper = null;
