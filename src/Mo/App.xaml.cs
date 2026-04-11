@@ -1,8 +1,12 @@
+using System.Reflection;
+using System.Runtime.InteropServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using Mo.Helpers;
 using Mo.Services;
 using Mo.ViewModels;
+using Windows.ApplicationModel.DataTransfer;
 
 namespace Mo;
 
@@ -11,11 +15,11 @@ public partial class App : Application
     public static IServiceProvider Services { get; private set; } = null!;
     public static MainWindow MainWindow { get; private set; } = null!;
 
+    private static bool _isShowingErrorDialog;
+
     public App()
     {
         InitializeComponent();
-
-        // Global exception handlers
         UnhandledException += App_UnhandledException;
         TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
     }
@@ -29,12 +33,7 @@ public partial class App : Application
         MainWindow = new MainWindow();
         MainWindow.Activate();
 
-        // DispatcherQueue unhandled exceptions
-        MainWindow.DispatcherQueue.ShutdownStarting += (_, _) =>
-        {
-            // Cleanup services on shutdown
-            DisposeServices();
-        };
+        MainWindow.DispatcherQueue.ShutdownStarting += (_, _) => DisposeServices();
 
         _ = InitializeAsync();
     }
@@ -43,43 +42,142 @@ public partial class App : Application
 
     private void App_UnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
     {
-        // Prevent app crash — log and swallow
         e.Handled = true;
-        LogException("UnhandledException", e.Exception);
+        var ex = e.Exception;
+        LogException("UnhandledException", ex);
+        _ = ShowErrorDialogAsync(ex);
     }
 
     private static void TaskScheduler_UnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
     {
-        // Prevent crash from fire-and-forget tasks
         e.SetObserved();
-        LogException("UnobservedTaskException", e.Exception);
+        var ex = e.Exception?.InnerException ?? e.Exception;
+        LogException("UnobservedTaskException", ex);
+
+        MainWindow?.DispatcherQueue?.TryEnqueue(() => _ = ShowErrorDialogAsync(ex));
     }
+
+    // ── Error Dialog ──
+
+    private static async Task ShowErrorDialogAsync(Exception? ex)
+    {
+        if (ex == null || _isShowingErrorDialog) return;
+        if (MainWindow?.Content == null) return;
+
+        _isShowingErrorDialog = true;
+        try
+        {
+            var detail = BuildErrorReport(ex);
+
+            var detailBox = new TextBox
+            {
+                Text = detail,
+                IsReadOnly = true,
+                AcceptsReturn = true,
+                TextWrapping = TextWrapping.Wrap,
+                FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
+                FontSize = 11,
+                MaxHeight = 300,
+                MinHeight = 120,
+            };
+
+            var copyButton = new Button
+            {
+                Content = ResourceHelper.GetString("CopyErrorInfo"),
+                Margin = new Thickness(0, 8, 0, 0),
+            };
+            copyButton.Click += (_, _) =>
+            {
+                var dp = new DataPackage();
+                dp.SetText(detail);
+                Clipboard.SetContent(dp);
+                copyButton.Content = ResourceHelper.GetString("Copied");
+            };
+
+            var panel = new StackPanel { Spacing = 4 };
+            panel.Children.Add(new TextBlock
+            {
+                Text = ResourceHelper.GetString("UnhandledErrorDesc"),
+                TextWrapping = TextWrapping.Wrap,
+                Opacity = 0.8,
+            });
+            panel.Children.Add(detailBox);
+            panel.Children.Add(copyButton);
+
+            var dialog = new ContentDialog
+            {
+                Title = ResourceHelper.GetString("UnhandledErrorTitle"),
+                Content = panel,
+                PrimaryButtonText = ResourceHelper.GetString("ContinueRunning"),
+                SecondaryButtonText = ResourceHelper.GetString("ExitApp"),
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = MainWindow.Content.XamlRoot,
+            };
+
+            var result = await dialog.ShowAsync();
+            if (result == ContentDialogResult.Secondary)
+            {
+                DisposeServices();
+                MainWindow?.ForceClose();
+            }
+        }
+        catch
+        {
+            // Dialog itself failed — already logged
+        }
+        finally
+        {
+            _isShowingErrorDialog = false;
+        }
+    }
+
+    private static string BuildErrorReport(Exception ex)
+    {
+        var version = UpdateService.CurrentVersion;
+        var os = Environment.OSVersion.VersionString;
+        var arch = RuntimeInformation.ProcessArchitecture.ToString();
+        var now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"Mo v{version} | {os} | {arch}");
+        sb.AppendLine($"Time: {now}");
+        sb.AppendLine(new string('-', 50));
+        sb.AppendLine($"Exception: {ex.GetType().FullName}");
+        sb.AppendLine($"Message: {ex.Message}");
+        sb.AppendLine();
+        sb.AppendLine("Stack Trace:");
+        sb.AppendLine(ex.StackTrace ?? "(none)");
+
+        var inner = ex.InnerException;
+        var depth = 0;
+        while (inner != null && depth < 3)
+        {
+            sb.AppendLine();
+            sb.AppendLine($"--- Inner Exception [{depth}] ---");
+            sb.AppendLine($"Exception: {inner.GetType().FullName}");
+            sb.AppendLine($"Message: {inner.Message}");
+            sb.AppendLine(inner.StackTrace ?? "(none)");
+            inner = inner.InnerException;
+            depth++;
+        }
+
+        return sb.ToString();
+    }
+
+    // ── Logging ──
 
     private static void LogException(string source, Exception? ex)
     {
         if (ex == null) return;
-
         try
         {
             var logDir = GetLogDirectory();
             Directory.CreateDirectory(logDir);
-
             var logFile = Path.Combine(logDir, $"crash_{DateTime.Now:yyyyMMdd}.log");
-            var entry = $"""
-                [{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{source}]
-                {ex.GetType().FullName}: {ex.Message}
-                {ex.StackTrace}
-                {(ex.InnerException != null ? $"Inner: {ex.InnerException.Message}\n{ex.InnerException.StackTrace}" : "")}
-                ---
-
-                """;
-
+            var entry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{source}]\n{BuildErrorReport(ex)}\n===\n\n";
             File.AppendAllText(logFile, entry);
         }
-        catch
-        {
-            // Logging itself failed — nothing we can do
-        }
+        catch { }
     }
 
     private static string GetLogDirectory()
@@ -129,42 +227,27 @@ public partial class App : Application
             var settingsService = Services.GetRequiredService<ISettingsService>();
             await settingsService.LoadAsync();
 
-            // Apply saved theme
             if (MainWindow.Content is FrameworkElement root)
                 ThemeHelper.ApplyTheme(root, settingsService.Settings.Theme);
 
             var profileService = Services.GetRequiredService<IProfileService>();
             await profileService.LoadAllAsync();
 
-            // Initialize tray
-            SafeInit(() =>
-            {
-                var trayService = Services.GetRequiredService<ITrayService>();
-                trayService.Initialize();
-            });
-
-            // Start auto-switch
+            SafeInit(() => Services.GetRequiredService<ITrayService>().Initialize());
             SafeInit(() => Services.GetRequiredService<IAutoSwitchService>().Start());
-
-            // Start schedule
             SafeInit(() => Services.GetRequiredService<IScheduleService>().Start());
 
-            // Register hotkeys
             SafeInit(() =>
             {
                 var hotkeyService = (HotkeyService)Services.GetRequiredService<IHotkeyService>();
                 hotkeyService.SetWindowHandle(WindowHelper.GetHwnd(MainWindow));
-
                 foreach (var profile in profileService.Profiles)
                 {
                     if (profile.Hotkey != null)
                         hotkeyService.RegisterProfileHotkey(profile.Id, profile.Hotkey);
                 }
-
                 hotkeyService.HotkeyTriggered += async (_, profileId) =>
-                {
                     await profileService.ApplyProfileAsync(profileId);
-                };
             });
         }
         catch (Exception ex)
@@ -178,8 +261,6 @@ public partial class App : Application
         try { action(); }
         catch (Exception ex) { LogException("SafeInit", ex); }
     }
-
-    // ── Cleanup ──
 
     private static void DisposeServices()
     {

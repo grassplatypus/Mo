@@ -180,4 +180,12 @@ Delete 또는 Backspace로 삭제. Escape로 취소.</value></data>
   <data name="TrayOpen" xml:space="preserve"><value>Mo 열기</value></data>
   <data name="TrayExit" xml:space="preserve"><value>종료</value></data>
   <data name="TrayTooltip" xml:space="preserve"><value>Mo — 모니터 프로필 관리자</value></data>
+
+  <!-- Error Dialog -->
+  <data name="UnhandledErrorTitle" xml:space="preserve"><value>예기치 않은 오류가 발생했습니다</value></data>
+  <data name="UnhandledErrorDesc" xml:space="preserve"><value>Mo에서 처리되지 않은 오류가 발생했습니다. 아래 정보를 복사하여 버그 보고에 활용할 수 있습니다.</value></data>
+  <data name="CopyErrorInfo" xml:space="preserve"><value>클립보드에 복사</value></data>
+  <data name="Copied" xml:space="preserve"><value>복사됨!</value></data>
+  <data name="ContinueRunning" xml:space="preserve"><value>계속 실행</value></data>
+  <data name="ExitApp" xml:space="preserve"><value>Mo 종료</value></data>
 </root>

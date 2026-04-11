@@ -180,4 +180,12 @@ Press Delete or Backspace to clear. Escape to cancel.</value></data>
   <data name="TrayOpen" xml:space="preserve"><value>Open Mo</value></data>
   <data name="TrayExit" xml:space="preserve"><value>Exit</value></data>
   <data name="TrayTooltip" xml:space="preserve"><value>Mo — Monitor Profile Manager</value></data>
+
+  <!-- Error Dialog -->
+  <data name="UnhandledErrorTitle" xml:space="preserve"><value>An unexpected error occurred</value></data>
+  <data name="UnhandledErrorDesc" xml:space="preserve"><value>Mo encountered an unhandled error. You can copy the details below for bug reporting.</value></data>
+  <data name="CopyErrorInfo" xml:space="preserve"><value>Copy to Clipboard</value></data>
+  <data name="Copied" xml:space="preserve"><value>Copied!</value></data>
+  <data name="ContinueRunning" xml:space="preserve"><value>Continue</value></data>
+  <data name="ExitApp" xml:space="preserve"><value>Exit Mo</value></data>
 </root>
