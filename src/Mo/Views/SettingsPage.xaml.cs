@@ -65,12 +65,33 @@ public sealed partial class SettingsPage : Page
         try
         {
             var updateService = App.Services.GetRequiredService<IUpdateService>();
-            var (available, version, _) = await updateService.CheckForUpdateAsync();
+            var (available, version, url) = await updateService.CheckForUpdateAsync();
 
             UpdateStatusText.Visibility = Visibility.Visible;
-            UpdateStatusText.Text = available
-                ? ResourceHelper.GetString("UpdateAvailable", version ?? "")
-                : ResourceHelper.GetString("UpToDate");
+            if (available)
+            {
+                UpdateStatusText.Text = ResourceHelper.GetString("UpdateAvailable", version ?? "");
+
+                // Open download in browser
+                if (!string.IsNullOrEmpty(url))
+                {
+                    var dialog = new ContentDialog
+                    {
+                        Title = ResourceHelper.GetString("UpdateAvailableTitle"),
+                        Content = ResourceHelper.GetString("UpdateAvailable", version ?? ""),
+                        PrimaryButtonText = ResourceHelper.GetString("DownloadUpdate"),
+                        CloseButtonText = ResourceHelper.GetString("Later"),
+                        DefaultButton = ContentDialogButton.Primary,
+                        XamlRoot = this.XamlRoot,
+                    };
+                    if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+                        await Windows.System.Launcher.LaunchUriAsync(new Uri(url));
+                }
+            }
+            else
+            {
+                UpdateStatusText.Text = ResourceHelper.GetString("UpToDate");
+            }
         }
         catch
         {

@@ -1,54 +1,98 @@
 # Mo — Monitor Profile Manager
 
-Save and restore your multi-monitor configurations with one click.
+[![CI](https://github.com/jaegyun-lee/Mo/actions/workflows/ci.yml/badge.svg)](https://github.com/jaegyun-lee/Mo/actions/workflows/ci.yml)
 
-## Features
+Save and restore your multi-monitor configurations — positions, rotation, refresh rate, resolution, brightness, color, audio, wallpaper, and more — with one click.
 
-- **Full Profile Management**: Save/restore monitor positions, rotation, refresh rate, resolution, and DPI
-- **Visual Monitor Layout**: Interactive canvas showing monitor arrangement with drag-and-drop editing
-- **System Tray**: Runs in the background with quick profile switching from the tray context menu
-- **Global Hotkeys**: Assign keyboard shortcuts to switch profiles instantly
-- **Windows Startup**: Optional auto-launch at login
-- **Clean Install/Uninstall**: MSIX packaging ensures zero leftover files or registry entries
+<p align="center">
+  <strong>WinUI 3</strong> · <strong>Fluent Design</strong> · <strong>System Tray</strong> · <strong>한국어/English</strong>
+</p>
 
 ## Why Mo?
 
-Existing tools like similar tools only manage monitor on/off states. Mo goes further by saving and restoring:
+Existing tools like [similar tools](https://github.com/Nuzair46/similar tools) only manage monitor on/off states. **Mo goes further:**
 
-- **Monitor positions** (which monitor is left, right, above, below)
-- **Rotation angles** (0°, 90°, 180°, 270°)
-- **Refresh rates** per monitor
-- **Resolution** per monitor
-- **DPI scaling** (opt-in)
+| Feature | similar tools | Mo |
+|---|:---:|:---:|
+| Monitor on/off toggle | O | O |
+| Monitor position (left/right/above) | X | **O** |
+| Rotation (0°/90°/180°/270°) | X | **O** |
+| Refresh rate per monitor | X | **O** |
+| Brightness / Contrast (DDC/CI) | X | **O** |
+| RGB Color Gain | X | **O** |
+| Audio output switching | X | **O** |
+| Wallpaper per profile | X | **O** |
+| WallpaperEngine / Lively support | X | **O** |
+| Auto-switch on monitor change | X | **O** |
+| Schedule-based switching | X | **O** |
+| Global hotkeys | X | **O** |
+| Export / Import profiles | X | **O** |
 
-## Tech Stack
+## Features
 
-- C# / .NET 10
-- WinUI 3 (Windows App SDK) with Fluent Design
-- Windows CCD (Connecting and Configuring Displays) API
-- MSIX single-project packaging
+- **Full Profile Management** — Save/restore monitor positions, rotation, refresh rate, resolution, DPI
+- **Brightness & Color** — Per-monitor brightness, contrast, RGB gain via DDC/CI; WMI fallback for laptops
+- **Audio Output** — Switch default audio device per profile
+- **Wallpaper** — Static wallpaper + WallpaperEngine / Lively Wallpaper support
+- **Auto-Switch** — Automatically apply profile when monitor configuration changes
+- **Schedule** — Time + day-of-week based auto-switching
+- **System Tray** — Background operation with quick profile switching
+- **Global Hotkeys** — Keyboard shortcuts per profile
+- **Apply Confirmation** — 15-second countdown timer with auto-revert
+- **Export / Import** — Share profiles as `.moprofile` files
+- **Dark / Light / System Theme** — Fluent Design with Mica backdrop
+- **Localization** — English and Korean (한국어)
+- **Auto Update** — Checks GitHub Releases for new versions
+- **Error Reporting** — Structured YAML reports with full hardware info, optimized for LLM analysis
+- **Clean Uninstall** — MSIX packaging leaves zero leftover files
+
+## Screenshots
+
+*Coming soon*
 
 ## Requirements
 
 - Windows 10 version 1809 (build 17763) or later
-- .NET 10 SDK (for building)
+- .NET 10 SDK (for building from source)
 
-## Build
+## Installation
+
+### From Releases
+
+Download the latest `.zip` from [Releases](https://github.com/jaegyun-lee/Mo/releases) and run `Mo.exe`.
+
+### Build from Source
 
 ```bash
+git clone https://github.com/jaegyun-lee/Mo.git
+cd Mo
 dotnet build Mo.slnx -c Debug -p:Platform=x64
 dotnet test tests/Mo.Core.Tests/
 ```
 
+## Tech Stack
+
+- **Language**: C# / .NET 10
+- **UI**: WinUI 3 (Windows App SDK) with Fluent Design
+- **Architecture**: MVVM (CommunityToolkit.Mvvm)
+- **Display API**: Windows CCD (Connecting and Configuring Displays)
+- **Monitor Control**: DDC/CI via dxva2.dll + WMI fallback
+- **System Tray**: H.NotifyIcon.WinUI
+- **Packaging**: Single-project MSIX
+
 ## Project Structure
 
 ```
-src/Mo/          — WinUI3 app (UI, services, MVVM)
-src/Mo.Core/     — Pure logic (monitor matching, topology, diffing)
-src/Mo.Interop/  — P/Invoke definitions (CCD API)
-tests/           — Unit and integration tests
-docs/            — Architecture and maintenance docs
+src/Mo/              WinUI3 app (UI, services, MVVM)
+src/Mo.Core/         Pure logic (monitor matching, topology, diffing)
+src/Mo.Interop/      P/Invoke (CCD API, DDC/CI)
+tests/Mo.Core.Tests/ Unit tests
+docs/                Architecture and maintenance docs
 ```
+
+## Contributing
+
+Contributions are welcome! See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/MAINTENANCE.md](docs/MAINTENANCE.md) for project structure and development guides.
 
 ## License
 

@@ -181,6 +181,11 @@ Delete 또는 Backspace로 삭제. Escape로 취소.</value></data>
   <data name="TrayExit" xml:space="preserve"><value>종료</value></data>
   <data name="TrayTooltip" xml:space="preserve"><value>Mo — 모니터 프로필 관리자</value></data>
 
+  <!-- Update Notification -->
+  <data name="UpdateAvailableTitle" xml:space="preserve"><value>업데이트 가능</value></data>
+  <data name="DownloadUpdate" xml:space="preserve"><value>다운로드</value></data>
+  <data name="Later" xml:space="preserve"><value>나중에</value></data>
+
   <!-- System Info -->
   <data name="SystemInfoSection" xml:space="preserve"><value>시스템 정보</value></data>
 

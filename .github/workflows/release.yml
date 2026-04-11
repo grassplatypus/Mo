@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    strategy:
+      matrix:
+        platform: [x64, ARM64]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: 'preview'
+
+      - name: Build Release
+        run: dotnet build src/Mo/Mo.csproj -c Release -p:Platform=${{ matrix.platform }}
+
+      - name: Publish
+        run: dotnet publish src/Mo/Mo.csproj -c Release -p:Platform=${{ matrix.platform }} -o publish/${{ matrix.platform }}
+
+      - name: Create ZIP
+        run: Compress-Archive -Path publish/${{ matrix.platform }}/* -DestinationPath Mo-${{ github.ref_name }}-${{ matrix.platform }}.zip
+
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Mo-${{ github.ref_name }}-${{ matrix.platform }}.zip
+          generate_release_notes: true

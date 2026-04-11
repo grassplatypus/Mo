@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    strategy:
+      matrix:
+        platform: [x64]
+        configuration: [Debug, Release]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: 'preview'
+
+      - name: Restore
+        run: dotnet restore src/Mo/Mo.csproj -p:Platform=${{ matrix.platform }}
+
+      - name: Build
+        run: dotnet build src/Mo/Mo.csproj -c ${{ matrix.configuration }} -p:Platform=${{ matrix.platform }} --no-restore
+
+      - name: Test
+        run: dotnet test tests/Mo.Core.Tests/ --no-restore --verbosity normal
+
+  test:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: 'preview'
+
+      - name: Run Tests
+        run: dotnet test tests/Mo.Core.Tests/ --verbosity normal --logger "console;verbosity=detailed"

@@ -221,6 +221,62 @@ public partial class App : Application
         {
             LogException("InitializeAsync", ex);
         }
+
+        // Auto-check for updates (after everything else, non-blocking)
+        _ = CheckForUpdateOnStartupAsync();
+    }
+
+    private static async Task CheckForUpdateOnStartupAsync()
+    {
+        try
+        {
+            var settings = Services.GetRequiredService<ISettingsService>();
+            if (!settings.Settings.CheckForUpdates) return;
+
+            // Don't check more than once per 12 hours
+            if (DateTime.TryParse(settings.Settings.LastUpdateCheck, out var last) &&
+                (DateTime.UtcNow - last).TotalHours < 12)
+                return;
+
+            await Task.Delay(5000); // Wait 5s after startup
+
+            var updateService = Services.GetRequiredService<IUpdateService>();
+            var (available, version, url) = await updateService.CheckForUpdateAsync();
+
+            settings.Settings.LastUpdateCheck = DateTime.UtcNow.ToString("O");
+            await settings.SaveAsync();
+
+            if (available && !string.IsNullOrEmpty(version))
+            {
+                // Show notification via dispatcher
+                MainWindow?.DispatcherQueue.TryEnqueue(async () =>
+                {
+                    await ShowUpdateNotificationAsync(version, url);
+                });
+            }
+        }
+        catch { }
+    }
+
+    private static async Task ShowUpdateNotificationAsync(string version, string? url)
+    {
+        if (MainWindow?.Content?.XamlRoot == null) return;
+
+        var dialog = new ContentDialog
+        {
+            Title = ResourceHelper.GetString("UpdateAvailableTitle"),
+            Content = ResourceHelper.GetString("UpdateAvailable", version),
+            PrimaryButtonText = ResourceHelper.GetString("DownloadUpdate"),
+            CloseButtonText = ResourceHelper.GetString("Later"),
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = MainWindow.Content.XamlRoot,
+        };
+
+        var result = await dialog.ShowAsync();
+        if (result == ContentDialogResult.Primary && !string.IsNullOrEmpty(url))
+        {
+            await Windows.System.Launcher.LaunchUriAsync(new Uri(url));
+        }
     }
 
     private static void SafeInit(Action action)

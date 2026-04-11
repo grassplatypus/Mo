@@ -181,6 +181,11 @@ Press Delete or Backspace to clear. Escape to cancel.</value></data>
   <data name="TrayExit" xml:space="preserve"><value>Exit</value></data>
   <data name="TrayTooltip" xml:space="preserve"><value>Mo — Monitor Profile Manager</value></data>
 
+  <!-- Update Notification -->
+  <data name="UpdateAvailableTitle" xml:space="preserve"><value>Update Available</value></data>
+  <data name="DownloadUpdate" xml:space="preserve"><value>Download</value></data>
+  <data name="Later" xml:space="preserve"><value>Later</value></data>
+
   <!-- System Info -->
   <data name="SystemInfoSection" xml:space="preserve"><value>System Information</value></data>
 
