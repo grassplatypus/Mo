@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <!-- App -->
+  <data name="AppDisplayName" xml:space="preserve"><value>Mo — Monitor Profile Manager</value></data>
+  <data name="AppTitleBar" xml:space="preserve"><value>Mo</value></data>
+
+  <!-- Navigation -->
+  <data name="NavProfiles" xml:space="preserve"><value>Profiles</value></data>
+  <data name="NavSettings" xml:space="preserve"><value>Settings</value></data>
+
+  <!-- Profile List -->
+  <data name="ProfilesTitle" xml:space="preserve"><value>Profiles</value></data>
+  <data name="SaveCurrent" xml:space="preserve"><value>Save Current</value></data>
+  <data name="MonitorsSuffix" xml:space="preserve"><value>monitors</value></data>
+  <data name="Apply" xml:space="preserve"><value>Apply</value></data>
+  <data name="EmptyTitle" xml:space="preserve"><value>No profiles saved yet</value></data>
+  <data name="EmptyDescription" xml:space="preserve"><value>Click 'Save Current' to save your monitor configuration</value></data>
+
+  <!-- Profile Actions -->
+  <data name="SetHotkey" xml:space="preserve"><value>Set Hotkey</value></data>
+  <data name="Delete" xml:space="preserve"><value>Delete</value></data>
+  <data name="DeleteProfileTitle" xml:space="preserve"><value>Delete Profile</value></data>
+  <data name="DeleteProfileConfirm" xml:space="preserve"><value>Are you sure you want to delete "{0}"?</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Save" xml:space="preserve"><value>Save</value></data>
+
+  <!-- Profile Context Menu -->
+  <data name="Export" xml:space="preserve"><value>Export...</value></data>
+  <data name="Import" xml:space="preserve"><value>Import</value></data>
+  <data name="Rename" xml:space="preserve"><value>Rename</value></data>
+  <data name="AutoSwitch" xml:space="preserve"><value>Auto-switch</value></data>
+  <data name="AutoSwitchDesc" xml:space="preserve"><value>Automatically apply when these monitors are detected</value></data>
+
+  <!-- Apply Confirmation -->
+  <data name="KeepChanges" xml:space="preserve"><value>Keep Changes</value></data>
+  <data name="Revert" xml:space="preserve"><value>Revert</value></data>
+  <data name="ConfirmTitle" xml:space="preserve"><value>Keep this display configuration?</value></data>
+  <data name="RevertingIn" xml:space="preserve"><value>Reverting in {0} seconds...</value></data>
+  <data name="ApplyConfirmTitle" xml:space="preserve"><value>Keep this display configuration?</value></data>
+  <data name="ApplyConfirmCountdown" xml:space="preserve"><value>Reverting in {0} seconds...</value></data>
+
+  <!-- Rename Dialog -->
+  <data name="RenameTitle" xml:space="preserve"><value>Rename Profile</value></data>
+  <data name="RenameLabel" xml:space="preserve"><value>Profile name</value></data>
+  <data name="RenameProfileTitle" xml:space="preserve"><value>Rename Profile</value></data>
+  <data name="RenameProfilePrompt" xml:space="preserve"><value>Enter a new name for "{0}":</value></data>
+  <data name="NewName" xml:space="preserve"><value>New name</value></data>
+
+  <!-- Export/Import -->
+  <data name="ExportSuccess" xml:space="preserve"><value>Profile exported successfully.</value></data>
+  <data name="ImportSuccess" xml:space="preserve"><value>Profile imported successfully.</value></data>
+  <data name="ImportFailed" xml:space="preserve"><value>Failed to import profile.</value></data>
+  <data name="MoProfileFileType" xml:space="preserve"><value>Mo Profile</value></data>
+  <data name="ExportProfileType" xml:space="preserve"><value>Mo Profile</value></data>
+  <data name="ImportProfileType" xml:space="preserve"><value>Mo Profile</value></data>
+
+  <!-- Hotkey Dialog -->
+  <data name="HotkeyDialogTitle" xml:space="preserve"><value>Set Hotkey — {0}</value></data>
+  <data name="HotkeyDialogDescription" xml:space="preserve"><value>Click the box below and press a key combination (e.g. Ctrl+Alt+1).
+Press Delete or Backspace to clear. Escape to cancel.</value></data>
+  <data name="HotkeyPlaceholder" xml:space="preserve"><value>Click to set hotkey</value></data>
+  <data name="HotkeyCapturing" xml:space="preserve"><value>Press a key combination...</value></data>
+
+  <!-- Settings -->
+  <data name="SettingsTitle" xml:space="preserve"><value>Settings</value></data>
+  <data name="GeneralSection" xml:space="preserve"><value>General</value></data>
+  <data name="LaunchAtStartup" xml:space="preserve"><value>Launch at startup</value></data>
+  <data name="LaunchAtStartupDesc" xml:space="preserve"><value>Start Mo when you sign in to Windows</value></data>
+  <data name="MinimizeToTray" xml:space="preserve"><value>Minimize to tray on close</value></data>
+  <data name="MinimizeToTrayDesc" xml:space="preserve"><value>Keep Mo running in the system tray</value></data>
+  <data name="StartMinimized" xml:space="preserve"><value>Start minimized</value></data>
+  <data name="StartMinimizedDesc" xml:space="preserve"><value>Start in the system tray instead of showing the window</value></data>
+  <data name="Theme" xml:space="preserve"><value>Theme</value></data>
+  <data name="ThemeDesc" xml:space="preserve"><value>Choose your preferred appearance</value></data>
+  <data name="ThemeSystem" xml:space="preserve"><value>System</value></data>
+  <data name="ThemeLight" xml:space="preserve"><value>Light</value></data>
+  <data name="ThemeDark" xml:space="preserve"><value>Dark</value></data>
+  <data name="AutoSwitchSetting" xml:space="preserve"><value>Auto-switch profiles</value></data>
+  <data name="AutoSwitchSettingDesc" xml:space="preserve"><value>Automatically apply profiles when monitor configuration changes</value></data>
+  <data name="CheckForUpdates" xml:space="preserve"><value>Check for updates</value></data>
+  <data name="CheckForUpdatesDesc" xml:space="preserve"><value>Periodically check for new versions</value></data>
+  <data name="CheckNow" xml:space="preserve"><value>Check Now</value></data>
+  <data name="UpToDate" xml:space="preserve"><value>You're up to date!</value></data>
+  <data name="UpdateAvailable" xml:space="preserve"><value>Version {0} is available</value></data>
+  <data name="MultiUser" xml:space="preserve"><value>Per-user profiles</value></data>
+  <data name="MultiUserDesc" xml:space="preserve"><value>Keep separate profiles for each Windows user</value></data>
+
+  <!-- About -->
+  <data name="AboutSection" xml:space="preserve"><value>About</value></data>
+  <data name="AboutName" xml:space="preserve"><value>Mo — Monitor Profile Manager</value></data>
+  <data name="AboutVersion" xml:space="preserve"><value>Version 1.0.0</value></data>
+  <data name="AboutDescription" xml:space="preserve"><value>Save and restore your multi-monitor configurations with one click.</value></data>
+
+  <!-- Profile Editor -->
+  <data name="ProfileNamePlaceholder" xml:space="preserve"><value>Profile name</value></data>
+  <data name="DescriptionPlaceholder" xml:space="preserve"><value>Description (optional)</value></data>
+  <data name="Resolution" xml:space="preserve"><value>Resolution</value></data>
+  <data name="RefreshRate" xml:space="preserve"><value>Refresh Rate</value></data>
+  <data name="Rotation" xml:space="preserve"><value>Rotation</value></data>
+  <data name="Position" xml:space="preserve"><value>Position</value></data>
+  <data name="RotationNone" xml:space="preserve"><value>None</value></data>
+  <data name="NoMonitorsDetected" xml:space="preserve"><value>No monitors detected</value></data>
+
+  <!-- Audio -->
+  <data name="AudioDevice" xml:space="preserve"><value>Audio Output</value></data>
+  <data name="AudioDeviceDesc" xml:space="preserve"><value>Default audio output device for this profile</value></data>
+  <data name="AudioNone" xml:space="preserve"><value>None (don't change)</value></data>
+
+  <!-- Wallpaper -->
+  <data name="Wallpaper" xml:space="preserve"><value>Wallpaper</value></data>
+  <data name="WallpaperDesc" xml:space="preserve"><value>Desktop wallpaper for this profile</value></data>
+  <data name="WallpaperBrowse" xml:space="preserve"><value>Browse...</value></data>
+  <data name="WallpaperClear" xml:space="preserve"><value>Clear</value></data>
+
+  <!-- HDR -->
+  <data name="HdrStatus" xml:space="preserve"><value>HDR</value></data>
+
+  <!-- Night Light -->
+  <data name="NightLight" xml:space="preserve"><value>Night Light</value></data>
+  <data name="NightLightDesc" xml:space="preserve"><value>Enable or disable Night Light</value></data>
+  <data name="NightLightOn" xml:space="preserve"><value>On</value></data>
+  <data name="NightLightOff" xml:space="preserve"><value>Off</value></data>
+  <data name="NightLightUnchanged" xml:space="preserve"><value>Unchanged</value></data>
+
+  <!-- Schedule -->
+  <data name="ScheduleSection" xml:space="preserve"><value>Schedule</value></data>
+  <data name="ScheduleDesc" xml:space="preserve"><value>Automatically apply this profile at a specific time</value></data>
+  <data name="ScheduleEnabled" xml:space="preserve"><value>Enable schedule</value></data>
+  <data name="ScheduleTime" xml:space="preserve"><value>Time</value></data>
+  <data name="ScheduleDays" xml:space="preserve"><value>Days</value></data>
+  <data name="Monday" xml:space="preserve"><value>Mon</value></data>
+  <data name="Tuesday" xml:space="preserve"><value>Tue</value></data>
+  <data name="Wednesday" xml:space="preserve"><value>Wed</value></data>
+  <data name="Thursday" xml:space="preserve"><value>Thu</value></data>
+  <data name="Friday" xml:space="preserve"><value>Fri</value></data>
+  <data name="Saturday" xml:space="preserve"><value>Sat</value></data>
+  <data name="Sunday" xml:space="preserve"><value>Sun</value></data>
+
+  <!-- Tray -->
+  <data name="TrayOpen" xml:space="preserve"><value>Open Mo</value></data>
+  <data name="TrayExit" xml:space="preserve"><value>Exit</value></data>
+  <data name="TrayTooltip" xml:space="preserve"><value>Mo — Monitor Profile Manager</value></data>
+</root>

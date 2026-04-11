@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="Mo.Views.ProfileListPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:local="using:Mo.Views"
+    xmlns:models="using:Mo.Models"
+    mc:Ignorable="d"
+    NavigationCacheMode="Required">
+
+    <Page.Transitions>
+        <TransitionCollection>
+            <EntranceThemeTransition />
+        </TransitionCollection>
+    </Page.Transitions>
+
+    <Grid Padding="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Grid Margin="0,0,0,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <TextBlock
+                x:Name="TitleText"
+                Style="{StaticResource TitleTextBlockStyle}" />
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <Button
+                    Style="{StaticResource AccentButtonStyle}"
+                    Click="ImportButton_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE8B5;" FontSize="14" />
+                        <TextBlock x:Name="ImportText" />
+                    </StackPanel>
+                </Button>
+
+                <Button
+                    Style="{StaticResource AccentButtonStyle}"
+                    Click="SaveCurrentButton_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE710;" FontSize="14" />
+                        <TextBlock x:Name="SaveCurrentText" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Grid>
+
+        <!-- Profile List -->
+        <GridView
+            Grid.Row="1"
+            x:Name="ProfileGrid"
+            ItemsSource="{x:Bind ViewModel.Profiles}"
+            SelectionMode="None"
+            IsItemClickEnabled="True"
+            ItemClick="ProfileGrid_ItemClick">
+
+            <GridView.ItemTemplate>
+                <DataTemplate x:DataType="models:DisplayProfile">
+                    <Grid
+                        Width="280"
+                        MinHeight="140"
+                        Padding="16"
+                        CornerRadius="8"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1">
+
+                        <Grid.ContextFlyout>
+                            <MenuFlyout>
+                                <MenuFlyoutItem Text="{x:Bind local:ProfileListPage.L(local:ProfileListPage.ApplyKey)}" Tag="{x:Bind Id}" Click="ApplyButton_Click">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE7F4;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutItem Text="{x:Bind local:ProfileListPage.L(local:ProfileListPage.SetHotkeyKey)}" Tag="{x:Bind Id}" Click="HotkeyButton_Click">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE765;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutItem Text="{x:Bind local:ProfileListPage.L(local:ProfileListPage.ExportKey)}" Tag="{x:Bind Id}" Click="ExportButton_Click">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE78C;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutSeparator />
+                                <ToggleMenuFlyoutItem Text="{x:Bind local:ProfileListPage.L(local:ProfileListPage.AutoSwitchKey)}" Tag="{x:Bind Id}" IsChecked="{x:Bind AutoSwitch}" Click="AutoSwitchToggle_Click">
+                                    <ToggleMenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE8AB;" />
+                                    </ToggleMenuFlyoutItem.Icon>
+                                </ToggleMenuFlyoutItem>
+                                <MenuFlyoutSeparator />
+                                <MenuFlyoutItem Text="{x:Bind local:ProfileListPage.L(local:ProfileListPage.RenameKey)}" Tag="{x:Bind Id}" Click="RenameButton_Click" />
+                                <MenuFlyoutItem Text="{x:Bind local:ProfileListPage.L(local:ProfileListPage.DeleteKey)}" Tag="{x:Bind Id}" Click="DeleteButton_Click">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE74D;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                            </MenuFlyout>
+                        </Grid.ContextFlyout>
+
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <!-- Profile Name + Overflow Menu -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock
+                                Text="{x:Bind Name}"
+                                Style="{StaticResource SubtitleTextBlockStyle}"
+                                TextTrimming="CharacterEllipsis" />
+
+                            <Button
+                                Grid.Column="1"
+                                Padding="4,2"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                VerticalAlignment="Top">
+                                <FontIcon Glyph="&#xE712;" FontSize="14" />
+                                <Button.Flyout>
+                                    <MenuFlyout>
+                                        <MenuFlyoutItem Text="{x:Bind local:ProfileListPage.L(local:ProfileListPage.ApplyKey)}" Tag="{x:Bind Id}" Click="ApplyButton_Click">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon Glyph="&#xE7F4;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                        <MenuFlyoutItem Text="{x:Bind local:ProfileListPage.L(local:ProfileListPage.SetHotkeyKey)}" Tag="{x:Bind Id}" Click="HotkeyButton_Click">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon Glyph="&#xE765;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                        <MenuFlyoutItem Text="{x:Bind local:ProfileListPage.L(local:ProfileListPage.ExportKey)}" Tag="{x:Bind Id}" Click="ExportButton_Click">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon Glyph="&#xE78C;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                        <MenuFlyoutSeparator />
+                                        <ToggleMenuFlyoutItem Text="{x:Bind local:ProfileListPage.L(local:ProfileListPage.AutoSwitchKey)}" Tag="{x:Bind Id}" IsChecked="{x:Bind AutoSwitch}" Click="AutoSwitchToggle_Click">
+                                            <ToggleMenuFlyoutItem.Icon>
+                                                <FontIcon Glyph="&#xE8AB;" />
+                                            </ToggleMenuFlyoutItem.Icon>
+                                        </ToggleMenuFlyoutItem>
+                                        <MenuFlyoutSeparator />
+                                        <MenuFlyoutItem Text="{x:Bind local:ProfileListPage.L(local:ProfileListPage.RenameKey)}" Tag="{x:Bind Id}" Click="RenameButton_Click" />
+                                        <MenuFlyoutItem Text="{x:Bind local:ProfileListPage.L(local:ProfileListPage.DeleteKey)}" Tag="{x:Bind Id}" Click="DeleteButton_Click">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon Glyph="&#xE74D;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                    </MenuFlyout>
+                                </Button.Flyout>
+                            </Button>
+                        </Grid>
+
+                        <!-- Monitor Count -->
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0" VerticalAlignment="Top">
+                            <FontIcon Glyph="&#xE7F4;" FontSize="14" Opacity="0.6" />
+                            <TextBlock Opacity="0.6">
+                                <Run Text="{x:Bind MonitorCount}" />
+                                <Run Text="{x:Bind local:ProfileListPage.L(local:ProfileListPage.MonitorsKey)}" />
+                            </TextBlock>
+                        </StackPanel>
+
+                        <!-- Hotkey Badge -->
+                        <Border
+                            Grid.Row="1"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            Visibility="{x:Bind local:ProfileListPage.HasHotkey(Hotkey)}"
+                            Background="{ThemeResource SystemFillColorNeutralBackgroundBrush}"
+                            CornerRadius="4"
+                            Padding="6,2">
+                            <TextBlock
+                                Text="{x:Bind local:ProfileListPage.FormatHotkey(Hotkey)}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Opacity="0.8" />
+                        </Border>
+
+                        <!-- Actions -->
+                        <Grid Grid.Row="2" Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock
+                                Text="{x:Bind Description}"
+                                Opacity="0.5"
+                                TextTrimming="CharacterEllipsis"
+                                VerticalAlignment="Center"
+                                Style="{StaticResource CaptionTextBlockStyle}" />
+
+                            <Button
+                                Grid.Column="1"
+                                Tag="{x:Bind Id}"
+                                Style="{StaticResource AccentButtonStyle}"
+                                Content="{x:Bind local:ProfileListPage.L(local:ProfileListPage.ApplyKey)}"
+                                Click="ApplyButton_Click" />
+                        </Grid>
+                    </Grid>
+                </DataTemplate>
+            </GridView.ItemTemplate>
+        </GridView>
+
+        <!-- Empty State -->
+        <StackPanel
+            Grid.Row="1"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Spacing="12"
+            Visibility="{x:Bind ViewModel.IsEmpty}">
+
+            <FontIcon Glyph="&#xE7F4;" FontSize="48" Opacity="0.3" />
+            <TextBlock
+                x:Name="EmptyTitleText"
+                Style="{StaticResource SubtitleTextBlockStyle}"
+                Opacity="0.5"
+                HorizontalAlignment="Center" />
+            <TextBlock
+                x:Name="EmptyDescText"
+                Opacity="0.4"
+                HorizontalAlignment="Center" />
+        </StackPanel>
+    </Grid>
+</Page>

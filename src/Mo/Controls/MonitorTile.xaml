@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<UserControl
+    x:Class="Mo.Controls.MonitorTile"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Grid
+        x:Name="RootGrid"
+        CornerRadius="6"
+        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+        BorderThickness="1"
+        Padding="8"
+        MinWidth="80"
+        MinHeight="50">
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Monitor Name -->
+        <TextBlock
+            x:Name="NameText"
+            Style="{StaticResource CaptionTextBlockStyle}"
+            TextTrimming="CharacterEllipsis"
+            MaxLines="1" />
+
+        <!-- Monitor Number -->
+        <TextBlock
+            Grid.Row="1"
+            x:Name="NumberText"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Style="{StaticResource TitleLargeTextBlockStyle}"
+            Opacity="0.15" />
+
+        <!-- Resolution + Info -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="4">
+            <TextBlock
+                x:Name="ResolutionText"
+                Style="{StaticResource CaptionTextBlockStyle}"
+                Opacity="0.5" />
+            <TextBlock
+                x:Name="RotationText"
+                Style="{StaticResource CaptionTextBlockStyle}"
+                Opacity="0.4"
+                Visibility="Collapsed" />
+        </StackPanel>
+
+        <!-- Primary Badge -->
+        <Border
+            x:Name="PrimaryBadge"
+            Grid.Row="0"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Top"
+            Background="{ThemeResource AccentFillColorDefaultBrush}"
+            CornerRadius="4"
+            Padding="4,1"
+            Visibility="Collapsed">
+            <TextBlock Text="P" FontSize="9" Foreground="White" />
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,30 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="ARM64" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/src/">
+    <Project Path="src/Mo.Core/Mo.Core.csproj" />
+    <Project Path="src/Mo.Interop/Mo.Interop.csproj">
+      <Platform Solution="*|Any CPU" Project="x86" />
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="src/Mo/Mo.csproj">
+      <Platform Solution="*|Any CPU" Project="x86" />
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+      <Deploy Solution="*|ARM64" />
+      <Deploy Solution="*|x64" />
+      <Deploy Solution="*|x86" />
+    </Project>
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Mo.Core.Tests/Mo.Core.Tests.csproj" />
+    <Project Path="tests/Mo.Tests/Mo.Tests.csproj" />
+  </Folder>
+</Solution>

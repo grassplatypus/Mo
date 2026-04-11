@@ -1,0 +1,346 @@
+using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Mo.Controls;
+using Mo.Helpers;
+using Mo.Models;
+using Mo.Services;
+using Mo.ViewModels;
+
+namespace Mo.Views;
+
+public sealed partial class ProfileListPage : Page
+{
+    // Static resource keys for x:Bind in DataTemplate
+    public static readonly string SetHotkeyKey = "SetHotkey";
+    public static readonly string DeleteKey = "Delete";
+    public static readonly string MonitorsKey = "MonitorsSuffix";
+    public static readonly string ApplyKey = "Apply";
+    public static readonly string ExportKey = "Export";
+    public static readonly string AutoSwitchKey = "AutoSwitch";
+    public static readonly string RenameKey = "Rename";
+
+    public static string L(string key) => ResourceHelper.GetString(key);
+
+    public ProfileListViewModel ViewModel { get; }
+
+    public ProfileListPage()
+    {
+        ViewModel = App.Services.GetRequiredService<ProfileListViewModel>();
+        InitializeComponent();
+        ApplyLocalization();
+    }
+
+    private void ApplyLocalization()
+    {
+        TitleText.Text = ResourceHelper.GetString("ProfilesTitle");
+        SaveCurrentText.Text = ResourceHelper.GetString("SaveCurrent");
+        ImportText.Text = ResourceHelper.GetString("Import");
+        EmptyTitleText.Text = ResourceHelper.GetString("EmptyTitle");
+        EmptyDescText.Text = ResourceHelper.GetString("EmptyDescription");
+    }
+
+    private async void ApplyButton_Click(object sender, RoutedEventArgs e)
+    {
+        var profileId = (sender as FrameworkElement)?.Tag as string;
+        if (profileId == null) return;
+
+        // Capture the current configuration before applying so we can revert
+        var displayService = App.Services.GetRequiredService<IDisplayService>();
+        var previousConfig = displayService.GetCurrentConfiguration();
+
+        await ViewModel.ApplyProfileCommand.ExecuteAsync(profileId);
+
+        // Show the confirmation dialog with countdown
+        var confirmDialog = new ApplyConfirmationDialog
+        {
+            XamlRoot = this.XamlRoot,
+        };
+
+        var confirmed = await confirmDialog.ShowAndWaitAsync();
+
+        if (!confirmed)
+        {
+            // Revert: build a temporary profile from the previous config and apply it
+            var revertProfile = new DisplayProfile
+            {
+                Name = "_revert",
+                Monitors = previousConfig,
+            };
+            var profileService = App.Services.GetRequiredService<IProfileService>();
+            await profileService.SaveProfileAsync(revertProfile);
+            await profileService.ApplyProfileAsync(revertProfile.Id);
+            await profileService.DeleteProfileAsync(revertProfile.Id);
+        }
+    }
+
+    private async void DeleteButton_Click(object sender, RoutedEventArgs e)
+    {
+        var profileId = (sender as FrameworkElement)?.Tag as string;
+        if (profileId == null) return;
+
+        var profile = ViewModel.Profiles.FirstOrDefault(p => p.Id == profileId);
+        if (profile == null) return;
+
+        var dialog = new ContentDialog
+        {
+            Title = ResourceHelper.GetString("DeleteProfileTitle"),
+            Content = ResourceHelper.GetString("DeleteProfileConfirm", profile.Name),
+            PrimaryButtonText = ResourceHelper.GetString("Delete"),
+            CloseButtonText = ResourceHelper.GetString("Cancel"),
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = this.XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        {
+            var hotkeyService = App.Services.GetRequiredService<IHotkeyService>();
+            hotkeyService.UnregisterProfileHotkey(profileId);
+            await ViewModel.DeleteProfileCommand.ExecuteAsync(profileId);
+        }
+    }
+
+    private async void HotkeyButton_Click(object sender, RoutedEventArgs e)
+    {
+        var profileId = (sender as FrameworkElement)?.Tag as string;
+        if (profileId == null) return;
+
+        var profile = ViewModel.Profiles.FirstOrDefault(p => p.Id == profileId);
+        if (profile == null) return;
+
+        var picker = new HotkeyPicker();
+        picker.SetBinding(profile.Hotkey);
+
+        var dialog = new ContentDialog
+        {
+            Title = ResourceHelper.GetString("HotkeyDialogTitle", profile.Name),
+            Content = new StackPanel
+            {
+                Spacing = 12,
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = ResourceHelper.GetString("HotkeyDialogDescription"),
+                        TextWrapping = TextWrapping.Wrap,
+                        Opacity = 0.7,
+                    },
+                    picker,
+                }
+            },
+            PrimaryButtonText = ResourceHelper.GetString("Save"),
+            CloseButtonText = ResourceHelper.GetString("Cancel"),
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = this.XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        {
+            profile.Hotkey = picker.CurrentBinding;
+            profile.ModifiedAt = DateTime.UtcNow;
+
+            var profileService = App.Services.GetRequiredService<IProfileService>();
+            await profileService.SaveProfileAsync(profile);
+
+            var hotkeyService = App.Services.GetRequiredService<IHotkeyService>();
+            if (profile.Hotkey != null)
+                hotkeyService.RegisterProfileHotkey(profile.Id, profile.Hotkey);
+            else
+                hotkeyService.UnregisterProfileHotkey(profile.Id);
+        }
+    }
+
+    private async void ExportButton_Click(object sender, RoutedEventArgs e)
+    {
+        var profileId = (sender as FrameworkElement)?.Tag as string;
+        if (profileId == null) return;
+
+        var profile = ViewModel.Profiles.FirstOrDefault(p => p.Id == profileId);
+        if (profile == null) return;
+
+        var picker = new Windows.Storage.Pickers.FileSavePicker();
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, Mo.Helpers.WindowHelper.GetHwnd(App.MainWindow));
+        picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+        picker.SuggestedFileName = profile.Name;
+        picker.FileTypeChoices.Add(ResourceHelper.GetString("ExportProfileType"), new List<string> { ".moprofile" });
+
+        var file = await picker.PickSaveFileAsync();
+        if (file != null)
+        {
+            var json = JsonSerializer.Serialize(profile, JsonHelper.Options);
+            await Windows.Storage.FileIO.WriteTextAsync(file, json);
+        }
+    }
+
+    private async void RenameButton_Click(object sender, RoutedEventArgs e)
+    {
+        var profileId = (sender as FrameworkElement)?.Tag as string;
+        if (profileId == null) return;
+
+        var profile = ViewModel.Profiles.FirstOrDefault(p => p.Id == profileId);
+        if (profile == null) return;
+
+        var nameBox = new TextBox
+        {
+            Text = profile.Name,
+            PlaceholderText = ResourceHelper.GetString("NewName"),
+            SelectionStart = 0,
+            SelectionLength = profile.Name.Length,
+        };
+
+        var dialog = new ContentDialog
+        {
+            Title = ResourceHelper.GetString("RenameProfileTitle"),
+            Content = new StackPanel
+            {
+                Spacing = 12,
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = ResourceHelper.GetString("RenameProfilePrompt", profile.Name),
+                        TextWrapping = TextWrapping.Wrap,
+                        Opacity = 0.7,
+                    },
+                    nameBox,
+                }
+            },
+            PrimaryButtonText = ResourceHelper.GetString("Save"),
+            CloseButtonText = ResourceHelper.GetString("Cancel"),
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = this.XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        {
+            var newName = nameBox.Text?.Trim();
+            if (!string.IsNullOrEmpty(newName))
+            {
+                profile.Name = newName;
+                profile.ModifiedAt = DateTime.UtcNow;
+
+                var profileService = App.Services.GetRequiredService<IProfileService>();
+                await profileService.SaveProfileAsync(profile);
+            }
+        }
+    }
+
+    private async void AutoSwitchToggle_Click(object sender, RoutedEventArgs e)
+    {
+        var profileId = (sender as FrameworkElement)?.Tag as string;
+        if (profileId == null) return;
+
+        var profile = ViewModel.Profiles.FirstOrDefault(p => p.Id == profileId);
+        if (profile == null) return;
+
+        // The ToggleMenuFlyoutItem already toggled its IsChecked, so we read the new state
+        if (sender is ToggleMenuFlyoutItem toggle)
+        {
+            profile.AutoSwitch = toggle.IsChecked;
+        }
+        else
+        {
+            profile.AutoSwitch = !profile.AutoSwitch;
+        }
+
+        profile.ModifiedAt = DateTime.UtcNow;
+
+        var profileService = App.Services.GetRequiredService<IProfileService>();
+        await profileService.SaveProfileAsync(profile);
+    }
+
+    private async void SaveCurrentButton_Click(object sender, RoutedEventArgs e)
+    {
+        // Build options dialog
+        var nameBox = new TextBox
+        {
+            Text = $"Profile {ViewModel.Profiles.Count + 1}",
+            PlaceholderText = ResourceHelper.GetString("ProfileNamePlaceholder"),
+        };
+        var chkAudio = new CheckBox { Content = ResourceHelper.GetString("AudioDevice"), IsChecked = true };
+        var chkWallpaper = new CheckBox { Content = ResourceHelper.GetString("Wallpaper"), IsChecked = true };
+        var chkNightLight = new CheckBox { Content = ResourceHelper.GetString("NightLight"), IsChecked = false };
+        var chkAutoSwitch = new CheckBox { Content = ResourceHelper.GetString("AutoSwitch"), IsChecked = false };
+
+        var dialog = new ContentDialog
+        {
+            Title = ResourceHelper.GetString("SaveCurrent"),
+            Content = new StackPanel
+            {
+                Spacing = 10,
+                Children = { nameBox, chkAudio, chkWallpaper, chkNightLight, chkAutoSwitch }
+            },
+            PrimaryButtonText = ResourceHelper.GetString("Save"),
+            CloseButtonText = ResourceHelper.GetString("Cancel"),
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = this.XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+
+        var profileName = string.IsNullOrWhiteSpace(nameBox.Text) ? $"Profile {ViewModel.Profiles.Count + 1}" : nameBox.Text.Trim();
+
+        var profileService = App.Services.GetRequiredService<IProfileService>();
+        var profile = await profileService.CaptureCurrentAsync(profileName);
+
+        // Selectively clear unwanted data
+        if (chkAudio.IsChecked != true)
+        {
+            profile.AudioDeviceId = null;
+            profile.AudioDeviceName = null;
+        }
+        if (chkWallpaper.IsChecked != true)
+        {
+            profile.WallpaperPath = null;
+        }
+        if (chkNightLight.IsChecked != true)
+        {
+            profile.NightLightEnabled = null;
+        }
+        profile.AutoSwitch = chkAutoSwitch.IsChecked == true;
+
+        await profileService.SaveProfileAsync(profile);
+        ViewModel.RefreshIsEmpty();
+    }
+
+    private async void ImportButton_Click(object sender, RoutedEventArgs e)
+    {
+        var picker = new Windows.Storage.Pickers.FileOpenPicker();
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, Mo.Helpers.WindowHelper.GetHwnd(App.MainWindow));
+        picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+        picker.FileTypeFilter.Add(".moprofile");
+
+        var file = await picker.PickSingleFileAsync();
+        if (file != null)
+        {
+            var json = await Windows.Storage.FileIO.ReadTextAsync(file);
+            var profile = JsonSerializer.Deserialize<DisplayProfile>(json, JsonHelper.Options);
+            if (profile != null)
+            {
+                // Assign a new ID to avoid collisions with existing profiles
+                profile.Id = Guid.NewGuid().ToString("N");
+                profile.ModifiedAt = DateTime.UtcNow;
+
+                var profileService = App.Services.GetRequiredService<IProfileService>();
+                await profileService.SaveProfileAsync(profile);
+                ViewModel.RefreshIsEmpty();
+            }
+        }
+    }
+
+    private void ProfileGrid_ItemClick(object sender, ItemClickEventArgs e)
+    {
+        if (e.ClickedItem is DisplayProfile profile)
+        {
+            var nav = App.Services.GetRequiredService<INavigationService>();
+            nav.NavigateTo(typeof(ProfileEditorPage), profile);
+        }
+    }
+
+    public static Visibility HasHotkey(HotkeyBinding? hotkey)
+        => hotkey != null ? Visibility.Visible : Visibility.Collapsed;
+
+    public static string FormatHotkey(HotkeyBinding? hotkey)
+        => hotkey?.ToString() ?? "";
+}

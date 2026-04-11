@@ -1,0 +1,54 @@
+## .NET / Visual Studio
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+*.log
+
+## NuGet
+*.nupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+*.nuget.props
+*.nuget.targets
+
+## MSIX
+*.appx
+*.appxbundle
+*.msix
+*.msixbundle
+*.msixupload
+AppPackages/
+BundleArtifacts/
+
+## Build
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+ARM64/
+[Aa][Rr][Mm]/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+
+## Test Results
+TestResults/
+[Tt]est[Rr]esult*/
+
+## Certificates
+*.pfx
+*.cer
+
+## OS
+Thumbs.db
+.DS_Store
+
+## IDE
+.idea/
+*.swp
+*~
