@@ -17,6 +17,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>preview</LangVersion>
     <DefaultLanguage>en-US</DefaultLanguage>
+    <Version>$(MoVersion)</Version>
+    <AssemblyVersion>$(MoVersionFull)</AssemblyVersion>
+    <FileVersion>$(MoVersionFull)</FileVersion>
+    <InformationalVersion>$(MoVersion)</InformationalVersion>
   </PropertyGroup>
 
   <ItemGroup>

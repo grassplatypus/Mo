@@ -14,6 +14,10 @@ public partial class App : Application
     public App()
     {
         InitializeComponent();
+
+        // Global exception handlers
+        UnhandledException += App_UnhandledException;
+        TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
@@ -25,8 +29,74 @@ public partial class App : Application
         MainWindow = new MainWindow();
         MainWindow.Activate();
 
+        // DispatcherQueue unhandled exceptions
+        MainWindow.DispatcherQueue.ShutdownStarting += (_, _) =>
+        {
+            // Cleanup services on shutdown
+            DisposeServices();
+        };
+
         _ = InitializeAsync();
     }
+
+    // ── Global Exception Handlers ──
+
+    private void App_UnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
+    {
+        // Prevent app crash — log and swallow
+        e.Handled = true;
+        LogException("UnhandledException", e.Exception);
+    }
+
+    private static void TaskScheduler_UnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
+    {
+        // Prevent crash from fire-and-forget tasks
+        e.SetObserved();
+        LogException("UnobservedTaskException", e.Exception);
+    }
+
+    private static void LogException(string source, Exception? ex)
+    {
+        if (ex == null) return;
+
+        try
+        {
+            var logDir = GetLogDirectory();
+            Directory.CreateDirectory(logDir);
+
+            var logFile = Path.Combine(logDir, $"crash_{DateTime.Now:yyyyMMdd}.log");
+            var entry = $"""
+                [{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{source}]
+                {ex.GetType().FullName}: {ex.Message}
+                {ex.StackTrace}
+                {(ex.InnerException != null ? $"Inner: {ex.InnerException.Message}\n{ex.InnerException.StackTrace}" : "")}
+                ---
+
+                """;
+
+            File.AppendAllText(logFile, entry);
+        }
+        catch
+        {
+            // Logging itself failed — nothing we can do
+        }
+    }
+
+    private static string GetLogDirectory()
+    {
+        try
+        {
+            return Path.Combine(Windows.Storage.ApplicationData.Current.LocalFolder.Path, "logs");
+        }
+        catch
+        {
+            return Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Mo", "logs");
+        }
+    }
+
+    // ── DI Configuration ──
 
     private static void ConfigureServices(IServiceCollection services)
     {
@@ -50,73 +120,72 @@ public partial class App : Application
         services.AddTransient<SettingsViewModel>();
     }
 
+    // ── Initialization ──
+
     private static async Task InitializeAsync()
     {
-        var settingsService = Services.GetRequiredService<ISettingsService>();
-        await settingsService.LoadAsync();
-
-        // Apply saved theme
-        if (MainWindow.Content is FrameworkElement root)
-        {
-            ThemeHelper.ApplyTheme(root, settingsService.Settings.Theme);
-        }
-
-        var profileService = Services.GetRequiredService<IProfileService>();
-        await profileService.LoadAllAsync();
-
-        // Initialize tray (after profiles loaded so menu is populated)
         try
         {
-            var trayService = Services.GetRequiredService<ITrayService>();
-            trayService.Initialize();
-        }
-        catch
-        {
-            // Tray initialization can fail in some environments
-        }
+            var settingsService = Services.GetRequiredService<ISettingsService>();
+            await settingsService.LoadAsync();
 
-        // Start auto-switch service
-        try
-        {
-            var autoSwitchService = Services.GetRequiredService<IAutoSwitchService>();
-            autoSwitchService.Start();
-        }
-        catch
-        {
-            // Auto-switch initialization can fail
-        }
+            // Apply saved theme
+            if (MainWindow.Content is FrameworkElement root)
+                ThemeHelper.ApplyTheme(root, settingsService.Settings.Theme);
 
-        // Start schedule service
-        try
-        {
-            var scheduleService = Services.GetRequiredService<IScheduleService>();
-            scheduleService.Start();
-        }
-        catch
-        {
-            // Schedule initialization can fail
-        }
+            var profileService = Services.GetRequiredService<IProfileService>();
+            await profileService.LoadAllAsync();
 
-        // Register hotkeys
-        try
-        {
-            var hotkeyService = (HotkeyService)Services.GetRequiredService<IHotkeyService>();
-            hotkeyService.SetWindowHandle(WindowHelper.GetHwnd(MainWindow));
-
-            foreach (var profile in profileService.Profiles)
+            // Initialize tray
+            SafeInit(() =>
             {
-                if (profile.Hotkey != null)
-                    hotkeyService.RegisterProfileHotkey(profile.Id, profile.Hotkey);
-            }
+                var trayService = Services.GetRequiredService<ITrayService>();
+                trayService.Initialize();
+            });
 
-            hotkeyService.HotkeyTriggered += async (_, profileId) =>
+            // Start auto-switch
+            SafeInit(() => Services.GetRequiredService<IAutoSwitchService>().Start());
+
+            // Start schedule
+            SafeInit(() => Services.GetRequiredService<IScheduleService>().Start());
+
+            // Register hotkeys
+            SafeInit(() =>
             {
-                await profileService.ApplyProfileAsync(profileId);
-            };
+                var hotkeyService = (HotkeyService)Services.GetRequiredService<IHotkeyService>();
+                hotkeyService.SetWindowHandle(WindowHelper.GetHwnd(MainWindow));
+
+                foreach (var profile in profileService.Profiles)
+                {
+                    if (profile.Hotkey != null)
+                        hotkeyService.RegisterProfileHotkey(profile.Id, profile.Hotkey);
+                }
+
+                hotkeyService.HotkeyTriggered += async (_, profileId) =>
+                {
+                    await profileService.ApplyProfileAsync(profileId);
+                };
+            });
         }
-        catch
+        catch (Exception ex)
         {
-            // Hotkey registration can fail
+            LogException("InitializeAsync", ex);
         }
+    }
+
+    private static void SafeInit(Action action)
+    {
+        try { action(); }
+        catch (Exception ex) { LogException("SafeInit", ex); }
+    }
+
+    // ── Cleanup ──
+
+    private static void DisposeServices()
+    {
+        try { Services.GetRequiredService<IHotkeyService>().Dispose(); } catch { }
+        try { Services.GetRequiredService<IAutoSwitchService>().Dispose(); } catch { }
+        try { Services.GetRequiredService<IScheduleService>().Dispose(); } catch { }
+        try { Services.GetRequiredService<ITrayService>().Dispose(); } catch { }
     }
 }

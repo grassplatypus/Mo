@@ -1,11 +1,17 @@
+using System.Reflection;
 using System.Text.Json;
 
 namespace Mo.Services;
 
 public sealed class UpdateService : IUpdateService
 {
-    private const string CurrentVersion = "0.9.0";
     private const string GitHubApiUrl = "https://api.github.com/repos/Mo-app/Mo/releases/latest";
+
+    public static string CurrentVersion =>
+        Assembly.GetExecutingAssembly()
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+        ?? Assembly.GetExecutingAssembly().GetName().Version?.ToString(3)
+        ?? "0.0.0";
 
     public async Task<(bool available, string? version, string? url)> CheckForUpdateAsync()
     {
@@ -21,13 +27,10 @@ public sealed class UpdateService : IUpdateService
             var htmlUrl = root.GetProperty("html_url").GetString();
 
             if (!string.IsNullOrEmpty(tagName) && string.Compare(tagName, CurrentVersion, StringComparison.Ordinal) > 0)
-            {
                 return (true, tagName, htmlUrl);
-            }
         }
-        catch
-        {
-        }
+        catch { }
+
         return (false, null, null);
     }
 }

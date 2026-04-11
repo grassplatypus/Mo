@@ -94,7 +94,7 @@ public sealed partial class SettingsPage : Page
         CheckNowButton.Content = ResourceHelper.GetString("CheckNow");
         AboutText.Text = ResourceHelper.GetString("AboutSection");
         AboutName.Text = ResourceHelper.GetString("AboutName");
-        AboutVersion.Text = ResourceHelper.GetString("AboutVersion");
+        AboutVersion.Text = $"Version {UpdateService.CurrentVersion}";
         AboutDesc.Text = ResourceHelper.GetString("AboutDescription");
 
         ThemeCombo.Items.Clear();
