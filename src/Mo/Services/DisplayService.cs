@@ -103,12 +103,14 @@ public sealed class DisplayService : IDisplayService
         if (matchResult.Matches.Count == 0 && profile.Monitors.Count > 0)
             return DisplayApplyResult.Failed;
 
-        // Build set of current monitor indices that should remain active
-        var enabledCurrentIndices = new HashSet<int>();
+        // Build set of current monitor indices that should be DISABLED
+        // Only explicitly disabled monitors (IsEnabled=false) in the profile are removed.
+        // Unmatched monitors (not in profile) keep their current state.
+        var disabledCurrentIndices = new HashSet<int>();
         foreach (var (profileIdx, currentIdx) in matchResult.Matches)
         {
-            if (profile.Monitors[profileIdx].IsEnabled)
-                enabledCurrentIndices.Add(currentIdx);
+            if (!profile.Monitors[profileIdx].IsEnabled)
+                disabledCurrentIndices.Add(currentIdx);
         }
 
         // Query current active paths
@@ -158,8 +160,8 @@ public sealed class DisplayService : IDisplayService
                 }
             }
 
-            // Skip paths for monitors not in the enabled set
-            if (matchedCurrentIdx.HasValue && !enabledCurrentIndices.Contains(matchedCurrentIdx.Value))
+            // Skip only explicitly disabled monitors
+            if (matchedCurrentIdx.HasValue && disabledCurrentIndices.Contains(matchedCurrentIdx.Value))
                 continue;
 
             // Apply profile settings to matched paths

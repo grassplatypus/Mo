@@ -11,7 +11,7 @@
   <Identity
     Name="A6261309-2D5D-4621-A3F9-D21A53DCB95D"
     Publisher="CN=GrassPlatypus"
-    Version="0.11.0.0" />
+    Version="0.11.3.0" />
 
   <mp:PhoneIdentity PhoneProductId="A6261309-2D5D-4621-A3F9-D21A53DCB95D" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
@@ -27,7 +27,8 @@
   </Dependencies>
 
   <Resources>
-    <Resource Language="x-generate"/>
+    <Resource Language="en-US"/>
+    <Resource Language="ko-KR"/>
   </Resources>
 
   <Applications>

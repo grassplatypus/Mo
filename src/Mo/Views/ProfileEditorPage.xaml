@@ -176,7 +176,7 @@
                         <TextBlock x:Name="AudioLabel" />
                         <TextBlock x:Name="AudioDesc" Opacity="0.6" Style="{StaticResource CaptionTextBlockStyle}" />
                     </StackPanel>
-                    <ComboBox Grid.Column="1" x:Name="AudioCombo" Width="260" SelectionChanged="AudioCombo_SelectionChanged" />
+                    <ComboBox Grid.Column="1" x:Name="AudioCombo" MinWidth="140" MaxWidth="280" SelectionChanged="AudioCombo_SelectionChanged" />
                 </Grid>
 
                 <!-- Wallpaper -->
@@ -190,7 +190,7 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel>
                         <TextBlock x:Name="WallpaperLabel" />
-                        <TextBlock x:Name="WallpaperPathText" Opacity="0.6" Style="{StaticResource CaptionTextBlockStyle}" TextTrimming="CharacterEllipsis" MaxWidth="360" />
+                        <TextBlock x:Name="WallpaperPathText" Opacity="0.6" Style="{StaticResource CaptionTextBlockStyle}" TextTrimming="CharacterEllipsis" />
                     </StackPanel>
                     <Button Grid.Column="1" x:Name="WallpaperBrowseBtn" Click="WallpaperBrowse_Click" Margin="0,0,4,0" />
                     <Button Grid.Column="2" x:Name="WallpaperClearBtn" Click="WallpaperClear_Click" />
@@ -208,7 +208,7 @@
                         <TextBlock x:Name="NightLightLabel" />
                         <TextBlock x:Name="NightLightDesc" Opacity="0.6" Style="{StaticResource CaptionTextBlockStyle}" />
                     </StackPanel>
-                    <ComboBox Grid.Column="1" x:Name="NightLightCombo" Width="160" SelectionChanged="NightLightCombo_SelectionChanged" />
+                    <ComboBox Grid.Column="1" x:Name="NightLightCombo" MinWidth="120" MaxWidth="180" SelectionChanged="NightLightCombo_SelectionChanged" />
                 </Grid>
 
                 <!-- Live Wallpaper -->
