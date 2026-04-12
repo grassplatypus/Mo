@@ -16,7 +16,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>preview</LangVersion>
-    <NoWarn>$(NoWarn);IL2026;CS0067</NoWarn>
+    <NoWarn>$(NoWarn);IL2026</NoWarn>
     <DefaultLanguage>en-US</DefaultLanguage>
     <Version>$(MoVersion)</Version>
     <AssemblyVersion>$(MoVersionFull)</AssemblyVersion>

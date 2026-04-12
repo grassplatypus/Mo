@@ -19,8 +19,6 @@ public sealed class SettingsService : ISettingsService
 
     public AppSettings Settings { get; private set; } = new();
 
-    public event EventHandler<string>? SettingChanged;
-
     public async Task LoadAsync()
     {
         if (_loaded) return;
