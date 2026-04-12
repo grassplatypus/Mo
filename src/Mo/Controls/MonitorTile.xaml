@@ -52,6 +52,18 @@
                 Visibility="Collapsed" />
         </StackPanel>
 
+        <!-- Rotation Badge -->
+        <Border
+            x:Name="RotationBadge"
+            Grid.Row="1"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Bottom"
+            CornerRadius="4"
+            Padding="2"
+            Visibility="Collapsed">
+            <FontIcon x:Name="RotationIcon" Glyph="&#xE7AD;" FontSize="12" Opacity="0.4" />
+        </Border>
+
         <!-- Primary Badge -->
         <Border
             x:Name="PrimaryBadge"

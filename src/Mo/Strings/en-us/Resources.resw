@@ -189,6 +189,15 @@ Press Delete or Backspace to clear. Escape to cancel.</value></data>
   <!-- System Info -->
   <data name="SystemInfoSection" xml:space="preserve"><value>System Information</value></data>
 
+  <!-- Rotation Warning -->
+  <data name="RotationWarning" xml:space="preserve"><value>Applying rotation via Windows CCD API may cause mouse pointer coordinate issues. This is a known Windows limitation. Lock and unlock your PC (Win+L) if the cursor behaves incorrectly.</value></data>
+
+  <!-- Apply Error -->
+  <data name="ApplyErrorTitle" xml:space="preserve"><value>Failed to Apply Profile</value></data>
+  <data name="ApplyFailed" xml:space="preserve"><value>The display configuration could not be applied. Some monitors may not be connected or the configuration is incompatible.</value></data>
+  <data name="ApplyValidationError" xml:space="preserve"><value>The display configuration is invalid for the current hardware setup. Please check monitor connections and profile settings.</value></data>
+  <data name="OK" xml:space="preserve"><value>OK</value></data>
+
   <!-- Error Dialog -->
   <data name="UnhandledErrorTitle" xml:space="preserve"><value>An unexpected error occurred</value></data>
   <data name="UnhandledErrorDesc" xml:space="preserve"><value>Mo encountered an unhandled error. You can copy the details below for bug reporting.</value></data>

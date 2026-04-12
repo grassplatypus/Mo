@@ -52,6 +52,25 @@ public sealed partial class ProfileListPage : Page
 
         await ViewModel.ApplyProfileCommand.ExecuteAsync(profileId);
 
+        var result = ViewModel.LastApplyResult;
+
+        if (result is DisplayApplyResult.Failed or DisplayApplyResult.ValidationError)
+        {
+            var errorMsg = result == DisplayApplyResult.ValidationError
+                ? ResourceHelper.GetString("ApplyValidationError")
+                : ResourceHelper.GetString("ApplyFailed");
+
+            var errorDialog = new ContentDialog
+            {
+                Title = ResourceHelper.GetString("ApplyErrorTitle"),
+                Content = errorMsg,
+                CloseButtonText = ResourceHelper.GetString("OK"),
+                XamlRoot = this.XamlRoot,
+            };
+            await errorDialog.ShowAsync();
+            return;
+        }
+
         // Show the confirmation dialog with countdown
         var confirmDialog = new ApplyConfirmationDialog
         {

@@ -30,10 +30,12 @@ public partial class ProfileListViewModel : ObservableObject
         OnPropertyChanged(nameof(IsEmpty));
     }
 
+    public DisplayApplyResult LastApplyResult { get; private set; }
+
     [RelayCommand]
     private async Task ApplyProfileAsync(string profileId)
     {
-        await _profileService.ApplyProfileAsync(profileId);
+        LastApplyResult = await _profileService.ApplyProfileAsync(profileId);
     }
 
     [RelayCommand]

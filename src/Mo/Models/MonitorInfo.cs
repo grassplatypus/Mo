@@ -21,6 +21,7 @@ public sealed class MonitorInfo
     public uint RefreshRateDenominator { get; set; }
     public int DpiScale { get; set; } = 100;
     public bool IsPrimary { get; set; }
+    public bool IsEnabled { get; set; } = true;
     public bool HdrEnabled { get; set; }
 
     // Color & Brightness (DDC/CI via dxva2)

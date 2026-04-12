@@ -68,30 +68,49 @@
                     BorderThickness="1"
                     Visibility="Collapsed">
 
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
 
-                    <StackPanel Spacing="4">
-                        <TextBlock x:Name="ResLabel" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.6" />
-                        <TextBlock x:Name="DetailResolution" Style="{StaticResource BodyStrongTextBlockStyle}" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Spacing="4">
-                        <TextBlock x:Name="RefreshLabel" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.6" />
-                        <TextBlock x:Name="DetailRefreshRate" Style="{StaticResource BodyStrongTextBlockStyle}" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="2" Spacing="4">
-                        <TextBlock x:Name="RotLabel" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.6" />
-                        <TextBlock x:Name="DetailRotation" Style="{StaticResource BodyStrongTextBlockStyle}" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="3" Spacing="4">
-                        <TextBlock x:Name="PosLabel" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.6" />
-                        <TextBlock x:Name="DetailPosition" Style="{StaticResource BodyStrongTextBlockStyle}" />
-                    </StackPanel>
+                    <ToggleSwitch
+                        x:Name="MonitorEnabledToggle"
+                        Toggled="MonitorEnabledToggle_Toggled"
+                        Margin="0,0,0,8" />
+
+                    <Grid Grid.Row="1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Spacing="4">
+                            <TextBlock x:Name="ResLabel" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.6" />
+                            <TextBlock x:Name="DetailResolution" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="4">
+                            <TextBlock x:Name="RefreshLabel" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.6" />
+                            <TextBlock x:Name="DetailRefreshRate" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Spacing="4">
+                            <TextBlock x:Name="RotLabel" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.6" />
+                            <TextBlock x:Name="DetailRotation" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="3" Spacing="4">
+                            <TextBlock x:Name="PosLabel" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.6" />
+                            <TextBlock x:Name="DetailPosition" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                        </StackPanel>
+                    </Grid>
                 </Grid>
+
+                <!-- Rotation Warning -->
+                <InfoBar
+                    x:Name="RotationWarningBar"
+                    Severity="Warning"
+                    IsOpen="False"
+                    IsClosable="True" />
 
                 <!-- Color Settings (shown when a monitor is selected) -->
                 <Grid x:Name="ColorSettingsPanel" Padding="16" CornerRadius="8" Visibility="Collapsed"

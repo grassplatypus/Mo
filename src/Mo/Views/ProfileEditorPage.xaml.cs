@@ -172,11 +172,20 @@ public sealed partial class ProfileEditorPage : Page
         _selectedMonitorIndex = _profile?.Monitors.IndexOf(monitor) ?? -1;
 
         MonitorDetailsPanel.Visibility = Visibility.Visible;
+
+        _loading = true;
+        MonitorEnabledToggle.IsOn = monitor.IsEnabled;
+        MonitorEnabledToggle.Header = monitor.FriendlyName;
+        _loading = false;
+
         DetailResolution.Text = monitor.ResolutionText;
         DetailRefreshRate.Text = $"{monitor.RefreshRateHz:F1} Hz";
         DetailRotation.Text = monitor.Rotation == DisplayRotation.None
             ? ResourceHelper.GetString("RotationNone") : $"{(int)monitor.Rotation}°";
         DetailPosition.Text = $"({monitor.PositionX}, {monitor.PositionY})";
+
+        RotationWarningBar.IsOpen = monitor.Rotation != DisplayRotation.None;
+        RotationWarningBar.Message = ResourceHelper.GetString("RotationWarning");
 
         // Color settings — enable/disable based on capabilities
         var caps = _selectedMonitorIndex >= 0 && _selectedMonitorIndex < _colorCaps.Count
@@ -352,6 +361,13 @@ public sealed partial class ProfileEditorPage : Page
 
         await _profileService.SaveProfileAsync(_profile);
         _navigationService.GoBack();
+    }
+
+    private void MonitorEnabledToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_loading || _selectedMonitor == null) return;
+        _selectedMonitor.IsEnabled = MonitorEnabledToggle.IsOn;
+        LayoutCanvas.SetMonitors(_profile!.Monitors);
     }
 
     private void CancelButton_Click(object sender, RoutedEventArgs e) => _navigationService.GoBack();

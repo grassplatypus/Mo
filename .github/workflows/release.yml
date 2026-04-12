@@ -23,17 +23,45 @@ jobs:
           dotnet-version: '10.0.x'
           dotnet-quality: 'preview'
 
+      - name: Set Version in Manifest
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart("v")
+          if ($version -notmatch '^\d+\.\d+\.\d+\.\d+$') { $version = "$version.0" }
+          (Get-Content src/Mo/Package.appxmanifest) -replace 'Version="[\d.]+"', "Version=`"$version`"" |
+            Set-Content src/Mo/Package.appxmanifest
+
       - name: Build Release
         run: dotnet build src/Mo/Mo.csproj -c Release -p:Platform=${{ matrix.platform }}
 
-      - name: Publish
+      - name: Publish (portable)
         run: dotnet publish src/Mo/Mo.csproj -c Release -p:Platform=${{ matrix.platform }} -o publish/${{ matrix.platform }}
 
       - name: Create ZIP
         run: Compress-Archive -Path publish/${{ matrix.platform }}/* -DestinationPath Mo-${{ github.ref_name }}-${{ matrix.platform }}.zip
 
-      - name: Upload Release Asset
+      - name: Build MSIX
+        shell: pwsh
+        run: |
+          dotnet build src/Mo/Mo.csproj -c Release `
+            -p:Platform=${{ matrix.platform }} `
+            -p:GenerateAppxPackageOnBuild=true `
+            -p:AppxBundle=Never `
+            -p:AppxPackageSigningEnabled=false `
+            -p:AppxPackageDir=msix/
+
+      - name: Find and rename MSIX
+        shell: pwsh
+        run: |
+          $msix = Get-ChildItem -Path msix -Filter "*.msix" -Recurse | Select-Object -First 1
+          if ($msix) {
+            Copy-Item $msix.FullName "Mo-${{ github.ref_name }}-${{ matrix.platform }}.msix"
+          }
+
+      - name: Upload Release Assets
         uses: softprops/action-gh-release@v2
         with:
-          files: Mo-${{ github.ref_name }}-${{ matrix.platform }}.zip
+          files: |
+            Mo-${{ github.ref_name }}-${{ matrix.platform }}.zip
+            Mo-${{ github.ref_name }}-${{ matrix.platform }}.msix
           generate_release_notes: true

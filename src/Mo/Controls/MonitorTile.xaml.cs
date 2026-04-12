@@ -63,12 +63,22 @@ public sealed partial class MonitorTile : UserControl
         {
             RotationText.Text = $"({(int)_monitor.Rotation}°)";
             RotationText.Visibility = Visibility.Visible;
+            RotationBadge.Visibility = Visibility.Visible;
+            RotationIcon.RenderTransform = new RotateTransform
+            {
+                Angle = (int)_monitor.Rotation,
+                CenterX = 6,
+                CenterY = 6,
+            };
         }
         else
         {
             RotationText.Visibility = Visibility.Collapsed;
+            RotationBadge.Visibility = Visibility.Collapsed;
         }
 
         PrimaryBadge.Visibility = _monitor.IsPrimary ? Visibility.Visible : Visibility.Collapsed;
+
+        RootGrid.Opacity = _monitor.IsEnabled ? 1.0 : 0.4;
     }
 }

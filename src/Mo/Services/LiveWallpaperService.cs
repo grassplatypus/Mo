@@ -158,13 +158,9 @@ public sealed class LiveWallpaperService : ILiveWallpaperService
         var exePath = GetWallpaperEnginePath();
         if (exePath == null) return;
 
-        // Start WallpaperEngine if not running
+        // Only configure wallpapers if WallpaperEngine is already running
         if (!IsProviderRunning(LiveWallpaperProvider.WallpaperEngine))
-        {
-            try { Process.Start(new ProcessStartInfo(exePath) { UseShellExecute = true }); }
-            catch { return; }
-            Thread.Sleep(3000); // Give it time to start
-        }
+            return;
 
         foreach (var entry in config.Entries)
         {
@@ -271,13 +267,9 @@ public sealed class LiveWallpaperService : ILiveWallpaperService
         var exePath = GetLivelyPath();
         if (exePath == null) return;
 
-        // Start Lively if not running
+        // Only configure wallpapers if Lively is already running
         if (!IsProviderRunning(LiveWallpaperProvider.Lively))
-        {
-            try { Process.Start(new ProcessStartInfo(exePath) { UseShellExecute = true }); }
-            catch { return; }
-            Thread.Sleep(3000);
-        }
+            return;
 
         foreach (var entry in config.Entries)
         {
