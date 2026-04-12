@@ -47,8 +47,13 @@ public sealed class NvidiaRotationService
         {
             var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Mo", "logs");
             Directory.CreateDirectory(dir);
-            File.AppendAllText(Path.Combine(dir, "nvapi_debug.log"),
-                $"[{DateTime.Now:HH:mm:ss.fff}] {msg}\n");
+            var logPath = Path.Combine(dir, "nvapi_debug.log");
+
+            // Truncate if over 100KB
+            if (File.Exists(logPath) && new FileInfo(logPath).Length > 100 * 1024)
+                File.WriteAllText(logPath, "");
+
+            File.AppendAllText(logPath, $"[{DateTime.Now:HH:mm:ss.fff}] {msg}\n");
         }
         catch { }
     }
