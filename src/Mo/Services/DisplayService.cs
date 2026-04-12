@@ -140,24 +140,36 @@ public sealed class DisplayService : IDisplayService
         if (matchResult.Matches.Count == 0 && profile.Monitors.Count > 0)
             return DisplayApplyResult.Failed;
 
+        // Try NVAPI full-profile apply first (bypasses CCD completely)
+        try
+        {
+            var nvService = App.Services.GetRequiredService<NvidiaRotationService>();
+            if (nvService.IsAvailable && nvService.ApplyFullProfile(profile, currentConfig, matchResult))
+            {
+                Thread.Sleep(500);
+                NativeDisplayApi.ClipCursor(IntPtr.Zero);
+                NativeDisplayApi.SystemParametersInfo(
+                    NativeDisplayApi.SPI_SETWORKAREA, 0, IntPtr.Zero, NativeDisplayApi.SPIF_SENDCHANGE);
+                int cx = NativeDisplayApi.GetSystemMetrics(NativeDisplayApi.SM_CXSCREEN) / 2;
+                int cy = NativeDisplayApi.GetSystemMetrics(NativeDisplayApi.SM_CYSCREEN) / 2;
+                NativeDisplayApi.SetCursorPos(cx, cy);
+
+                return matchResult.UnmatchedProfile.Count > 0
+                    ? DisplayApplyResult.PartialMatch
+                    : DisplayApplyResult.Success;
+            }
+        }
+        catch { }
+
+        // Fallback to CCD path
         // Phase 2: Determine if topology extend is needed
         int enabledProfileMonitors = profile.Monitors.Count(m => m.IsEnabled);
         bool needsTopologyExtend = enabledProfileMonitors > currentConfig.Count ||
             matchResult.UnmatchedProfile.Any(i => profile.Monitors[i].IsEnabled);
 
-        // Phase 3: If inactive monitors need activation, extend topology first
+        // Phase 3 (CCD fallback): If inactive monitors need activation, extend topology
         if (needsTopologyExtend)
         {
-            // Try NVAPI-based enable first (more reliable for NVIDIA-managed displays)
-            try
-            {
-                var nvService = App.Services.GetRequiredService<NvidiaRotationService>();
-                if (nvService.IsAvailable)
-                    nvService.EnableAllDisplays();
-            }
-            catch { }
-
-            // Also try CCD topology extend as fallback
             NativeDisplayApi.SetDisplayConfig(0, null, 0, null,
                 SDC_FLAGS.SDC_TOPOLOGY_EXTEND | SDC_FLAGS.SDC_APPLY | SDC_FLAGS.SDC_ALLOW_CHANGES | SDC_FLAGS.SDC_SAVE_TO_DATABASE);
 
