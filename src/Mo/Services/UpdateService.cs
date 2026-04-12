@@ -10,11 +10,24 @@ public sealed class UpdateService : IUpdateService
     private const string GitHubRepo = "Mo";
     private static readonly string GitHubApiUrl = $"https://api.github.com/repos/{GitHubOwner}/{GitHubRepo}/releases/latest";
 
-    public static string CurrentVersion =>
-        Assembly.GetExecutingAssembly()
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
-        ?? Assembly.GetExecutingAssembly().GetName().Version?.ToString(3)
-        ?? "0.0.0";
+    public static string CurrentVersion
+    {
+        get
+        {
+            var infoVer = Assembly.GetExecutingAssembly()
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            if (!string.IsNullOrEmpty(infoVer) && infoVer != "1.0.0") return infoVer;
+
+            try
+            {
+                var pkgVer = Windows.ApplicationModel.Package.Current.Id.Version;
+                return $"{pkgVer.Major}.{pkgVer.Minor}.{pkgVer.Build}";
+            }
+            catch { }
+
+            return Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.0.0";
+        }
+    }
 
     public async Task<(bool available, string? version, string? url)> CheckForUpdateAsync()
     {

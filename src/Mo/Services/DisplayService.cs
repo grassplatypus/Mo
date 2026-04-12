@@ -188,7 +188,7 @@ public sealed class DisplayService : IDisplayService
                 disabledCurrentIndices.Add(unmatchedCurrentIdx);
         }
 
-        // Phase 5: Query active paths and build new configuration
+        // Phase 5: Modify active paths in-place (no index remapping)
         result = NativeDisplayApi.GetDisplayConfigBufferSizes(
             QDC_FLAGS.QDC_ONLY_ACTIVE_PATHS, out uint activePathCount, out uint activeModeCount);
         if (result != NativeDisplayApi.ERROR_SUCCESS) return DisplayApplyResult.Failed;
@@ -199,22 +199,19 @@ public sealed class DisplayService : IDisplayService
             QDC_FLAGS.QDC_ONLY_ACTIVE_PATHS, ref activePathCount, activePaths, ref activeModeCount, activeModes, IntPtr.Zero);
         if (result != NativeDisplayApi.ERROR_SUCCESS) return DisplayApplyResult.Failed;
 
-        var newPaths = new List<DISPLAYCONFIG_PATH_INFO>();
-        var newModes = new List<DISPLAYCONFIG_MODE_INFO>();
         bool hasRotationChange = false;
         bool useDriverRotation = UseDriverRotation;
         var driverRotationTasks = new List<(MonitorInfo monitor, DisplayRotation rotation)>();
+        var pathsToRemove = new HashSet<int>();
 
         for (int p = 0; p < activePathCount; p++)
         {
-            var activePath = activePaths[p];
-
             int? matchedCurrentIdx = null;
             int? matchedProfileIdx = null;
             for (int c = 0; c < currentConfig.Count; c++)
             {
-                if (activePath.sourceInfo.id == currentConfig[c].SourceId &&
-                    activePath.targetInfo.id == currentConfig[c].TargetId)
+                if (activePaths[p].sourceInfo.id == currentConfig[c].SourceId &&
+                    activePaths[p].targetInfo.id == currentConfig[c].TargetId)
                 {
                     matchedCurrentIdx = c;
                     foreach (var (pi, ci) in matchResult.Matches)
@@ -226,13 +223,16 @@ public sealed class DisplayService : IDisplayService
             }
 
             if (matchedCurrentIdx.HasValue && disabledCurrentIndices.Contains(matchedCurrentIdx.Value))
+            {
+                pathsToRemove.Add(p);
                 continue;
+            }
 
             if (matchedProfileIdx.HasValue)
             {
                 var profileMonitor = profile.Monitors[matchedProfileIdx.Value];
                 var newRotation = MapRotationBack(profileMonitor.Rotation);
-                if (activePath.targetInfo.rotation != newRotation) hasRotationChange = true;
+                if (activePaths[p].targetInfo.rotation != newRotation) hasRotationChange = true;
 
                 if (useDriverRotation && profileMonitor.Rotation != DisplayRotation.None)
                 {
@@ -240,16 +240,16 @@ public sealed class DisplayService : IDisplayService
                 }
                 else
                 {
-                    activePath.targetInfo.rotation = newRotation;
+                    activePaths[p].targetInfo.rotation = newRotation;
                 }
-                activePath.targetInfo.refreshRate.Numerator = profileMonitor.RefreshRateNumerator;
-                activePath.targetInfo.refreshRate.Denominator = profileMonitor.RefreshRateDenominator;
+                activePaths[p].targetInfo.refreshRate.Numerator = profileMonitor.RefreshRateNumerator;
+                activePaths[p].targetInfo.refreshRate.Denominator = profileMonitor.RefreshRateDenominator;
 
-                if (activePath.sourceInfo.modeInfoIdx < activeModeCount)
+                var srcIdx = activePaths[p].sourceInfo.modeInfoIdx;
+                if (srcIdx < activeModeCount)
                 {
-                    var mode = activeModes[activePath.sourceInfo.modeInfoIdx];
-                    mode.sourceMode.position.x = profileMonitor.PositionX;
-                    mode.sourceMode.position.y = profileMonitor.PositionY;
+                    activeModes[srcIdx].sourceMode.position.x = profileMonitor.PositionX;
+                    activeModes[srcIdx].sourceMode.position.y = profileMonitor.PositionY;
 
                     var w = profileMonitor.Width;
                     var h = profileMonitor.Height;
@@ -257,49 +257,40 @@ public sealed class DisplayService : IDisplayService
                     {
                         if (w < h) (w, h) = (h, w);
                     }
-                    mode.sourceMode.width = (uint)w;
-                    mode.sourceMode.height = (uint)h;
-
-                    activePath.sourceInfo.modeInfoIdx = (uint)newModes.Count;
-                    newModes.Add(mode);
+                    activeModes[srcIdx].sourceMode.width = (uint)w;
+                    activeModes[srcIdx].sourceMode.height = (uint)h;
                 }
             }
-            else
-            {
-                if (activePath.sourceInfo.modeInfoIdx < activeModeCount)
-                {
-                    var mode = activeModes[activePath.sourceInfo.modeInfoIdx];
-                    activePath.sourceInfo.modeInfoIdx = (uint)newModes.Count;
-                    newModes.Add(mode);
-                }
-            }
-
-            if (activePath.targetInfo.modeInfoIdx < activeModeCount)
-            {
-                var targetMode = activeModes[activePath.targetInfo.modeInfoIdx];
-                activePath.targetInfo.modeInfoIdx = (uint)newModes.Count;
-                newModes.Add(targetMode);
-            }
-
-            newPaths.Add(activePath);
         }
 
-        if (newPaths.Count == 0) return DisplayApplyResult.Failed;
+        // Build final arrays (remove disabled paths if any)
+        DISPLAYCONFIG_PATH_INFO[] finalPaths;
+        if (pathsToRemove.Count > 0)
+            finalPaths = activePaths.Where((_, i) => !pathsToRemove.Contains(i)).ToArray();
+        else
+            finalPaths = activePaths;
 
-        var pathArray = newPaths.ToArray();
-        var modeArray = newModes.ToArray();
-        var pathLen = (uint)pathArray.Length;
-        var modeLen = (uint)modeArray.Length;
+        if (finalPaths.Length == 0) return DisplayApplyResult.Failed;
 
-        result = NativeDisplayApi.SetDisplayConfig(pathLen, pathArray, modeLen, modeArray,
-            SDC_FLAGS.SDC_USE_SUPPLIED_DISPLAY_CONFIG | SDC_FLAGS.SDC_VALIDATE);
-        if (result != NativeDisplayApi.ERROR_SUCCESS) return DisplayApplyResult.ValidationError;
-
-        result = NativeDisplayApi.SetDisplayConfig(pathLen, pathArray, modeLen, modeArray,
+        // Try apply with ALLOW_CHANGES (skip validation - it can be too strict)
+        result = NativeDisplayApi.SetDisplayConfig(
+            (uint)finalPaths.Length, finalPaths,
+            activeModeCount, activeModes,
             SDC_FLAGS.SDC_USE_SUPPLIED_DISPLAY_CONFIG | SDC_FLAGS.SDC_APPLY | SDC_FLAGS.SDC_SAVE_TO_DATABASE | SDC_FLAGS.SDC_ALLOW_CHANGES);
-        if (result != NativeDisplayApi.ERROR_SUCCESS) return DisplayApplyResult.Failed;
 
-        // Apply NVIDIA driver-level rotation if configured
+        if (result != NativeDisplayApi.ERROR_SUCCESS)
+        {
+            // Retry with more permissive flags
+            result = NativeDisplayApi.SetDisplayConfig(
+                (uint)finalPaths.Length, finalPaths,
+                activeModeCount, activeModes,
+                SDC_FLAGS.SDC_USE_SUPPLIED_DISPLAY_CONFIG | SDC_FLAGS.SDC_APPLY | SDC_FLAGS.SDC_ALLOW_CHANGES |
+                SDC_FLAGS.SDC_SAVE_TO_DATABASE | SDC_FLAGS.SDC_FORCE_MODE_ENUMERATION | SDC_FLAGS.SDC_ALLOW_PATH_ORDER_CHANGES);
+            if (result != NativeDisplayApi.ERROR_SUCCESS)
+                return DisplayApplyResult.Failed;
+        }
+
+        // Apply driver-level rotation if configured
         if (driverRotationTasks.Count > 0)
         {
             try
