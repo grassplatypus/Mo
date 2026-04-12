@@ -36,7 +36,7 @@ public sealed class NvidiaRotationService
             var gpu = PhysicalGPU.GetPhysicalGPUs().FirstOrDefault();
             if (gpu == null) return false;
 
-            var allConnected = gpu.GetConnectedDisplayDevices(ConnectedIdsFlag.None);
+            var allConnected = gpu.GetConnectedDisplayDevices(ConnectedIdsFlag.UnCached);
             var currentPaths = PathInfo.GetDisplaysConfig();
 
             // Build NVAPI DisplayId → CCD EDID map via GDI device name bridge
@@ -131,7 +131,7 @@ public sealed class NvidiaRotationService
             var gpu = PhysicalGPU.GetPhysicalGPUs().FirstOrDefault();
             if (gpu == null) return false;
 
-            var allConnected = gpu.GetConnectedDisplayDevices(ConnectedIdsFlag.None);
+            var allConnected = gpu.GetConnectedDisplayDevices(ConnectedIdsFlag.UnCached);
             var currentPaths = PathInfo.GetDisplaysConfig();
             var nvapiToCcdEdid = BuildNvapiToEdidMap(allConnected, currentPaths);
 
