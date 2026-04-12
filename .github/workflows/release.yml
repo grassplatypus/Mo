@@ -32,9 +32,12 @@ jobs:
         run: |
           $version = "${{ github.ref_name }}".TrimStart("v")
           if ($version -notmatch '^\d+\.\d+\.\d+\.\d+$') { $version = "$version.0" }
-          $content = [IO.File]::ReadAllText("src/Mo/Package.appxmanifest")
-          $content = $content -replace 'Version="[\d.]+"', "Version=`"$version`""
-          [IO.File]::WriteAllText("src/Mo/Package.appxmanifest", $content, [System.Text.UTF8Encoding]::new($false))
+          $path = "src/Mo/Package.appxmanifest"
+          $bytes = [IO.File]::ReadAllBytes($path)
+          $hasBom = $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
+          $text = [System.Text.Encoding]::UTF8.GetString($bytes)
+          $text = $text -replace 'Version="[\d.]+"', "Version=`"$version`""
+          [IO.File]::WriteAllText($path, $text, [System.Text.UTF8Encoding]::new($hasBom))
 
       - name: Restore
         run: dotnet restore src/Mo/Mo.csproj -p:Platform=${{ matrix.platform }}
