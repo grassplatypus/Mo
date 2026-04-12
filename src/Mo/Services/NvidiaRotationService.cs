@@ -65,35 +65,39 @@ public sealed class NvidiaRotationService
         if (!IsAvailable) return false;
         try
         {
-            // Get all physical GPUs and enable all connected displays
             foreach (var gpu in PhysicalGPU.GetPhysicalGPUs())
             {
-                var allDisplayIds = gpu.GetConnectedDisplayDevices(ConnectedIdsFlag.None);
-                if (allDisplayIds.Length <= 1) continue;
+                var allConnected = gpu.GetConnectedDisplayDevices(ConnectedIdsFlag.None);
+                if (allConnected.Length <= 1) continue;
 
-                // Build paths with all connected displays enabled
                 var currentPaths = PathInfo.GetDisplaysConfig();
-                var activeDeviceIds = new HashSet<uint>(
+                var activeIds = new HashSet<uint>(
                     currentPaths.SelectMany(p => p.TargetsInfo).Select(t => t.DisplayDevice.DisplayId));
 
-                bool anyNew = false;
-                foreach (var displayId in allDisplayIds)
+                // Find inactive but connected displays
+                var inactiveDevices = allConnected.Where(d => !activeIds.Contains(d.DisplayId)).ToList();
+                if (inactiveDevices.Count == 0) continue;
+
+                // Build new path list: keep existing paths + add paths for inactive displays
+                var newPaths = new List<PathInfo>(currentPaths);
+                foreach (var device in inactiveDevices)
                 {
-                    if (!activeDeviceIds.Contains(displayId.DisplayId))
+                    try
                     {
-                        anyNew = true;
-                        break;
+                        var target = new PathTargetInfo(device);
+                        var path = new PathInfo(
+                            new NvAPIWrapper.Native.Display.Structures.Resolution(0, 0, 32),
+                            NvAPIWrapper.Native.Display.ColorFormat.A8R8G8B8,
+                            [target]);
+                        newPaths.Add(path);
                     }
+                    catch { continue; }
                 }
 
-                if (anyNew)
-                {
-                    // Use CCD topology extend as NVAPI path manipulation for enabling is complex
-                    NativeDisplayApi.SetDisplayConfig(0, null, 0, null,
-                        Interop.DisplayConfig.SDC_FLAGS.SDC_TOPOLOGY_EXTEND | Interop.DisplayConfig.SDC_FLAGS.SDC_APPLY |
-                        Interop.DisplayConfig.SDC_FLAGS.SDC_ALLOW_CHANGES | Interop.DisplayConfig.SDC_FLAGS.SDC_SAVE_TO_DATABASE);
-                    return true;
-                }
+                PathInfo.SetDisplaysConfig(
+                    newPaths.ToArray(),
+                    DisplayConfigFlags.ForceCommitVideoPresentNetwork | DisplayConfigFlags.DriverReloadAllowed);
+                return true;
             }
         }
         catch { }
