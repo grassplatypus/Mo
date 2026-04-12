@@ -198,6 +198,10 @@ Delete 또는 Backspace로 삭제. Escape로 취소.</value></data>
   <data name="RotationWindows" xml:space="preserve"><value>Windows (CCD API)</value></data>
   <data name="RotationNvidia" xml:space="preserve"><value>NVIDIA 드라이버 (NVAPI)</value></data>
   <data name="RotationNvidiaUnavailable" xml:space="preserve"><value>NVIDIA 드라이버 (사용 불가)</value></data>
+  <data name="RotationAmd" xml:space="preserve"><value>AMD 드라이버 (ADL)</value></data>
+  <data name="RotationAmdUnavailable" xml:space="preserve"><value>AMD 드라이버 (사용 불가)</value></data>
+  <data name="RotationIntel" xml:space="preserve"><value>Intel 드라이버 (IGCL)</value></data>
+  <data name="RotationIntelUnavailable" xml:space="preserve"><value>Intel 드라이버 (사용 불가)</value></data>
 
   <!-- System Info -->
   <data name="SystemInfoSection" xml:space="preserve"><value>시스템</value></data>

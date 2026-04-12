@@ -39,8 +39,15 @@ public sealed partial class SettingsPage : Page
         var settingsService = App.Services.GetRequiredService<ISettingsService>();
         RotationMethodCombo.SelectedIndex = (int)settingsService.Settings.RotationMethod;
 
-        // Disable NVIDIA option if no NVIDIA GPU
-        if (!nvService.IsAvailable && settingsService.Settings.RotationMethod == RotationMethod.NvidiaDriver)
+        // Reset to Windows if selected driver is unavailable
+        bool driverAvailable = settingsService.Settings.RotationMethod switch
+        {
+            RotationMethod.NvidiaDriver => nvService.IsAvailable,
+            RotationMethod.AmdDriver => App.Services.GetRequiredService<AmdRotationService>().IsAvailable,
+            RotationMethod.IntelDriver => App.Services.GetRequiredService<IntelRotationService>().IsAvailable,
+            _ => true,
+        };
+        if (!driverAvailable)
         {
             settingsService.Settings.RotationMethod = RotationMethod.Windows;
             RotationMethodCombo.SelectedIndex = 0;
@@ -262,16 +269,19 @@ public sealed partial class SettingsPage : Page
         RotationMethodLabel.Text = ResourceHelper.GetString("RotationMethod");
         RotationMethodDesc.Text = ResourceHelper.GetString("RotationMethodDesc");
         RotationMethodCombo.Items.Clear();
+        var nv = App.Services.GetRequiredService<NvidiaRotationService>();
+        var amd = App.Services.GetRequiredService<AmdRotationService>();
+        var intel = App.Services.GetRequiredService<IntelRotationService>();
         RotationMethodCombo.Items.Add(ResourceHelper.GetString("RotationWindows"));
-        var nvService2 = App.Services.GetRequiredService<NvidiaRotationService>();
-        RotationMethodCombo.Items.Add(nvService2.IsAvailable
+        RotationMethodCombo.Items.Add(nv.IsAvailable
             ? ResourceHelper.GetString("RotationNvidia")
             : ResourceHelper.GetString("RotationNvidiaUnavailable"));
-        if (!nvService2.IsAvailable)
-        {
-            // Disable NVIDIA option in ComboBox
-            RotationMethodCombo.IsEnabled = RotationMethodCombo.SelectedIndex != 1;
-        }
+        RotationMethodCombo.Items.Add(amd.IsAvailable
+            ? ResourceHelper.GetString("RotationAmd")
+            : ResourceHelper.GetString("RotationAmdUnavailable"));
+        RotationMethodCombo.Items.Add(intel.IsAvailable
+            ? ResourceHelper.GetString("RotationIntel")
+            : ResourceHelper.GetString("RotationIntelUnavailable"));
         SystemInfoTitle.Text = ResourceHelper.GetString("SystemInfoSection");
         MonitorSectionTitle.Text = ResourceHelper.GetString("MonitorSection");
         DebugInfoTitle.Text = ResourceHelper.GetString("DebugInfoSection");

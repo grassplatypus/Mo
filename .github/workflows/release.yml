@@ -75,6 +75,8 @@ jobs:
             -p:AppxPackageSigningEnabled=true `
             -p:PackageCertificateKeyFile=$certPath `
             -p:PackageCertificatePassword=$env:SIGNING_CERT_PASSWORD `
+            -p:AppxPackageSigningTimestampServerUrl=http://timestamp.digicert.com `
+            -p:AppxPackageSigningTimestampDigestAlgorithm=SHA512 `
             -p:AppxPackageDir=msix-signed/
 
           Remove-Item $certPath -Force

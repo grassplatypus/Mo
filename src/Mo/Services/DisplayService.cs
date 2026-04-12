@@ -8,14 +8,14 @@ namespace Mo.Services;
 
 public sealed class DisplayService : IDisplayService
 {
-    private bool UseNvidiaRotation
+    private bool UseDriverRotation
     {
         get
         {
             try
             {
                 var settings = App.Services.GetRequiredService<ISettingsService>();
-                return settings.Settings.RotationMethod == RotationMethod.NvidiaDriver;
+                return settings.Settings.RotationMethod != RotationMethod.Windows;
             }
             catch { return false; }
         }
@@ -211,8 +211,8 @@ public sealed class DisplayService : IDisplayService
         var newPaths = new List<DISPLAYCONFIG_PATH_INFO>();
         var newModes = new List<DISPLAYCONFIG_MODE_INFO>();
         bool hasRotationChange = false;
-        bool useNvRotation = UseNvidiaRotation;
-        var nvidiaRotationTasks = new List<(MonitorInfo monitor, DisplayRotation rotation)>();
+        bool useDriverRotation = UseDriverRotation;
+        var driverRotationTasks = new List<(MonitorInfo monitor, DisplayRotation rotation)>();
 
         for (int p = 0; p < activePathCount; p++)
         {
@@ -243,10 +243,9 @@ public sealed class DisplayService : IDisplayService
                 var newRotation = MapRotationBack(profileMonitor.Rotation);
                 if (activePath.targetInfo.rotation != newRotation) hasRotationChange = true;
 
-                if (useNvRotation && profileMonitor.Rotation != DisplayRotation.None)
+                if (useDriverRotation && profileMonitor.Rotation != DisplayRotation.None)
                 {
-                    // Defer rotation to NVIDIA driver; keep CCD at identity
-                    nvidiaRotationTasks.Add((currentConfig[matchedCurrentIdx!.Value], profileMonitor.Rotation));
+                    driverRotationTasks.Add((currentConfig[matchedCurrentIdx!.Value], profileMonitor.Rotation));
                 }
                 else
                 {
@@ -310,13 +309,21 @@ public sealed class DisplayService : IDisplayService
         if (result != NativeDisplayApi.ERROR_SUCCESS) return DisplayApplyResult.Failed;
 
         // Apply NVIDIA driver-level rotation if configured
-        if (nvidiaRotationTasks.Count > 0)
+        if (driverRotationTasks.Count > 0)
         {
             try
             {
-                var nvService = App.Services.GetRequiredService<NvidiaRotationService>();
-                foreach (var (monitor, rotation) in nvidiaRotationTasks)
-                    nvService.ApplyRotation(monitor, rotation);
+                var settings = App.Services.GetRequiredService<ISettingsService>();
+                foreach (var (monitor, rotation) in driverRotationTasks)
+                {
+                    bool applied = settings.Settings.RotationMethod switch
+                    {
+                        RotationMethod.NvidiaDriver => App.Services.GetRequiredService<NvidiaRotationService>().ApplyRotation(monitor, rotation),
+                        RotationMethod.AmdDriver => App.Services.GetRequiredService<AmdRotationService>().ApplyRotation(monitor, rotation),
+                        RotationMethod.IntelDriver => App.Services.GetRequiredService<IntelRotationService>().ApplyRotation(monitor, rotation),
+                        _ => false,
+                    };
+                }
             }
             catch { }
         }

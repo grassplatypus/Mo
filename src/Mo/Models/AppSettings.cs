@@ -19,6 +19,8 @@ public enum RotationMethod
 {
     Windows,
     NvidiaDriver,
+    AmdDriver,
+    IntelDriver,
 }
 
 public sealed class WindowPlacement
