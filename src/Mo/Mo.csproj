@@ -16,6 +16,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>preview</LangVersion>
+    <NoWarn>$(NoWarn);IL2026;CS0067</NoWarn>
     <DefaultLanguage>en-US</DefaultLanguage>
     <Version>$(MoVersion)</Version>
     <AssemblyVersion>$(MoVersionFull)</AssemblyVersion>
@@ -60,6 +61,7 @@
     <PackageReference Include="NvAPIWrapper.Net" Version="0.8.1.101" />
     <PackageReference Include="System.Drawing.Common" Version="10.0.5" />
     <PackageReference Include="System.Management" Version="10.0.5" />
+    <PackageReference Include="System.Security.Permissions" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -83,7 +85,7 @@
     <AppxAutoIncrementPackageRevision>True</AppxAutoIncrementPackageRevision>
     <GenerateTestArtifacts>True</GenerateTestArtifacts>
     <AppxBundle>Auto</AppxBundle>
-    <AppxBundlePlatforms>x64|arm64</AppxBundlePlatforms>
+    <AppxBundlePlatforms>x64</AppxBundlePlatforms>
     <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
     <PackageCertificateThumbprint>2A78B2960CC17E48631A9134CE3360C26A33FA6E</PackageCertificateThumbprint>
     <AppxPackageSigningTimestampServerUrl>http://timestamp.digicert.com</AppxPackageSigningTimestampServerUrl>
