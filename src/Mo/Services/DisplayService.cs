@@ -279,16 +279,7 @@ public sealed class DisplayService : IDisplayService
             SDC_FLAGS.SDC_USE_SUPPLIED_DISPLAY_CONFIG | SDC_FLAGS.SDC_APPLY | SDC_FLAGS.SDC_SAVE_TO_DATABASE | SDC_FLAGS.SDC_ALLOW_CHANGES);
 
         if (result != NativeDisplayApi.ERROR_SUCCESS)
-        {
-            // Retry with more permissive flags
-            result = NativeDisplayApi.SetDisplayConfig(
-                (uint)finalPaths.Length, finalPaths,
-                activeModeCount, activeModes,
-                SDC_FLAGS.SDC_USE_SUPPLIED_DISPLAY_CONFIG | SDC_FLAGS.SDC_APPLY | SDC_FLAGS.SDC_ALLOW_CHANGES |
-                SDC_FLAGS.SDC_SAVE_TO_DATABASE | SDC_FLAGS.SDC_FORCE_MODE_ENUMERATION | SDC_FLAGS.SDC_ALLOW_PATH_ORDER_CHANGES);
-            if (result != NativeDisplayApi.ERROR_SUCCESS)
-                return DisplayApplyResult.Failed;
-        }
+            return DisplayApplyResult.Failed;
 
         // Apply driver-level rotation if configured
         if (driverRotationTasks.Count > 0)

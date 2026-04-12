@@ -14,16 +14,22 @@ public sealed class UpdateService : IUpdateService
     {
         get
         {
-            var infoVer = Assembly.GetExecutingAssembly()
-                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
-            if (!string.IsNullOrEmpty(infoVer) && infoVer != "1.0.0") return infoVer;
-
+            // MSIX package version is most reliable
             try
             {
                 var pkgVer = Windows.ApplicationModel.Package.Current.Id.Version;
                 return $"{pkgVer.Major}.{pkgVer.Minor}.{pkgVer.Build}";
             }
             catch { }
+
+            // Fallback to assembly info (strip git hash suffix)
+            var infoVer = Assembly.GetExecutingAssembly()
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            if (!string.IsNullOrEmpty(infoVer))
+            {
+                var plusIdx = infoVer.IndexOf('+');
+                return plusIdx > 0 ? infoVer[..plusIdx] : infoVer;
+            }
 
             return Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.0.0";
         }
