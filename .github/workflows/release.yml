@@ -24,6 +24,9 @@ jobs:
           dotnet-version: '10.0.x'
           dotnet-quality: 'preview'
 
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
       - name: Set Version in Manifest
         shell: pwsh
         run: |
@@ -32,27 +35,10 @@ jobs:
           (Get-Content src/Mo/Package.appxmanifest) -replace 'Version="[\d.]+"', "Version=`"$version`"" |
             Set-Content src/Mo/Package.appxmanifest
 
-      - name: Restore packages
+      - name: Restore
         run: dotnet restore src/Mo/Mo.csproj -p:Platform=${{ matrix.platform }}
 
-      - name: Patch BuildTools.MSIX for .NET 10
-        shell: pwsh
-        run: |
-          $permDll = Get-ChildItem "$env:USERPROFILE\.nuget\packages\system.security.permissions" `
-            -Filter "System.Security.Permissions.dll" -Recurse |
-            Where-Object { $_.DirectoryName -match "net[46]" } | Select-Object -First 1
-          $taskDlls = Get-ChildItem "$env:USERPROFILE\.nuget\packages\microsoft.windows.sdk.buildtools.msix" `
-            -Filter "Microsoft.Build.Msix.dll" -Recurse
-          if ($permDll -and $taskDlls) {
-            foreach ($t in $taskDlls) {
-              Copy-Item $permDll.FullName $t.DirectoryName -Force
-              Write-Host "Patched: $($t.DirectoryName)"
-            }
-          } else {
-            Write-Host "WARN: permDll=$permDll taskCount=$($taskDlls.Count)"
-          }
-
-      # ZIP (portable)
+      # ZIP — dotnet publish (.NET 10 SDK)
       - name: Publish (portable)
         run: dotnet publish src/Mo/Mo.csproj -c Release -p:Platform=${{ matrix.platform }} -p:PublishReadyToRun=true -p:PublishTrimmed=true -p:WindowsPackageType=None -p:EnableMsixTooling=false -o publish/${{ matrix.platform }}
         timeout-minutes: 15
@@ -60,16 +46,9 @@ jobs:
       - name: Create ZIP
         run: Compress-Archive -Path publish/${{ matrix.platform }}/* -DestinationPath Mo-${{ github.ref_name }}-${{ matrix.platform }}.zip
 
-      # Unsigned MSIX
+      # MSIX — VS MSBuild (has System.Security.Permissions)
       - name: Build MSIX (unsigned)
-        shell: pwsh
-        run: |
-          dotnet build src/Mo/Mo.csproj -c Release `
-            -p:Platform=${{ matrix.platform }} `
-            -p:GenerateAppxPackageOnBuild=true `
-            -p:AppxBundle=Never `
-            -p:AppxPackageSigningEnabled=false `
-            -p:AppxPackageDir=msix-unsigned/
+        run: msbuild src/Mo/Mo.csproj /restore /p:Configuration=Release /p:Platform=${{ matrix.platform }} /p:GenerateAppxPackageOnBuild=true /p:AppxBundle=Never /p:AppxPackageSigningEnabled=false /p:AppxPackageDir=msix-unsigned/
 
       - name: Rename unsigned MSIX
         shell: pwsh
@@ -79,7 +58,6 @@ jobs:
             Copy-Item $msix.FullName "Mo-${{ github.ref_name }}-${{ matrix.platform }}-unsigned.msix"
           }
 
-      # Signed MSIX
       - name: Build and sign MSIX
         if: env.SIGNING_CERT_BASE64 != ''
         shell: pwsh
@@ -91,16 +69,14 @@ jobs:
           $certPath = Join-Path $env:RUNNER_TEMP "signing_cert.pfx"
           [IO.File]::WriteAllBytes($certPath, $certBytes)
 
-          dotnet build src/Mo/Mo.csproj -c Release `
-            -p:Platform=${{ matrix.platform }} `
-            -p:GenerateAppxPackageOnBuild=true `
-            -p:AppxBundle=Never `
-            -p:AppxPackageSigningEnabled=true `
-            -p:PackageCertificateKeyFile=$certPath `
-            -p:PackageCertificatePassword=$env:SIGNING_CERT_PASSWORD `
-            -p:AppxPackageSigningTimestampServerUrl=http://timestamp.digicert.com `
-            -p:AppxPackageSigningTimestampDigestAlgorithm=SHA512 `
-            -p:AppxPackageDir=msix-signed/
+          msbuild src/Mo/Mo.csproj /restore /p:Configuration=Release /p:Platform=${{ matrix.platform }} `
+            /p:GenerateAppxPackageOnBuild=true /p:AppxBundle=Never `
+            /p:AppxPackageSigningEnabled=true `
+            /p:PackageCertificateKeyFile=$certPath `
+            /p:PackageCertificatePassword=$env:SIGNING_CERT_PASSWORD `
+            /p:AppxPackageSigningTimestampServerUrl=http://timestamp.digicert.com `
+            /p:AppxPackageSigningTimestampDigestAlgorithm=SHA512 `
+            /p:AppxPackageDir=msix-signed/
 
           Remove-Item $certPath -Force
 
