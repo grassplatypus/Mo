@@ -15,112 +15,99 @@
     </Page.Transitions>
 
     <ScrollViewer Padding="24">
-        <StackPanel Spacing="4" MaxWidth="700" HorizontalAlignment="Left">
+        <StackPanel Spacing="2" MaxWidth="700" HorizontalAlignment="Left">
 
             <TextBlock x:Name="TitleText" Style="{StaticResource TitleTextBlockStyle}" Margin="0,0,0,16" />
 
             <!-- General -->
             <TextBlock x:Name="GeneralText" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,0,0,8" />
 
-            <Grid Padding="16" CornerRadius="8"
+            <Grid Padding="16,12" CornerRadius="8,8,0,0"
+                  Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1,1,1,0">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock x:Name="StartupLabel" />
+                    <TextBlock x:Name="StartupDesc" Opacity="0.5" Style="{StaticResource CaptionTextBlockStyle}" />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.LaunchAtStartup, Mode=TwoWay}" Margin="0,-4,0,-4" />
+            </Grid>
+
+            <Grid Padding="16,12"
+                  Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1,0,1,0">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock x:Name="TrayLabel" />
+                    <TextBlock x:Name="TrayDesc" Opacity="0.5" Style="{StaticResource CaptionTextBlockStyle}" />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.MinimizeToTrayOnClose, Mode=TwoWay}" Margin="0,-4,0,-4" />
+            </Grid>
+
+            <Grid Padding="16,12"
+                  Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1,1,1,0">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock x:Name="MinimizedLabel" />
+                    <TextBlock x:Name="MinimizedDesc" Opacity="0.5" Style="{StaticResource CaptionTextBlockStyle}" />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.StartMinimized, Mode=TwoWay}" Margin="0,-4,0,-4" />
+            </Grid>
+
+            <Grid Padding="16,12"
+                  Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1,1,1,0">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock x:Name="ThemeLabel" />
+                    <TextBlock x:Name="ThemeDesc" Opacity="0.5" Style="{StaticResource CaptionTextBlockStyle}" />
+                </StackPanel>
+                <ComboBox Grid.Column="1" x:Name="ThemeCombo" MinWidth="120" SelectionChanged="ThemeCombo_SelectionChanged" />
+            </Grid>
+
+            <Grid Padding="16,12"
+                  Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1,1,1,0">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock x:Name="AutoSwitchLabel" />
+                    <TextBlock x:Name="AutoSwitchDesc" Opacity="0.5" Style="{StaticResource CaptionTextBlockStyle}" />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.AutoSwitchEnabled, Mode=TwoWay}" Margin="0,-4,0,-4" />
+            </Grid>
+
+            <Grid Padding="16,12" CornerRadius="0,0,8,8"
                   Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                   BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-
-                <!-- Launch at startup -->
-                <Grid Margin="0,0,0,12">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <StackPanel>
-                        <TextBlock x:Name="StartupLabel" />
-                        <TextBlock x:Name="StartupDesc" Opacity="0.6" Style="{StaticResource CaptionTextBlockStyle}" />
-                    </StackPanel>
-                    <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.LaunchAtStartup, Mode=TwoWay}" />
-                </Grid>
-
-                <!-- Minimize to tray -->
-                <Grid Grid.Row="1" Margin="0,0,0,12">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <StackPanel>
-                        <TextBlock x:Name="TrayLabel" />
-                        <TextBlock x:Name="TrayDesc" Opacity="0.6" Style="{StaticResource CaptionTextBlockStyle}" />
-                    </StackPanel>
-                    <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.MinimizeToTrayOnClose, Mode=TwoWay}" />
-                </Grid>
-
-                <!-- Start minimized -->
-                <Grid Grid.Row="2" Margin="0,0,0,12">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <StackPanel>
-                        <TextBlock x:Name="MinimizedLabel" />
-                        <TextBlock x:Name="MinimizedDesc" Opacity="0.6" Style="{StaticResource CaptionTextBlockStyle}" />
-                    </StackPanel>
-                    <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.StartMinimized, Mode=TwoWay}" />
-                </Grid>
-
-                <!-- Theme -->
-                <Grid Grid.Row="3" Margin="0,0,0,12">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <StackPanel>
-                        <TextBlock x:Name="ThemeLabel" />
-                        <TextBlock x:Name="ThemeDesc" Opacity="0.6" Style="{StaticResource CaptionTextBlockStyle}" />
-                    </StackPanel>
-                    <ComboBox Grid.Column="1" x:Name="ThemeCombo" Width="140" SelectionChanged="ThemeCombo_SelectionChanged" />
-                </Grid>
-
-                <!-- Auto-switch -->
-                <Grid Grid.Row="4" Margin="0,0,0,12">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <StackPanel>
-                        <TextBlock x:Name="AutoSwitchLabel" />
-                        <TextBlock x:Name="AutoSwitchDesc" Opacity="0.6" Style="{StaticResource CaptionTextBlockStyle}" />
-                    </StackPanel>
-                    <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.AutoSwitchEnabled, Mode=TwoWay}" />
-                </Grid>
-
-                <!-- Check for updates -->
-                <Grid Grid.Row="5">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <StackPanel>
-                        <TextBlock x:Name="UpdateLabel" />
-                        <TextBlock x:Name="UpdateDesc" Opacity="0.6" Style="{StaticResource CaptionTextBlockStyle}" />
-                        <TextBlock x:Name="UpdateStatusText" Opacity="0.6" Style="{StaticResource CaptionTextBlockStyle}" Visibility="Collapsed" Foreground="{ThemeResource SystemFillColorSuccessBrush}" />
-                    </StackPanel>
-                    <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.CheckForUpdates, Mode=TwoWay}" />
-                    <Button Grid.Column="2" x:Name="CheckNowButton" Click="CheckNowButton_Click" Margin="8,0,0,0" VerticalAlignment="Center" />
-                </Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock x:Name="UpdateLabel" />
+                    <TextBlock x:Name="UpdateDesc" Opacity="0.5" Style="{StaticResource CaptionTextBlockStyle}" />
+                    <TextBlock x:Name="UpdateStatusText" Opacity="0.6" Style="{StaticResource CaptionTextBlockStyle}" Visibility="Collapsed" Foreground="{ThemeResource SystemFillColorSuccessBrush}" />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.CheckForUpdates, Mode=TwoWay}" Margin="0,-4,0,-4" />
+                <Button Grid.Column="2" x:Name="CheckNowButton" Click="CheckNowButton_Click" VerticalAlignment="Center" />
             </Grid>
 
             <!-- Experimental -->
             <TextBlock x:Name="ExperimentalText" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,24,0,8" />
 
-            <Grid Padding="16" CornerRadius="8"
+            <Grid Padding="16,12" CornerRadius="8"
                   Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                   BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                <StackPanel Spacing="12">
-                    <InfoBar
-                        x:Name="ExperimentalWarning"
-                        Severity="Warning"
-                        IsOpen="True"
-                        IsClosable="False" />
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel>
-                            <TextBlock x:Name="RotationMethodLabel" />
-                            <TextBlock x:Name="RotationMethodDesc" Opacity="0.6" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap" />
-                        </StackPanel>
-                        <ComboBox Grid.Column="1" x:Name="RotationMethodCombo" MinWidth="140" MaxWidth="240" SelectionChanged="RotationMethodCombo_SelectionChanged" />
-                    </Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE7BA;" FontSize="14" Opacity="0.5" />
+                        <TextBlock x:Name="RotationMethodLabel" />
+                    </StackPanel>
+                    <TextBlock x:Name="RotationMethodDesc" Opacity="0.5" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap" />
                 </StackPanel>
+                <ComboBox Grid.Column="1" x:Name="RotationMethodCombo" MinWidth="140" MaxWidth="240" SelectionChanged="RotationMethodCombo_SelectionChanged" />
             </Grid>
 
             <!-- About -->
@@ -139,11 +126,10 @@
             <!-- System Info -->
             <TextBlock x:Name="SystemInfoTitle" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,24,0,8" />
 
-            <!-- System Overview -->
-            <Grid Padding="16" CornerRadius="8"
+            <Grid Padding="16" CornerRadius="8,8,0,0"
                   Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                <StackPanel Spacing="6">
+                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1,1,1,0">
+                <StackPanel Spacing="4">
                     <TextBlock x:Name="SysOsText" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7" />
                     <TextBlock x:Name="SysCpuText" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7" />
                     <TextBlock x:Name="SysRamText" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7" />
@@ -152,18 +138,16 @@
             </Grid>
 
             <!-- Monitors -->
-            <TextBlock x:Name="MonitorSectionTitle" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,16,0,8" />
+            <TextBlock x:Name="MonitorSectionTitle" Style="{StaticResource BodyStrongTextBlockStyle}" Margin="16,12,0,4" />
 
-            <StackPanel x:Name="MonitorCardsPanel" Spacing="8" />
+            <StackPanel x:Name="MonitorCardsPanel" Spacing="2" />
 
             <!-- Debug Info -->
-            <TextBlock x:Name="DebugInfoTitle" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,16,0,8" />
-
-            <Grid Padding="16" CornerRadius="8"
+            <Grid Padding="16,12" CornerRadius="0,0,8,8"
                   Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                   BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
                 <StackPanel Spacing="8">
-                    <TextBlock x:Name="DebugInfoDesc" Opacity="0.6" TextWrapping="Wrap"
+                    <TextBlock x:Name="DebugInfoDesc" Opacity="0.5" TextWrapping="Wrap"
                                Style="{StaticResource CaptionTextBlockStyle}" />
                     <TextBox
                         x:Name="SystemInfoBox"

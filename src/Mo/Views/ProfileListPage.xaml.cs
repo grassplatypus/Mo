@@ -50,30 +50,53 @@ public sealed partial class ProfileListPage : Page
         var profile = ViewModel.Profiles.FirstOrDefault(p => p.Id == profileId);
         if (profile == null) return;
 
-        // Pre-apply compatibility check
+        // Pre-apply confirmation
         var compat = displayService.CheckCompatibility(profile);
-        if (!compat.IsFullMatch && (compat.MissingMonitors.Count > 0 || compat.ExtraMonitors.Count > 0 || compat.Warnings.Count > 0))
-        {
-            var lines = new List<string>();
-            if (compat.MissingMonitors.Count > 0)
-                lines.Add($"{ResourceHelper.GetString("MissingMonitors")}: {string.Join(", ", compat.MissingMonitors)}");
-            if (compat.ExtraMonitors.Count > 0)
-                lines.Add($"{ResourceHelper.GetString("ExtraMonitors")}: {string.Join(", ", compat.ExtraMonitors)}");
-            foreach (var warning in compat.Warnings)
-                lines.Add(warning);
+        var confirmContent = new StackPanel { Spacing = 8 };
 
-            var compatDialog = new ContentDialog
+        // Profile summary
+        confirmContent.Children.Add(new TextBlock
+        {
+            Text = $"{profile.Monitors.Count(m => m.IsEnabled)} {ResourceHelper.GetString("MonitorsSuffix")}",
+            Opacity = 0.7,
+        });
+
+        // Warnings if any mismatch
+        if (compat.MissingMonitors.Count > 0)
+            confirmContent.Children.Add(new InfoBar
             {
-                Title = ResourceHelper.GetString("CompatWarningTitle"),
-                Content = string.Join("\n", lines),
-                PrimaryButtonText = ResourceHelper.GetString("ApplyAnyway"),
-                CloseButtonText = ResourceHelper.GetString("Cancel"),
-                DefaultButton = ContentDialogButton.Close,
-                XamlRoot = this.XamlRoot,
-            };
-            if (await compatDialog.ShowAsync() != ContentDialogResult.Primary)
-                return;
-        }
+                Severity = InfoBarSeverity.Error,
+                Title = ResourceHelper.GetString("MissingMonitors"),
+                Message = string.Join(", ", compat.MissingMonitors),
+                IsOpen = true, IsClosable = false,
+            });
+        if (compat.Warnings.Count > 0)
+            confirmContent.Children.Add(new InfoBar
+            {
+                Severity = InfoBarSeverity.Informational,
+                Message = string.Join("\n", compat.Warnings),
+                IsOpen = true, IsClosable = false,
+            });
+        if (compat.ExtraMonitors.Count > 0)
+            confirmContent.Children.Add(new InfoBar
+            {
+                Severity = InfoBarSeverity.Warning,
+                Title = ResourceHelper.GetString("ExtraMonitors"),
+                Message = string.Join(", ", compat.ExtraMonitors),
+                IsOpen = true, IsClosable = false,
+            });
+
+        var confirmDialog = new ContentDialog
+        {
+            Title = $"{ResourceHelper.GetString("Apply")} \"{profile.Name}\"?",
+            Content = confirmContent,
+            PrimaryButtonText = ResourceHelper.GetString("Apply"),
+            CloseButtonText = ResourceHelper.GetString("Cancel"),
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = this.XamlRoot,
+        };
+        if (await confirmDialog.ShowAsync() != ContentDialogResult.Primary)
+            return;
 
         // Capture the current configuration before applying so we can revert
         var previousConfig = displayService.GetCurrentConfiguration();
@@ -99,13 +122,13 @@ public sealed partial class ProfileListPage : Page
             return;
         }
 
-        // Show the confirmation dialog with countdown
-        var confirmDialog = new ApplyConfirmationDialog
+        // Show the revert countdown dialog
+        var revertDialog = new ApplyConfirmationDialog
         {
             XamlRoot = this.XamlRoot,
         };
 
-        var confirmed = await confirmDialog.ShowAndWaitAsync();
+        var confirmed = await revertDialog.ShowAndWaitAsync();
 
         if (!confirmed)
         {

@@ -265,7 +265,6 @@ public sealed partial class SettingsPage : Page
         AboutVersion.Text = $"Version {UpdateService.CurrentVersion}";
         AboutDesc.Text = ResourceHelper.GetString("AboutDescription");
         ExperimentalText.Text = ResourceHelper.GetString("ExperimentalSection");
-        ExperimentalWarning.Message = ResourceHelper.GetString("ExperimentalWarning");
         RotationMethodLabel.Text = ResourceHelper.GetString("RotationMethod");
         RotationMethodDesc.Text = ResourceHelper.GetString("RotationMethodDesc");
         RotationMethodCombo.Items.Clear();
@@ -284,7 +283,6 @@ public sealed partial class SettingsPage : Page
             : ResourceHelper.GetString("RotationIntelUnavailable"));
         SystemInfoTitle.Text = ResourceHelper.GetString("SystemInfoSection");
         MonitorSectionTitle.Text = ResourceHelper.GetString("MonitorSection");
-        DebugInfoTitle.Text = ResourceHelper.GetString("DebugInfoSection");
         DebugInfoDesc.Text = ResourceHelper.GetString("DebugInfoDesc");
         CopySystemInfoBtn.Content = ResourceHelper.GetString("CopyDebugInfo");
         ShowDebugBtn.Content = ResourceHelper.GetString("ShowDebugInfo");
