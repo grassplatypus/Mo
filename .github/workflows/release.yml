@@ -55,9 +55,13 @@ jobs:
       - name: Rename unsigned MSIX
         shell: pwsh
         run: |
-          $msix = Get-ChildItem -Path msix-unsigned -Filter "*.msix" -Recurse | Select-Object -First 1
+          $msix = Get-ChildItem -Path . -Filter "*.msix" -Recurse -ErrorAction SilentlyContinue |
+            Where-Object { $_.DirectoryName -notmatch "msix-signed" } | Select-Object -First 1
           if ($msix) {
             Copy-Item $msix.FullName "Mo-${{ github.ref_name }}-${{ matrix.platform }}-unsigned.msix"
+            Write-Host "Found: $($msix.FullName)"
+          } else {
+            Write-Host "No unsigned MSIX found"
           }
 
       - name: Build and sign MSIX
@@ -88,9 +92,13 @@ jobs:
         env:
           SIGNING_CERT_BASE64: ${{ secrets.SIGNING_CERT_BASE64 }}
         run: |
-          $msix = Get-ChildItem -Path msix-signed -Filter "*.msix" -Recurse | Select-Object -First 1
+          $msix = Get-ChildItem -Path . -Filter "*.msix" -Recurse -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -notmatch "unsigned" -and $_.DirectoryName -match "msix-signed" } | Select-Object -First 1
           if ($msix) {
             Copy-Item $msix.FullName "Mo-${{ github.ref_name }}-${{ matrix.platform }}.msix"
+            Write-Host "Found: $($msix.FullName)"
+          } else {
+            Write-Host "No signed MSIX found"
           }
 
       - name: Upload Release Assets
