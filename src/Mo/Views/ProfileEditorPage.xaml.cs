@@ -35,13 +35,14 @@ public sealed partial class ProfileEditorPage : Page
         if (e.Parameter is DisplayProfile profile)
         {
             _profile = profile;
-            LoadProfile();
+            LoadProfileImmediate();
+            _ = LoadProfileDeferredAsync();
         }
 
         _loading = false;
     }
 
-    private void LoadProfile()
+    private void LoadProfileImmediate()
     {
         if (_profile == null) return;
 
@@ -49,18 +50,7 @@ public sealed partial class ProfileEditorPage : Page
         DescriptionBox.Text = _profile.Description;
         LayoutCanvas.SetMonitors(_profile.Monitors);
 
-        // Detect color capabilities
-        try
-        {
-            var colorService = App.Services.GetRequiredService<IMonitorColorService>();
-            _colorCaps = colorService.DetectCapabilities();
-        }
-        catch { _colorCaps = []; }
-
-        // Audio devices
-        LoadAudioDevices();
-
-        // Wallpaper
+        // Wallpaper (immediate — no I/O)
         WallpaperPathText.Text = string.IsNullOrEmpty(_profile.WallpaperPath)
             ? ResourceHelper.GetString("AudioNone")
             : Path.GetFileName(_profile.WallpaperPath);
@@ -103,6 +93,48 @@ public sealed partial class ProfileEditorPage : Page
             ScheduleTimePicker.Time = sched.Time.Value.ToTimeSpan();
 
         LoadScheduleDays(sched);
+    }
+
+    private async Task LoadProfileDeferredAsync()
+    {
+        if (_profile == null) return;
+
+        // Run slow I/O off the UI thread
+        var (colorCaps, audioDevices) = await Task.Run(() =>
+        {
+            List<MonitorColorCapabilities> caps;
+            try
+            {
+                var colorService = App.Services.GetRequiredService<IMonitorColorService>();
+                caps = colorService.DetectCapabilities();
+            }
+            catch { caps = []; }
+
+            List<(string id, string name)> audio;
+            try
+            {
+                var audioService = App.Services.GetRequiredService<IAudioService>();
+                audio = audioService.GetAudioDevices();
+            }
+            catch { audio = []; }
+
+            return (caps, audio);
+        });
+
+        _colorCaps = colorCaps;
+        _audioDevices = audioDevices;
+
+        // Update UI on dispatcher thread
+        AudioCombo.Items.Clear();
+        AudioCombo.Items.Add(ResourceHelper.GetString("AudioNone"));
+        int selectedIndex = 0;
+        for (int i = 0; i < _audioDevices.Count; i++)
+        {
+            AudioCombo.Items.Add(_audioDevices[i].name);
+            if (_profile?.AudioDeviceId == _audioDevices[i].id)
+                selectedIndex = i + 1;
+        }
+        AudioCombo.SelectedIndex = selectedIndex;
     }
 
     private void LoadAudioDevices()
