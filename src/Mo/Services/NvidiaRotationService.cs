@@ -61,89 +61,62 @@ public sealed class NvidiaRotationService
             foreach (var (id, edid) in nvapiToCcdEdid)
                 Log($"  NvapiId={id} → name={edid.Item5} mfr=0x{edid.Item2:X4} prod=0x{edid.Item3:X4}");
 
-            var newPaths = new List<PathInfo>();
+            // Modify existing paths in-place instead of creating new ones
+            bool modified = false;
             var usedDisplayIds = new HashSet<uint>();
 
             foreach (var pm in profile.Monitors)
             {
                 if (!pm.IsEnabled) continue;
 
-                DisplayDevice? matchedDevice = null;
-
+                // Find NVAPI display for this profile monitor
+                uint? matchedNvapiId = null;
                 foreach (var device in allConnected)
                 {
                     if (usedDisplayIds.Contains(device.DisplayId)) continue;
+                    if (!nvapiToCcdEdid.TryGetValue(device.DisplayId, out var edid)) continue;
 
-                    if (nvapiToCcdEdid.TryGetValue(device.DisplayId, out var edid))
-                    {
-                        bool pathMatch = !string.IsNullOrEmpty(pm.DevicePath) &&
-                                         pm.DevicePath == edid.devicePath;
-                        bool edidMatch = pm.EdidManufacturerId != 0 &&
-                                         edid.mfrId == pm.EdidManufacturerId &&
-                                         edid.prodId == pm.EdidProductCodeId;
-                        bool nameMatch = !string.IsNullOrEmpty(pm.FriendlyName) &&
-                                         !string.IsNullOrEmpty(edid.name) &&
-                                         edid.name.Contains(pm.FriendlyName, StringComparison.OrdinalIgnoreCase);
+                    bool match = (!string.IsNullOrEmpty(pm.DevicePath) && pm.DevicePath == edid.devicePath) ||
+                                 (pm.EdidManufacturerId != 0 && edid.mfrId == pm.EdidManufacturerId && edid.prodId == pm.EdidProductCodeId) ||
+                                 (!string.IsNullOrEmpty(pm.FriendlyName) && !string.IsNullOrEmpty(edid.name) && edid.name.Contains(pm.FriendlyName, StringComparison.OrdinalIgnoreCase));
 
-                        if (pathMatch || edidMatch || nameMatch)
-                        {
-                            matchedDevice = device;
-                            break;
-                        }
-                    }
+                    if (match) { matchedNvapiId = device.DisplayId; break; }
                 }
 
-                if (matchedDevice == null)
+                if (matchedNvapiId == null)
                 {
-                    Log($"  NO MATCH for profile monitor: {pm.FriendlyName} edid=0x{pm.EdidManufacturerId:X4}");
+                    Log($"  NO MATCH for: {pm.FriendlyName}");
                     continue;
                 }
-                Log($"  MATCHED: {pm.FriendlyName} → NvapiId={matchedDevice.DisplayId}");
-                usedDisplayIds.Add(matchedDevice.DisplayId);
+                Log($"  MATCHED: {pm.FriendlyName} → NvapiId={matchedNvapiId}");
+                usedDisplayIds.Add(matchedNvapiId.Value);
 
-                var targetInfo = new PathTargetInfo(matchedDevice);
-                targetInfo.Rotation = pm.Rotation switch
-                {
-                    DisplayRotation.Rotate90 => Rotate.Degree90,
-                    DisplayRotation.Rotate180 => Rotate.Degree180,
-                    DisplayRotation.Rotate270 => Rotate.Degree270,
-                    _ => Rotate.Degree0,
-                };
-
-                var w = pm.Width;
-                var h = pm.Height;
-                if (pm.Rotation is DisplayRotation.Rotate90 or DisplayRotation.Rotate270)
-                {
-                    if (w < h) (w, h) = (h, w);
-                }
-
-                newPaths.Add(new PathInfo(
-                    new NvAPIWrapper.Native.Display.Structures.Resolution(w, h, 32),
-                    ColorFormat.A8R8G8B8,
-                    [targetInfo]));
-            }
-
-            if (profile.UnmatchedAction == UnmatchedMonitorAction.Keep)
-            {
+                // Find and modify the existing path for this display
                 foreach (var path in currentPaths)
                 {
                     foreach (var target in path.TargetsInfo)
                     {
-                        if (!usedDisplayIds.Contains(target.DisplayDevice.DisplayId))
+                        if (target.DisplayDevice.DisplayId != matchedNvapiId) continue;
+                        var newRot = pm.Rotation switch
                         {
-                            newPaths.Add(path);
-                            usedDisplayIds.Add(target.DisplayDevice.DisplayId);
-                        }
+                            DisplayRotation.Rotate90 => Rotate.Degree90,
+                            DisplayRotation.Rotate180 => Rotate.Degree180,
+                            DisplayRotation.Rotate270 => Rotate.Degree270,
+                            _ => Rotate.Degree0,
+                        };
+                        Log($"    Rotation: {target.Rotation} → {newRot}");
+                        target.Rotation = newRot;
+                        modified = true;
                     }
                 }
             }
 
-            Log($"Final path count: {newPaths.Count}");
-            if (newPaths.Count == 0) { Log("No paths to apply"); return false; }
+            Log($"Modified: {modified}, Paths: {currentPaths.Length}");
+            if (!modified) { Log("Nothing to modify"); return false; }
 
             try
             {
-                PathInfo.SetDisplaysConfig(newPaths.ToArray(), DisplayConfigFlags.DriverReloadAllowed);
+                PathInfo.SetDisplaysConfig(currentPaths, DisplayConfigFlags.None);
                 Log("SetDisplaysConfig SUCCESS");
             }
             catch (Exception ex)
