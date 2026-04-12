@@ -30,7 +30,7 @@
                     <TextBlock x:Name="StartupLabel" />
                     <TextBlock x:Name="StartupDesc" Opacity="0.5" Style="{StaticResource CaptionTextBlockStyle}" />
                 </StackPanel>
-                <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.LaunchAtStartup, Mode=TwoWay}" Margin="0,-4,0,-4" />
+                <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.LaunchAtStartup, Mode=TwoWay}" OnContent="" OffContent="" Margin="0,-4,0,-4" />
             </Grid>
 
             <Grid Padding="16,12"
@@ -41,7 +41,7 @@
                     <TextBlock x:Name="TrayLabel" />
                     <TextBlock x:Name="TrayDesc" Opacity="0.5" Style="{StaticResource CaptionTextBlockStyle}" />
                 </StackPanel>
-                <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.MinimizeToTrayOnClose, Mode=TwoWay}" Margin="0,-4,0,-4" />
+                <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.MinimizeToTrayOnClose, Mode=TwoWay}" OnContent="" OffContent="" Margin="0,-4,0,-4" />
             </Grid>
 
             <Grid Padding="16,12"
@@ -52,7 +52,7 @@
                     <TextBlock x:Name="MinimizedLabel" />
                     <TextBlock x:Name="MinimizedDesc" Opacity="0.5" Style="{StaticResource CaptionTextBlockStyle}" />
                 </StackPanel>
-                <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.StartMinimized, Mode=TwoWay}" Margin="0,-4,0,-4" />
+                <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.StartMinimized, Mode=TwoWay}" OnContent="" OffContent="" Margin="0,-4,0,-4" />
             </Grid>
 
             <Grid Padding="16,12"
@@ -63,7 +63,7 @@
                     <TextBlock x:Name="ThemeLabel" />
                     <TextBlock x:Name="ThemeDesc" Opacity="0.5" Style="{StaticResource CaptionTextBlockStyle}" />
                 </StackPanel>
-                <ComboBox Grid.Column="1" x:Name="ThemeCombo" MinWidth="120" SelectionChanged="ThemeCombo_SelectionChanged" />
+                <ComboBox Grid.Column="1" x:Name="ThemeCombo" MinWidth="120" VerticalAlignment="Center" SelectionChanged="ThemeCombo_SelectionChanged" />
             </Grid>
 
             <Grid Padding="16,12"
@@ -74,7 +74,7 @@
                     <TextBlock x:Name="AutoSwitchLabel" />
                     <TextBlock x:Name="AutoSwitchDesc" Opacity="0.5" Style="{StaticResource CaptionTextBlockStyle}" />
                 </StackPanel>
-                <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.AutoSwitchEnabled, Mode=TwoWay}" Margin="0,-4,0,-4" />
+                <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.AutoSwitchEnabled, Mode=TwoWay}" OnContent="" OffContent="" Margin="0,-4,0,-4" />
             </Grid>
 
             <Grid Padding="16,12" CornerRadius="0,0,8,8"
@@ -86,7 +86,7 @@
                     <TextBlock x:Name="UpdateDesc" Opacity="0.5" Style="{StaticResource CaptionTextBlockStyle}" />
                     <TextBlock x:Name="UpdateStatusText" Opacity="0.6" Style="{StaticResource CaptionTextBlockStyle}" Visibility="Collapsed" Foreground="{ThemeResource SystemFillColorSuccessBrush}" />
                 </StackPanel>
-                <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.CheckForUpdates, Mode=TwoWay}" Margin="0,-4,0,-4" />
+                <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.CheckForUpdates, Mode=TwoWay}" OnContent="" OffContent="" Margin="0,-4,0,-4" />
                 <Button Grid.Column="2" x:Name="CheckNowButton" Click="CheckNowButton_Click" VerticalAlignment="Center" />
             </Grid>
 
@@ -101,13 +101,10 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel VerticalAlignment="Center">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <FontIcon Glyph="&#xE7BA;" FontSize="14" Opacity="0.5" />
-                        <TextBlock x:Name="RotationMethodLabel" />
-                    </StackPanel>
+                    <TextBlock x:Name="RotationMethodLabel" />
                     <TextBlock x:Name="RotationMethodDesc" Opacity="0.5" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap" />
                 </StackPanel>
-                <ComboBox Grid.Column="1" x:Name="RotationMethodCombo" MinWidth="140" MaxWidth="240" SelectionChanged="RotationMethodCombo_SelectionChanged" />
+                <ComboBox Grid.Column="1" x:Name="RotationMethodCombo" MinWidth="140" MaxWidth="240" VerticalAlignment="Center" SelectionChanged="RotationMethodCombo_SelectionChanged" />
             </Grid>
 
             <!-- About -->

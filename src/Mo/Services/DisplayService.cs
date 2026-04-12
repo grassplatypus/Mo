@@ -140,34 +140,10 @@ public sealed class DisplayService : IDisplayService
         if (matchResult.Matches.Count == 0 && profile.Monitors.Count > 0)
             return DisplayApplyResult.Failed;
 
-        // Phase 2: Check if any enabled profile monitors are currently inactive
-        bool needsTopologyExtend = false;
-        foreach (var (profileIdx, _) in matchResult.Matches)
-        {
-            if (!profile.Monitors[profileIdx].IsEnabled) continue;
-            var pm = profile.Monitors[profileIdx];
-            bool isActive = currentConfig.Any(c =>
-                c.DevicePath == pm.DevicePath ||
-                (c.EdidManufacturerId == pm.EdidManufacturerId && c.EdidProductCodeId == pm.EdidProductCodeId && c.ConnectorInstance == pm.ConnectorInstance));
-            if (!isActive) { needsTopologyExtend = true; break; }
-        }
-
-        // Also check unmatched profile monitors — they might be connected but inactive
-        foreach (var unmatchedIdx in matchResult.UnmatchedProfile)
-        {
-            var pm = profile.Monitors[unmatchedIdx];
-            if (!pm.IsEnabled) continue;
-            foreach (var (tid, info) in allTargetIdentities)
-            {
-                if (info.devicePath == pm.DevicePath ||
-                    (info.mfrId == pm.EdidManufacturerId && info.prodId == pm.EdidProductCodeId && info.connector == pm.ConnectorInstance))
-                {
-                    needsTopologyExtend = true;
-                    break;
-                }
-            }
-            if (needsTopologyExtend) break;
-        }
+        // Phase 2: Determine if topology extend is needed
+        int enabledProfileMonitors = profile.Monitors.Count(m => m.IsEnabled);
+        bool needsTopologyExtend = enabledProfileMonitors > currentConfig.Count ||
+            matchResult.UnmatchedProfile.Any(i => profile.Monitors[i].IsEnabled);
 
         // Phase 3: If inactive monitors need activation, extend topology first
         if (needsTopologyExtend)
@@ -184,13 +160,18 @@ public sealed class DisplayService : IDisplayService
             // Also try CCD topology extend as fallback
             NativeDisplayApi.SetDisplayConfig(0, null, 0, null,
                 SDC_FLAGS.SDC_TOPOLOGY_EXTEND | SDC_FLAGS.SDC_APPLY | SDC_FLAGS.SDC_ALLOW_CHANGES | SDC_FLAGS.SDC_SAVE_TO_DATABASE);
-            Thread.Sleep(1000);
 
-            // Re-read current config after topology change
-            currentConfig = GetCurrentConfiguration();
-            currentIdentities = currentConfig.Select(m =>
-                new MonitorMatcher.MonitorIdentity(m.DevicePath, m.EdidManufacturerId, m.EdidProductCodeId, m.ConnectorInstance, m.FriendlyName)).ToList();
-            matchResult = MonitorMatcher.Match(profileIdentities, currentIdentities);
+            // Wait and retry matching until all monitors appear or timeout
+            for (int attempt = 0; attempt < 3; attempt++)
+            {
+                Thread.Sleep(1000);
+                currentConfig = GetCurrentConfiguration();
+                currentIdentities = currentConfig.Select(m =>
+                    new MonitorMatcher.MonitorIdentity(m.DevicePath, m.EdidManufacturerId, m.EdidProductCodeId, m.ConnectorInstance, m.FriendlyName)).ToList();
+                matchResult = MonitorMatcher.Match(profileIdentities, currentIdentities);
+                if (matchResult.UnmatchedProfile.Count(i => profile.Monitors[i].IsEnabled) == 0)
+                    break;
+            }
         }
 
         // Phase 4: Determine which monitors to disable
