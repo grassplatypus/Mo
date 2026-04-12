@@ -222,6 +222,7 @@ Press Delete or Backspace to clear. Escape to cancel.</value></data>
   <data name="MissingMonitors" xml:space="preserve"><value>Not connected</value></data>
   <data name="ExtraMonitors" xml:space="preserve"><value>Not in profile</value></data>
   <data name="ApplyAnyway" xml:space="preserve"><value>Apply Anyway</value></data>
+  <data name="ExtraMonitorsWillDisable" xml:space="preserve"><value>Will be turned off</value></data>
   <data name="ApplyErrorTitle" xml:space="preserve"><value>Failed to Apply Profile</value></data>
   <data name="ApplyFailed" xml:space="preserve"><value>The display configuration could not be applied. Some monitors may not be connected or the configuration is incompatible.</value></data>
   <data name="ApplyValidationError" xml:space="preserve"><value>The display configuration is invalid for the current hardware setup. Please check monitor connections and profile settings.</value></data>

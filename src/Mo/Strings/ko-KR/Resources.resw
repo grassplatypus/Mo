@@ -222,6 +222,7 @@ Delete 또는 Backspace로 삭제. Escape로 취소.</value></data>
   <data name="MissingMonitors" xml:space="preserve"><value>연결되지 않음</value></data>
   <data name="ExtraMonitors" xml:space="preserve"><value>프로필에 없음</value></data>
   <data name="ApplyAnyway" xml:space="preserve"><value>그래도 적용</value></data>
+  <data name="ExtraMonitorsWillDisable" xml:space="preserve"><value>비활성화됨</value></data>
   <data name="ApplyErrorTitle" xml:space="preserve"><value>프로필 적용 실패</value></data>
   <data name="ApplyFailed" xml:space="preserve"><value>디스플레이 구성을 적용할 수 없습니다. 일부 모니터가 연결되지 않았거나 구성이 호환되지 않을 수 있습니다.</value></data>
   <data name="ApplyValidationError" xml:space="preserve"><value>현재 하드웨어 구성에 유효하지 않은 디스플레이 설정입니다. 모니터 연결 상태와 프로필 설정을 확인하세요.</value></data>

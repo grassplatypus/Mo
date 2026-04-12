@@ -65,40 +65,50 @@ public sealed class NvidiaRotationService
         if (!IsAvailable) return false;
         try
         {
+            // Approach 1: Use CCD topology extend with SAVE_TO_DATABASE
+            // This works better than NVAPI for enabling displays on some driver versions
+            NativeDisplayApi.SetDisplayConfig(0, null, 0, null,
+                Interop.DisplayConfig.SDC_FLAGS.SDC_TOPOLOGY_EXTEND |
+                Interop.DisplayConfig.SDC_FLAGS.SDC_APPLY |
+                Interop.DisplayConfig.SDC_FLAGS.SDC_ALLOW_CHANGES |
+                Interop.DisplayConfig.SDC_FLAGS.SDC_SAVE_TO_DATABASE |
+                Interop.DisplayConfig.SDC_FLAGS.SDC_PATH_PERSIST_IF_REQUIRED);
+
+            // Verify if displays actually came up
+            Thread.Sleep(500);
+            var currentPaths = PathInfo.GetDisplaysConfig();
             foreach (var gpu in PhysicalGPU.GetPhysicalGPUs())
             {
                 var allConnected = gpu.GetConnectedDisplayDevices(ConnectedIdsFlag.None);
-                if (allConnected.Length <= 1) continue;
-
-                var currentPaths = PathInfo.GetDisplaysConfig();
                 var activeIds = new HashSet<uint>(
                     currentPaths.SelectMany(p => p.TargetsInfo).Select(t => t.DisplayDevice.DisplayId));
 
-                // Find inactive but connected displays
                 var inactiveDevices = allConnected.Where(d => !activeIds.Contains(d.DisplayId)).ToList();
                 if (inactiveDevices.Count == 0) continue;
 
-                // Build new path list: keep existing paths + add paths for inactive displays
+                // Approach 2: If CCD didn't work, try NVAPI SetDisplaysConfig
                 var newPaths = new List<PathInfo>(currentPaths);
                 foreach (var device in inactiveDevices)
                 {
                     try
                     {
                         var target = new PathTargetInfo(device);
-                        var path = new PathInfo(
-                            new NvAPIWrapper.Native.Display.Structures.Resolution(0, 0, 32),
+                        newPaths.Add(new PathInfo(
+                            new NvAPIWrapper.Native.Display.Structures.Resolution(1920, 1080, 32),
                             NvAPIWrapper.Native.Display.ColorFormat.A8R8G8B8,
-                            [target]);
-                        newPaths.Add(path);
+                            [target]));
                     }
                     catch { continue; }
                 }
 
-                PathInfo.SetDisplaysConfig(
-                    newPaths.ToArray(),
-                    DisplayConfigFlags.ForceCommitVideoPresentNetwork | DisplayConfigFlags.DriverReloadAllowed);
-                return true;
+                try
+                {
+                    PathInfo.SetDisplaysConfig(newPaths.ToArray(),
+                        DisplayConfigFlags.DriverReloadAllowed | DisplayConfigFlags.ForceModeEnumeration);
+                }
+                catch { }
             }
+            return true;
         }
         catch { }
         return false;

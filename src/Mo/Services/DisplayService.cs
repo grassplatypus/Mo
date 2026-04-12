@@ -317,14 +317,19 @@ public sealed class DisplayService : IDisplayService
                 }
             }
             catch { }
+
+            Thread.Sleep(500);
+            NativeDisplayApi.ClipCursor(IntPtr.Zero);
         }
 
         if (hasRotationChange)
         {
-            Thread.Sleep(300);
+            Thread.Sleep(500);
             NativeDisplayApi.ClipCursor(IntPtr.Zero);
             NativeDisplayApi.SystemParametersInfo(
                 NativeDisplayApi.SPI_SETWORKAREA, 0, IntPtr.Zero, NativeDisplayApi.SPIF_SENDCHANGE);
+            Thread.Sleep(200);
+            NativeDisplayApi.ClipCursor(IntPtr.Zero);
             int cx = NativeDisplayApi.GetSystemMetrics(NativeDisplayApi.SM_CXSCREEN) / 2;
             int cy = NativeDisplayApi.GetSystemMetrics(NativeDisplayApi.SM_CYSCREEN) / 2;
             NativeDisplayApi.SetCursorPos(cx, cy);
@@ -361,10 +366,13 @@ public sealed class DisplayService : IDisplayService
                 missingMonitors.Add(pm.FriendlyName);
         }
 
-        var warnings = disabledMonitors.Select(n => $"{n} (disabled, will activate)").ToList();
+        var warnings = new List<string>();
+
+        // Only truly missing monitors matter for compatibility
+        bool isFullMatch = missingMonitors.Count == 0;
 
         return new ProfileCompatibility(
-            matchResult.UnmatchedProfile.Count == 0 && matchResult.UnmatchedCurrent.Count == 0,
+            isFullMatch,
             missingMonitors,
             matchResult.UnmatchedCurrent.Select(i => currentConfig[i].FriendlyName).ToList(),
             warnings);

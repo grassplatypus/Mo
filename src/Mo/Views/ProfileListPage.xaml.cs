@@ -97,11 +97,11 @@ public sealed partial class ProfileListPage : Page
                 Message = string.Join("\n", compat.Warnings),
                 IsOpen = true, IsClosable = false,
             });
-        if (compat.ExtraMonitors.Count > 0)
+        if (compat.ExtraMonitors.Count > 0 && profile.UnmatchedAction == UnmatchedMonitorAction.Disable)
             confirmContent.Children.Add(new InfoBar
             {
                 Severity = InfoBarSeverity.Warning,
-                Title = ResourceHelper.GetString("ExtraMonitors"),
+                Title = ResourceHelper.GetString("ExtraMonitorsWillDisable"),
                 Message = string.Join(", ", compat.ExtraMonitors),
                 IsOpen = true, IsClosable = false,
             });
