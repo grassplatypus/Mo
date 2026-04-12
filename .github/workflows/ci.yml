@@ -25,7 +25,7 @@ jobs:
           dotnet-quality: 'preview'
 
       - name: Build
-        run: dotnet build src/Mo/Mo.csproj -c ${{ matrix.configuration }} -p:Platform=${{ matrix.platform }}
+        run: dotnet build src/Mo/Mo.csproj -c ${{ matrix.configuration }} -p:Platform=${{ matrix.platform }} -p:WindowsPackageType=None -p:EnableMsixTooling=false
 
       - name: Test
         run: dotnet test tests/Mo.Core.Tests/ --verbosity normal

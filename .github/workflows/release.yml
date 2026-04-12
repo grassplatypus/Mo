@@ -32,7 +32,7 @@ jobs:
             Set-Content src/Mo/Package.appxmanifest
 
       - name: Publish (portable)
-        run: dotnet publish src/Mo/Mo.csproj -c Release -p:Platform=${{ matrix.platform }} -p:PublishReadyToRun=true -p:PublishTrimmed=true -o publish/${{ matrix.platform }}
+        run: dotnet publish src/Mo/Mo.csproj -c Release -p:Platform=${{ matrix.platform }} -p:PublishReadyToRun=true -p:PublishTrimmed=true -p:WindowsPackageType=None -p:EnableMsixTooling=false -o publish/${{ matrix.platform }}
 
       - name: Create ZIP
         run: Compress-Archive -Path publish/${{ matrix.platform }}/* -DestinationPath Mo-${{ github.ref_name }}-${{ matrix.platform }}.zip
