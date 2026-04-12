@@ -43,6 +43,8 @@
   <!-- Profile List -->
   <data name="ProfilesTitle" xml:space="preserve"><value>Profiles</value></data>
   <data name="SaveCurrent" xml:space="preserve"><value>Save Current</value></data>
+  <data name="CapturingProfile" xml:space="preserve"><value>Capturing display configuration...</value></data>
+  <data name="NewLayout" xml:space="preserve"><value>New Layout</value></data>
   <data name="MonitorsSuffix" xml:space="preserve"><value>monitors</value></data>
   <data name="Apply" xml:space="preserve"><value>Apply</value></data>
   <data name="EmptyTitle" xml:space="preserve"><value>No profiles saved yet</value></data>

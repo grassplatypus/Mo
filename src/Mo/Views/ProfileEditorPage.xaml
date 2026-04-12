@@ -56,6 +56,7 @@
                 <controls:MonitorLayoutCanvas
                     x:Name="LayoutCanvas"
                     MinHeight="220"
+                    IsEditable="True"
                     MonitorSelected="LayoutCanvas_MonitorSelected" />
 
                 <!-- Selected Monitor Details -->
@@ -83,7 +84,7 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Spacing="4">
@@ -96,12 +97,17 @@
                         </StackPanel>
                         <StackPanel Grid.Column="2" Spacing="4">
                             <TextBlock x:Name="RotLabel" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.6" />
-                            <TextBlock x:Name="DetailRotation" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                            <ComboBox x:Name="RotationCombo" MinWidth="100" SelectionChanged="RotationCombo_SelectionChanged">
+                                <ComboBoxItem Content="0°" Tag="0" />
+                                <ComboBoxItem Content="90°" Tag="90" />
+                                <ComboBoxItem Content="180°" Tag="180" />
+                                <ComboBoxItem Content="270°" Tag="270" />
+                            </ComboBox>
                         </StackPanel>
-                        <StackPanel Grid.Column="3" Spacing="4">
-                            <TextBlock x:Name="PosLabel" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.6" />
-                            <TextBlock x:Name="DetailPosition" Style="{StaticResource BodyStrongTextBlockStyle}" />
-                        </StackPanel>
+                        <Button Grid.Column="3" x:Name="RemoveMonitorBtn" Click="RemoveMonitor_Click"
+                                VerticalAlignment="Center" ToolTipService.ToolTip="Remove monitor from profile">
+                            <FontIcon Glyph="&#xE74D;" FontSize="14" />
+                        </Button>
                     </Grid>
                 </Grid>
 

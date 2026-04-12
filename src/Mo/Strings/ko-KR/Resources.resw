@@ -43,6 +43,8 @@
   <!-- Profile List -->
   <data name="ProfilesTitle" xml:space="preserve"><value>프로필</value></data>
   <data name="SaveCurrent" xml:space="preserve"><value>현재 구성 저장</value></data>
+  <data name="CapturingProfile" xml:space="preserve"><value>디스플레이 구성을 캡처하는 중...</value></data>
+  <data name="NewLayout" xml:space="preserve"><value>새 레이아웃</value></data>
   <data name="MonitorsSuffix" xml:space="preserve"><value>개 모니터</value></data>
   <data name="Apply" xml:space="preserve"><value>적용</value></data>
   <data name="EmptyTitle" xml:space="preserve"><value>저장된 프로필이 없습니다</value></data>

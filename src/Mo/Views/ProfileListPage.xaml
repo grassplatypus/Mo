@@ -34,6 +34,13 @@
                 Style="{StaticResource TitleTextBlockStyle}" />
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <Button Click="NewLayoutButton_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE7C4;" FontSize="14" />
+                        <TextBlock x:Name="NewLayoutText" />
+                    </StackPanel>
+                </Button>
+
                 <Button
                     Style="{StaticResource AccentButtonStyle}"
                     Click="ImportButton_Click">

@@ -215,9 +215,16 @@ public sealed partial class ProfileEditorPage : Page
 
         DetailResolution.Text = monitor.ResolutionText;
         DetailRefreshRate.Text = $"{monitor.RefreshRateHz:F1} Hz";
-        DetailRotation.Text = monitor.Rotation == DisplayRotation.None
-            ? ResourceHelper.GetString("RotationNone") : $"{(int)monitor.Rotation}°";
-        DetailPosition.Text = $"({monitor.PositionX}, {monitor.PositionY})";
+
+        _loading = true;
+        RotationCombo.SelectedIndex = monitor.Rotation switch
+        {
+            DisplayRotation.Rotate90 => 1,
+            DisplayRotation.Rotate180 => 2,
+            DisplayRotation.Rotate270 => 3,
+            _ => 0,
+        };
+        _loading = false;
 
         RotationWarningBar.IsOpen = monitor.Rotation != DisplayRotation.None;
         RotationWarningBar.Message = ResourceHelper.GetString("RotationWarning");
@@ -398,6 +405,32 @@ public sealed partial class ProfileEditorPage : Page
         _navigationService.GoBack();
     }
 
+    private void RotationCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || _selectedMonitor == null) return;
+        _selectedMonitor.Rotation = RotationCombo.SelectedIndex switch
+        {
+            1 => DisplayRotation.Rotate90,
+            2 => DisplayRotation.Rotate180,
+            3 => DisplayRotation.Rotate270,
+            _ => DisplayRotation.None,
+        };
+        RotationWarningBar.IsOpen = _selectedMonitor.Rotation != DisplayRotation.None;
+        LayoutCanvas.SetMonitors(_profile!.Monitors);
+    }
+
+    private void RemoveMonitor_Click(object sender, RoutedEventArgs e)
+    {
+        if (_profile == null || _selectedMonitor == null) return;
+        _profile.Monitors.Remove(_selectedMonitor);
+        _selectedMonitor = null;
+        _selectedMonitorIndex = -1;
+        MonitorDetailsPanel.Visibility = Visibility.Collapsed;
+        ColorSettingsPanel.Visibility = Visibility.Collapsed;
+        LayoutCanvas.SetMonitors(_profile.Monitors);
+        DescriptionBox.Text = $"{_profile.Monitors.Count} monitor(s)";
+    }
+
     private void UnmatchedCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_loading || _profile == null) return;
@@ -421,7 +454,7 @@ public sealed partial class ProfileEditorPage : Page
         ResLabel.Text = ResourceHelper.GetString("Resolution");
         RefreshLabel.Text = ResourceHelper.GetString("RefreshRate");
         RotLabel.Text = ResourceHelper.GetString("Rotation");
-        PosLabel.Text = ResourceHelper.GetString("Position");
+        // Position is now editable via drag in canvas
         ExtrasTitle.Text = ResourceHelper.GetString("GeneralSection");
         AudioLabel.Text = ResourceHelper.GetString("AudioDevice");
         AudioDesc.Text = ResourceHelper.GetString("AudioDeviceDesc");

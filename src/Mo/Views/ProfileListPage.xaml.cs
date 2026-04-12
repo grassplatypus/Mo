@@ -32,10 +32,30 @@ public sealed partial class ProfileListPage : Page
         ApplyLocalization();
     }
 
+    private async void NewLayoutButton_Click(object sender, RoutedEventArgs e)
+    {
+        var displayService = App.Services.GetRequiredService<IDisplayService>();
+        var monitors = displayService.GetCurrentConfiguration();
+        var profile = new DisplayProfile
+        {
+            Name = $"Layout {ViewModel.Profiles.Count + 1}",
+            Description = $"{monitors.Count} monitor(s) — {DateTime.Now:g}",
+            Monitors = monitors,
+        };
+
+        var profileService = App.Services.GetRequiredService<IProfileService>();
+        await profileService.SaveProfileAsync(profile);
+        ViewModel.RefreshIsEmpty();
+
+        var nav = App.Services.GetRequiredService<INavigationService>();
+        nav.NavigateTo(typeof(ProfileEditorPage), profile);
+    }
+
     private void ApplyLocalization()
     {
         TitleText.Text = ResourceHelper.GetString("ProfilesTitle");
         SaveCurrentText.Text = ResourceHelper.GetString("SaveCurrent");
+        NewLayoutText.Text = ResourceHelper.GetString("NewLayout");
         ImportText.Text = ResourceHelper.GetString("Import");
         EmptyTitleText.Text = ResourceHelper.GetString("EmptyTitle");
         EmptyDescText.Text = ResourceHelper.GetString("EmptyDescription");
@@ -328,7 +348,7 @@ public sealed partial class ProfileListPage : Page
             Text = $"Profile {ViewModel.Profiles.Count + 1}",
             PlaceholderText = ResourceHelper.GetString("ProfileNamePlaceholder"),
         };
-        var chkAudio = new CheckBox { Content = ResourceHelper.GetString("AudioDevice"), IsChecked = true };
+        var chkAudio = new CheckBox { Content = ResourceHelper.GetString("AudioDevice"), IsChecked = false };
         var chkWallpaper = new CheckBox { Content = ResourceHelper.GetString("Wallpaper"), IsChecked = false };
         var chkNightLight = new CheckBox { Content = ResourceHelper.GetString("NightLight"), IsChecked = false };
         var chkAutoSwitch = new CheckBox { Content = ResourceHelper.GetString("AutoSwitch"), IsChecked = false };
@@ -373,8 +393,27 @@ public sealed partial class ProfileListPage : Page
 
         var profileName = string.IsNullOrWhiteSpace(nameBox.Text) ? $"Profile {ViewModel.Profiles.Count + 1}" : nameBox.Text.Trim();
 
+        // Show loading indicator
+        var loadingDialog = new ContentDialog
+        {
+            Content = new StackPanel
+            {
+                Spacing = 16,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Children =
+                {
+                    new ProgressRing { IsActive = true, Width = 40, Height = 40 },
+                    new TextBlock { Text = ResourceHelper.GetString("CapturingProfile"), HorizontalAlignment = HorizontalAlignment.Center },
+                }
+            },
+            XamlRoot = this.XamlRoot,
+        };
+        _ = loadingDialog.ShowAsync();
+
         var profileService = App.Services.GetRequiredService<IProfileService>();
         var profile = await profileService.CaptureCurrentAsync(profileName);
+
+        loadingDialog.Hide();
 
         // Selectively clear unwanted data
         if (chkAudio.IsChecked != true)
