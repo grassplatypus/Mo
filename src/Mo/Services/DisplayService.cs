@@ -172,9 +172,19 @@ public sealed class DisplayService : IDisplayService
         // Phase 3: If inactive monitors need activation, extend topology first
         if (needsTopologyExtend)
         {
+            // Try NVAPI-based enable first (more reliable for NVIDIA-managed displays)
+            try
+            {
+                var nvService = App.Services.GetRequiredService<NvidiaRotationService>();
+                if (nvService.IsAvailable)
+                    nvService.EnableAllDisplays();
+            }
+            catch { }
+
+            // Also try CCD topology extend as fallback
             NativeDisplayApi.SetDisplayConfig(0, null, 0, null,
-                SDC_FLAGS.SDC_TOPOLOGY_EXTEND | SDC_FLAGS.SDC_APPLY | SDC_FLAGS.SDC_ALLOW_CHANGES);
-            Thread.Sleep(500);
+                SDC_FLAGS.SDC_TOPOLOGY_EXTEND | SDC_FLAGS.SDC_APPLY | SDC_FLAGS.SDC_ALLOW_CHANGES | SDC_FLAGS.SDC_SAVE_TO_DATABASE);
+            Thread.Sleep(1000);
 
             // Re-read current config after topology change
             currentConfig = GetCurrentConfiguration();
@@ -354,11 +364,59 @@ public sealed class DisplayService : IDisplayService
 
         var matchResult = MonitorMatcher.Match(profileIdentities, currentIdentities);
 
+        // Check ALL_PATHS to distinguish "not connected" from "connected but disabled"
+        var allConnected = GetAllConnectedTargetIdentities();
+        var missingMonitors = new List<string>();
+        var disabledMonitors = new List<string>();
+        foreach (var idx in matchResult.UnmatchedProfile)
+        {
+            var pm = profile.Monitors[idx];
+            bool connectedButDisabled = allConnected.Any(t =>
+                t.devicePath == pm.DevicePath ||
+                (t.mfrId != 0 && t.mfrId == pm.EdidManufacturerId && t.prodId == pm.EdidProductCodeId && t.connector == pm.ConnectorInstance));
+            if (connectedButDisabled)
+                disabledMonitors.Add(pm.FriendlyName);
+            else
+                missingMonitors.Add(pm.FriendlyName);
+        }
+
+        var warnings = disabledMonitors.Select(n => $"{n} (disabled, will activate)").ToList();
+
         return new ProfileCompatibility(
             matchResult.UnmatchedProfile.Count == 0 && matchResult.UnmatchedCurrent.Count == 0,
-            matchResult.UnmatchedProfile.Select(i => profile.Monitors[i].FriendlyName).ToList(),
+            missingMonitors,
             matchResult.UnmatchedCurrent.Select(i => currentConfig[i].FriendlyName).ToList(),
-            []);
+            warnings);
+    }
+
+    private List<(string devicePath, ushort mfrId, ushort prodId, uint connector, string name)> GetAllConnectedTargetIdentities()
+    {
+        var result = new List<(string, ushort, ushort, uint, string)>();
+        try
+        {
+            int r = NativeDisplayApi.GetDisplayConfigBufferSizes(QDC_FLAGS.QDC_ALL_PATHS, out uint pc, out uint mc);
+            if (r != NativeDisplayApi.ERROR_SUCCESS) return result;
+            var paths = new DISPLAYCONFIG_PATH_INFO[pc];
+            var modes = new DISPLAYCONFIG_MODE_INFO[mc];
+            r = NativeDisplayApi.QueryDisplayConfig(QDC_FLAGS.QDC_ALL_PATHS, ref pc, paths, ref mc, modes, IntPtr.Zero);
+            if (r != NativeDisplayApi.ERROR_SUCCESS) return result;
+
+            var seen = new HashSet<uint>();
+            for (int i = 0; i < pc; i++)
+            {
+                var tid = paths[i].targetInfo.id;
+                if (!seen.Add(tid)) continue;
+                var dn = new DISPLAYCONFIG_TARGET_DEVICE_NAME();
+                dn.header.type = DISPLAYCONFIG_DEVICE_INFO_TYPE.DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME;
+                dn.header.size = (uint)Marshal.SizeOf<DISPLAYCONFIG_TARGET_DEVICE_NAME>();
+                dn.header.adapterId = paths[i].targetInfo.adapterId;
+                dn.header.id = tid;
+                if (NativeDisplayApi.DisplayConfigGetDeviceInfo(ref dn) == NativeDisplayApi.ERROR_SUCCESS)
+                    result.Add((dn.monitorDevicePath ?? "", dn.edidManufactureId, dn.edidProductCodeId, dn.connectorInstance, dn.monitorFriendlyDeviceName ?? ""));
+            }
+        }
+        catch { }
+        return result;
     }
 
     private static Models.DisplayRotation MapRotation(DISPLAYCONFIG_ROTATION rotation) => rotation switch

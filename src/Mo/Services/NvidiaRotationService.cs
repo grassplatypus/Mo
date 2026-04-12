@@ -1,8 +1,10 @@
+using Mo.Interop.DisplayConfig;
 using Mo.Models;
 using NvAPIWrapper;
 using NvAPIWrapper.Display;
 using NvAPIWrapper.GPU;
 using NvAPIWrapper.Native.Display;
+using NvAPIWrapper.Native.GPU;
 
 namespace Mo.Services;
 
@@ -56,6 +58,46 @@ public sealed class NvidiaRotationService
             return true;
         }
         catch { return false; }
+    }
+
+    public bool EnableAllDisplays()
+    {
+        if (!IsAvailable) return false;
+        try
+        {
+            // Get all physical GPUs and enable all connected displays
+            foreach (var gpu in PhysicalGPU.GetPhysicalGPUs())
+            {
+                var allDisplayIds = gpu.GetConnectedDisplayDevices(ConnectedIdsFlag.None);
+                if (allDisplayIds.Length <= 1) continue;
+
+                // Build paths with all connected displays enabled
+                var currentPaths = PathInfo.GetDisplaysConfig();
+                var activeDeviceIds = new HashSet<uint>(
+                    currentPaths.SelectMany(p => p.TargetsInfo).Select(t => t.DisplayDevice.DisplayId));
+
+                bool anyNew = false;
+                foreach (var displayId in allDisplayIds)
+                {
+                    if (!activeDeviceIds.Contains(displayId.DisplayId))
+                    {
+                        anyNew = true;
+                        break;
+                    }
+                }
+
+                if (anyNew)
+                {
+                    // Use CCD topology extend as NVAPI path manipulation for enabling is complex
+                    NativeDisplayApi.SetDisplayConfig(0, null, 0, null,
+                        Interop.DisplayConfig.SDC_FLAGS.SDC_TOPOLOGY_EXTEND | Interop.DisplayConfig.SDC_FLAGS.SDC_APPLY |
+                        Interop.DisplayConfig.SDC_FLAGS.SDC_ALLOW_CHANGES | Interop.DisplayConfig.SDC_FLAGS.SDC_SAVE_TO_DATABASE);
+                    return true;
+                }
+            }
+        }
+        catch { }
+        return false;
     }
 
     private static bool MatchesMonitor(DisplayDevice device, MonitorInfo monitor)

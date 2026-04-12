@@ -52,13 +52,15 @@ public sealed partial class ProfileListPage : Page
 
         // Pre-apply compatibility check
         var compat = displayService.CheckCompatibility(profile);
-        if (!compat.IsFullMatch && (compat.MissingMonitors.Count > 0 || compat.ExtraMonitors.Count > 0))
+        if (!compat.IsFullMatch && (compat.MissingMonitors.Count > 0 || compat.ExtraMonitors.Count > 0 || compat.Warnings.Count > 0))
         {
             var lines = new List<string>();
             if (compat.MissingMonitors.Count > 0)
                 lines.Add($"{ResourceHelper.GetString("MissingMonitors")}: {string.Join(", ", compat.MissingMonitors)}");
             if (compat.ExtraMonitors.Count > 0)
                 lines.Add($"{ResourceHelper.GetString("ExtraMonitors")}: {string.Join(", ", compat.ExtraMonitors)}");
+            foreach (var warning in compat.Warnings)
+                lines.Add(warning);
 
             var compatDialog = new ContentDialog
             {
