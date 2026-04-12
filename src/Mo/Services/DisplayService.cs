@@ -144,7 +144,7 @@ public sealed class DisplayService : IDisplayService
         try
         {
             var nvService = App.Services.GetRequiredService<NvidiaRotationService>();
-            if (nvService.IsAvailable && nvService.ApplyFullProfile(profile, currentConfig, matchResult))
+            if (nvService.IsAvailable && nvService.ApplyFullProfile(profile))
             {
                 Thread.Sleep(500);
                 NativeDisplayApi.ClipCursor(IntPtr.Zero);
