@@ -146,10 +146,15 @@ public sealed class DisplayService : IDisplayService
             var nvService = App.Services.GetRequiredService<NvidiaRotationService>();
             if (nvService.IsAvailable && nvService.ApplyFullProfile(profile))
             {
-                Thread.Sleep(500);
-                NativeDisplayApi.ClipCursor(IntPtr.Zero);
+                // Aggressive mouse unstick after NVAPI display change
+                for (int i = 0; i < 3; i++)
+                {
+                    Thread.Sleep(300);
+                    NativeDisplayApi.ClipCursor(IntPtr.Zero);
+                }
                 NativeDisplayApi.SystemParametersInfo(
                     NativeDisplayApi.SPI_SETWORKAREA, 0, IntPtr.Zero, NativeDisplayApi.SPIF_SENDCHANGE);
+                NativeDisplayApi.ClipCursor(IntPtr.Zero);
                 int cx = NativeDisplayApi.GetSystemMetrics(NativeDisplayApi.SM_CXSCREEN) / 2;
                 int cy = NativeDisplayApi.GetSystemMetrics(NativeDisplayApi.SM_CYSCREEN) / 2;
                 NativeDisplayApi.SetCursorPos(cx, cy);

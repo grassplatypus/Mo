@@ -270,18 +270,33 @@ public sealed class NvidiaRotationService
                 }
             }
 
-            var unmatchedCcdEdids = allCcdEdids.Where(e => !matchedCcdTargetIds.Contains(e.targetId)).ToList();
+            // Filter to only real monitors (non-zero EDID manufacturer)
+            var unmatchedCcdEdids = allCcdEdids
+                .Where(e => !matchedCcdTargetIds.Contains(e.targetId) && e.mfrId != 0)
+                .ToList();
             var unmatchedNvapiDevices = allConnected.Where(d => !map.ContainsKey(d.DisplayId)).ToList();
 
-            // Match unmatched by EDID uniqueness
+            // Match remaining NVAPI devices to CCD targets by EDID
             foreach (var nvapiDevice in unmatchedNvapiDevices)
             {
-                if (unmatchedCcdEdids.Count == 1)
+                if (unmatchedCcdEdids.Count == 0) break;
+                // With only real monitors left, match 1:1
+                if (unmatchedCcdEdids.Count == 1 && unmatchedNvapiDevices.Count == 1)
                 {
-                    map[nvapiDevice.DisplayId] = (unmatchedCcdEdids[0].devicePath, unmatchedCcdEdids[0].mfrId,
-                        unmatchedCcdEdids[0].prodId, unmatchedCcdEdids[0].connector, unmatchedCcdEdids[0].name);
-                    unmatchedCcdEdids.RemoveAt(0);
+                    var e = unmatchedCcdEdids[0];
+                    map[nvapiDevice.DisplayId] = (e.devicePath, e.mfrId, e.prodId, e.connector, e.name);
                     break;
+                }
+                // Multiple remaining: try matching by unique EDID values
+                foreach (var ccd in unmatchedCcdEdids)
+                {
+                    // Each unique EDID should correspond to one physical monitor
+                    if (!map.Values.Any(v => v.Item2 == ccd.mfrId && v.Item3 == ccd.prodId))
+                    {
+                        map[nvapiDevice.DisplayId] = (ccd.devicePath, ccd.mfrId, ccd.prodId, ccd.connector, ccd.name);
+                        unmatchedCcdEdids.Remove(ccd);
+                        break;
+                    }
                 }
             }
         }
