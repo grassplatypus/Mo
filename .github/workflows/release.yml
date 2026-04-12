@@ -37,62 +37,9 @@ jobs:
       - name: Create ZIP
         run: Compress-Archive -Path publish/${{ matrix.platform }}/* -DestinationPath Mo-${{ github.ref_name }}-${{ matrix.platform }}.zip
 
-      # Unsigned MSIX
-      - name: Build MSIX (unsigned)
-        shell: pwsh
-        run: |
-          dotnet build src/Mo/Mo.csproj -c Release `
-            -p:Platform=${{ matrix.platform }} `
-            -p:GenerateAppxPackageOnBuild=true `
-            -p:AppxBundle=Never `
-            -p:AppxPackageSigningEnabled=false `
-            -p:AppxPackageDir=msix-unsigned/ `
-            -p:_WinAppSdkValidateAppxManifest=false
-
-      - name: Rename unsigned MSIX
-        shell: pwsh
-        run: |
-          $msix = Get-ChildItem -Path msix-unsigned -Filter "*.msix" -Recurse | Select-Object -First 1
-          if ($msix) {
-            Copy-Item $msix.FullName "Mo-${{ github.ref_name }}-${{ matrix.platform }}-unsigned.msix"
-          }
-
-      # Signed MSIX
-      - name: Build and sign MSIX
-        if: env.SIGNING_CERT_BASE64 != ''
-        shell: pwsh
-        env:
-          SIGNING_CERT_BASE64: ${{ secrets.SIGNING_CERT_BASE64 }}
-          SIGNING_CERT_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
-        run: |
-          $certBytes = [Convert]::FromBase64String($env:SIGNING_CERT_BASE64)
-          $certPath = Join-Path $env:RUNNER_TEMP "signing_cert.pfx"
-          [IO.File]::WriteAllBytes($certPath, $certBytes)
-
-          dotnet build src/Mo/Mo.csproj -c Release `
-            -p:Platform=${{ matrix.platform }} `
-            -p:GenerateAppxPackageOnBuild=true `
-            -p:AppxBundle=Never `
-            -p:AppxPackageSigningEnabled=true `
-            -p:PackageCertificateKeyFile=$certPath `
-            -p:PackageCertificatePassword=$env:SIGNING_CERT_PASSWORD `
-            -p:AppxPackageSigningTimestampServerUrl=http://timestamp.digicert.com `
-            -p:AppxPackageSigningTimestampDigestAlgorithm=SHA512 `
-            -p:AppxPackageDir=msix-signed/ `
-            -p:_WinAppSdkValidateAppxManifest=false
-
-          Remove-Item $certPath -Force
-
-      - name: Rename signed MSIX
-        if: env.SIGNING_CERT_BASE64 != ''
-        shell: pwsh
-        env:
-          SIGNING_CERT_BASE64: ${{ secrets.SIGNING_CERT_BASE64 }}
-        run: |
-          $msix = Get-ChildItem -Path msix-signed -Filter "*.msix" -Recurse | Select-Object -First 1
-          if ($msix) {
-            Copy-Item $msix.FullName "Mo-${{ github.ref_name }}-${{ matrix.platform }}.msix"
-          }
+      # MSIX builds disabled: .NET 10 preview + Windows App SDK BuildTools.MSIX
+      # has a System.Security.Permissions compatibility issue.
+      # Build MSIX locally with Visual Studio until SDK is updated.
 
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v2
@@ -101,6 +48,4 @@ jobs:
           tag_name: ${{ github.ref_name }}
           files: |
             Mo-${{ github.ref_name }}-${{ matrix.platform }}.zip
-            Mo-${{ github.ref_name }}-${{ matrix.platform }}-unsigned.msix
-            Mo-${{ github.ref_name }}-${{ matrix.platform }}.msix
           generate_release_notes: true
