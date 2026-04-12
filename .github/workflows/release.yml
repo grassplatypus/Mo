@@ -31,15 +31,85 @@ jobs:
           (Get-Content src/Mo/Package.appxmanifest) -replace 'Version="[\d.]+"', "Version=`"$version`"" |
             Set-Content src/Mo/Package.appxmanifest
 
+      - name: Restore packages
+        run: dotnet restore src/Mo/Mo.csproj -p:Platform=${{ matrix.platform }}
+
+      - name: Fix MSIX BuildTools .NET 10 compatibility
+        shell: pwsh
+        run: |
+          # Copy System.Security.Permissions.dll to MSIX BuildTools task directory
+          $permPkg = Get-ChildItem -Path "$env:USERPROFILE\.nuget\packages\system.security.permissions" -Directory | Sort-Object Name -Descending | Select-Object -First 1
+          $msixPkg = Get-ChildItem -Path "$env:USERPROFILE\.nuget\packages\microsoft.windows.sdk.buildtools.msix" -Directory | Sort-Object Name -Descending | Select-Object -First 1
+          if ($permPkg -and $msixPkg) {
+            $dll = Get-ChildItem -Path $permPkg.FullName -Filter "System.Security.Permissions.dll" -Recurse |
+              Where-Object { $_.DirectoryName -match "net[0-9]" } | Select-Object -First 1
+            $taskDir = Join-Path $msixPkg.FullName "build"
+            if ($dll -and (Test-Path $taskDir)) {
+              Copy-Item $dll.FullName $taskDir -Force
+              Write-Host "Copied $($dll.FullName) to $taskDir"
+            }
+          }
+
       - name: Publish (portable)
         run: dotnet publish src/Mo/Mo.csproj -c Release -p:Platform=${{ matrix.platform }} -p:PublishReadyToRun=true -p:PublishTrimmed=true -p:WindowsPackageType=None -p:EnableMsixTooling=false -o publish/${{ matrix.platform }}
 
       - name: Create ZIP
         run: Compress-Archive -Path publish/${{ matrix.platform }}/* -DestinationPath Mo-${{ github.ref_name }}-${{ matrix.platform }}.zip
 
-      # MSIX builds disabled: .NET 10 preview + Windows App SDK BuildTools.MSIX
-      # has a System.Security.Permissions compatibility issue.
-      # Build MSIX locally with Visual Studio until SDK is updated.
+      # Unsigned MSIX
+      - name: Build MSIX (unsigned)
+        shell: pwsh
+        run: |
+          dotnet build src/Mo/Mo.csproj -c Release `
+            -p:Platform=${{ matrix.platform }} `
+            -p:GenerateAppxPackageOnBuild=true `
+            -p:AppxBundle=Never `
+            -p:AppxPackageSigningEnabled=false `
+            -p:AppxPackageDir=msix-unsigned/
+
+      - name: Rename unsigned MSIX
+        shell: pwsh
+        run: |
+          $msix = Get-ChildItem -Path msix-unsigned -Filter "*.msix" -Recurse | Select-Object -First 1
+          if ($msix) {
+            Copy-Item $msix.FullName "Mo-${{ github.ref_name }}-${{ matrix.platform }}-unsigned.msix"
+          }
+
+      # Signed MSIX
+      - name: Build and sign MSIX
+        if: env.SIGNING_CERT_BASE64 != ''
+        shell: pwsh
+        env:
+          SIGNING_CERT_BASE64: ${{ secrets.SIGNING_CERT_BASE64 }}
+          SIGNING_CERT_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
+        run: |
+          $certBytes = [Convert]::FromBase64String($env:SIGNING_CERT_BASE64)
+          $certPath = Join-Path $env:RUNNER_TEMP "signing_cert.pfx"
+          [IO.File]::WriteAllBytes($certPath, $certBytes)
+
+          dotnet build src/Mo/Mo.csproj -c Release `
+            -p:Platform=${{ matrix.platform }} `
+            -p:GenerateAppxPackageOnBuild=true `
+            -p:AppxBundle=Never `
+            -p:AppxPackageSigningEnabled=true `
+            -p:PackageCertificateKeyFile=$certPath `
+            -p:PackageCertificatePassword=$env:SIGNING_CERT_PASSWORD `
+            -p:AppxPackageSigningTimestampServerUrl=http://timestamp.digicert.com `
+            -p:AppxPackageSigningTimestampDigestAlgorithm=SHA512 `
+            -p:AppxPackageDir=msix-signed/
+
+          Remove-Item $certPath -Force
+
+      - name: Rename signed MSIX
+        if: env.SIGNING_CERT_BASE64 != ''
+        shell: pwsh
+        env:
+          SIGNING_CERT_BASE64: ${{ secrets.SIGNING_CERT_BASE64 }}
+        run: |
+          $msix = Get-ChildItem -Path msix-signed -Filter "*.msix" -Recurse | Select-Object -First 1
+          if ($msix) {
+            Copy-Item $msix.FullName "Mo-${{ github.ref_name }}-${{ matrix.platform }}.msix"
+          }
 
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v2
@@ -48,4 +118,6 @@ jobs:
           tag_name: ${{ github.ref_name }}
           files: |
             Mo-${{ github.ref_name }}-${{ matrix.platform }}.zip
+            Mo-${{ github.ref_name }}-${{ matrix.platform }}-unsigned.msix
+            Mo-${{ github.ref_name }}-${{ matrix.platform }}.msix
           generate_release_notes: true
