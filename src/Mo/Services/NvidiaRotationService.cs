@@ -112,8 +112,12 @@ public sealed class NvidiaRotationService
             }
 
             // Remove paths for monitors that should be disabled
+            // Auto-disable if profile has fewer enabled monitors than currently active
+            bool shouldDisableUnmatched = profile.UnmatchedAction == UnmatchedMonitorAction.Disable ||
+                profile.Monitors.Count(m => m.IsEnabled) < currentPaths.Length;
+
             var finalPaths = currentPaths.AsEnumerable();
-            if (profile.UnmatchedAction == UnmatchedMonitorAction.Disable)
+            if (shouldDisableUnmatched)
             {
                 finalPaths = currentPaths.Where(path =>
                     path.TargetsInfo.Any(t => usedDisplayIds.Contains(t.DisplayDevice.DisplayId)));
