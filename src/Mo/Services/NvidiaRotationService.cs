@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Mo.Core.DisplayConfiguration;
 using Mo.Interop.DisplayConfig;
 using Mo.Models;
@@ -32,31 +33,14 @@ public sealed class NvidiaRotationService
 
         try
         {
-            // Get current NVAPI display config
-            var currentPaths = PathInfo.GetDisplaysConfig();
-
-            // Get all connected devices (active + inactive)
             var gpu = PhysicalGPU.GetPhysicalGPUs().FirstOrDefault();
             if (gpu == null) return false;
 
             var allConnected = gpu.GetConnectedDisplayDevices(ConnectedIdsFlag.None);
+            var currentPaths = PathInfo.GetDisplaysConfig();
 
-            // Build lookup: active displays by NVAPI DisplayId
-            var activeTargets = new Dictionary<uint, PathTargetInfo>();
-            var activePathsByTarget = new Dictionary<uint, PathInfo>();
-            foreach (var path in currentPaths)
-            {
-                foreach (var target in path.TargetsInfo)
-                {
-                    activeTargets.TryAdd(target.DisplayDevice.DisplayId, target);
-                    activePathsByTarget.TryAdd(target.DisplayDevice.DisplayId, path);
-                }
-            }
-
-            // Match profile monitors to NVAPI displays using CCD identity bridge
-            // CCD ALL_PATHS gives us (CCD TargetId → EDID/name), and we match EDID/name to profile monitors
-            // Then we find which NVAPI DisplayDevice corresponds by checking active paths
-            var ccdToNvapi = BuildCcdToNvapiMap(allConnected, activeTargets);
+            // Build NVAPI DisplayId → CCD EDID map via GDI device name bridge
+            var nvapiToCcdEdid = BuildNvapiToEdidMap(allConnected, currentPaths);
 
             var newPaths = new List<PathInfo>();
             var usedDisplayIds = new HashSet<uint>();
@@ -65,46 +49,35 @@ public sealed class NvidiaRotationService
             {
                 if (!pm.IsEnabled) continue;
 
-                // Find NVAPI display for this profile monitor
-                DisplayDevice? device = null;
+                DisplayDevice? matchedDevice = null;
 
-                // Try matching via CCD bridge
-                foreach (var (ccdTargetId, nvapiDisplayId) in ccdToNvapi)
+                foreach (var device in allConnected)
                 {
-                    if (usedDisplayIds.Contains(nvapiDisplayId)) continue;
+                    if (usedDisplayIds.Contains(device.DisplayId)) continue;
 
-                    // Check if this CCD target matches the profile monitor
-                    var ccdInfo = GetCcdTargetInfo(ccdTargetId);
-                    if (ccdInfo == null) continue;
-
-                    bool nameMatch = !string.IsNullOrEmpty(pm.FriendlyName) &&
-                                     !string.IsNullOrEmpty(ccdInfo.Value.name) &&
-                                     ccdInfo.Value.name.Contains(pm.FriendlyName, StringComparison.OrdinalIgnoreCase);
-                    bool edidMatch = pm.EdidManufacturerId != 0 &&
-                                     ccdInfo.Value.mfrId == pm.EdidManufacturerId &&
-                                     ccdInfo.Value.prodId == pm.EdidProductCodeId;
-                    bool pathMatch = !string.IsNullOrEmpty(pm.DevicePath) &&
-                                     pm.DevicePath == ccdInfo.Value.devicePath;
-
-                    if (pathMatch || edidMatch || nameMatch)
+                    if (nvapiToCcdEdid.TryGetValue(device.DisplayId, out var edid))
                     {
-                        // Find the DisplayDevice with this NVAPI ID
-                        foreach (var d in allConnected)
+                        bool pathMatch = !string.IsNullOrEmpty(pm.DevicePath) &&
+                                         pm.DevicePath == edid.devicePath;
+                        bool edidMatch = pm.EdidManufacturerId != 0 &&
+                                         edid.mfrId == pm.EdidManufacturerId &&
+                                         edid.prodId == pm.EdidProductCodeId;
+                        bool nameMatch = !string.IsNullOrEmpty(pm.FriendlyName) &&
+                                         !string.IsNullOrEmpty(edid.name) &&
+                                         edid.name.Contains(pm.FriendlyName, StringComparison.OrdinalIgnoreCase);
+
+                        if (pathMatch || edidMatch || nameMatch)
                         {
-                            if (d.DisplayId == nvapiDisplayId)
-                            { device = d; break; }
-                        }
-                        if (device != null)
-                        {
-                            usedDisplayIds.Add(nvapiDisplayId);
+                            matchedDevice = device;
                             break;
                         }
                     }
                 }
 
-                if (device == null) continue;
+                if (matchedDevice == null) continue;
+                usedDisplayIds.Add(matchedDevice.DisplayId);
 
-                var targetInfo = new PathTargetInfo(device);
+                var targetInfo = new PathTargetInfo(matchedDevice);
                 targetInfo.Rotation = pm.Rotation switch
                 {
                     DisplayRotation.Rotate90 => Rotate.Degree90,
@@ -113,7 +86,6 @@ public sealed class NvidiaRotationService
                     _ => Rotate.Degree0,
                 };
 
-                // Use native (unrotated) resolution for NVAPI
                 var w = pm.Width;
                 var h = pm.Height;
                 if (pm.Rotation is DisplayRotation.Rotate90 or DisplayRotation.Rotate270)
@@ -127,7 +99,6 @@ public sealed class NvidiaRotationService
                     [targetInfo]));
             }
 
-            // Keep unmatched active monitors if UnmatchedAction == Keep
             if (profile.UnmatchedAction == UnmatchedMonitorAction.Keep)
             {
                 foreach (var path in currentPaths)
@@ -157,18 +128,18 @@ public sealed class NvidiaRotationService
 
         try
         {
+            var gpu = PhysicalGPU.GetPhysicalGPUs().FirstOrDefault();
+            if (gpu == null) return false;
+
+            var allConnected = gpu.GetConnectedDisplayDevices(ConnectedIdsFlag.None);
             var currentPaths = PathInfo.GetDisplaysConfig();
-            var ccdToNvapi = BuildCcdToNvapiMap(
-                PhysicalGPU.GetPhysicalGPUs().First().GetConnectedDisplayDevices(ConnectedIdsFlag.None),
-                currentPaths.SelectMany(p => p.TargetsInfo).ToDictionary(t => t.DisplayDevice.DisplayId, t => t));
+            var nvapiToCcdEdid = BuildNvapiToEdidMap(allConnected, currentPaths);
 
             uint? targetNvapiId = null;
-            foreach (var (ccdTargetId, nvapiId) in ccdToNvapi)
+            foreach (var (nvapiId, edid) in nvapiToCcdEdid)
             {
-                var info = GetCcdTargetInfo(ccdTargetId);
-                if (info == null) continue;
-                if (info.Value.devicePath == monitor.DevicePath ||
-                    (monitor.EdidManufacturerId != 0 && info.Value.mfrId == monitor.EdidManufacturerId && info.Value.prodId == monitor.EdidProductCodeId))
+                if (edid.devicePath == monitor.DevicePath ||
+                    (monitor.EdidManufacturerId != 0 && edid.mfrId == monitor.EdidManufacturerId && edid.prodId == monitor.EdidProductCodeId))
                 {
                     targetNvapiId = nvapiId;
                     break;
@@ -201,76 +172,120 @@ public sealed class NvidiaRotationService
         catch { return false; }
     }
 
-    // Bridge between CCD target IDs and NVAPI DisplayIds
-    // Uses the adapter LUID + source ID overlap between CCD and NVAPI
-    private static Dictionary<uint, uint> BuildCcdToNvapiMap(
-        DisplayDevice[] allConnected, Dictionary<uint, PathTargetInfo> activeTargets)
+    /// <summary>
+    /// Maps NVAPI DisplayId → CCD EDID info using GDI device name as bridge.
+    /// Active displays: CCD source → GDI name (\\.\DISPLAY1) → NVAPI Display.Name
+    /// Inactive displays: matched by exclusion after active matching
+    /// </summary>
+    private static Dictionary<uint, (string devicePath, ushort mfrId, ushort prodId, uint connector, string name)>
+        BuildNvapiToEdidMap(DisplayDevice[] allConnected, PathInfo[] currentPaths)
     {
-        var map = new Dictionary<uint, uint>();
+        var map = new Dictionary<uint, (string, ushort, ushort, uint, string)>();
         try
         {
+            // Step 1: Get all CCD target info (EDID)
             int r = NativeDisplayApi.GetDisplayConfigBufferSizes(
                 QDC_FLAGS.QDC_ALL_PATHS, out uint pc, out uint mc);
             if (r != NativeDisplayApi.ERROR_SUCCESS) return map;
 
             var paths = new DISPLAYCONFIG_PATH_INFO[pc];
             var modes = new DISPLAYCONFIG_MODE_INFO[mc];
-            r = NativeDisplayApi.QueryDisplayConfig(
-                QDC_FLAGS.QDC_ALL_PATHS, ref pc, paths, ref mc, modes, IntPtr.Zero);
+            r = NativeDisplayApi.QueryDisplayConfig(QDC_FLAGS.QDC_ALL_PATHS, ref pc, paths, ref mc, modes, IntPtr.Zero);
             if (r != NativeDisplayApi.ERROR_SUCCESS) return map;
 
-            // For each CCD target, try to find the NVAPI display
-            // Strategy: match by iterating connected devices in order
-            // (CCD and NVAPI typically enumerate in the same order)
-            var ccdTargets = new List<uint>();
-            var seen = new HashSet<uint>();
+            // Step 2: Build CCD source GDI name → target EDID map (for active paths)
+            var gdiToEdid = new Dictionary<string, (uint targetId, string devicePath, ushort mfrId, ushort prodId, uint connector, string name)>();
+
+            // Get active paths for GDI name lookup
+            NativeDisplayApi.GetDisplayConfigBufferSizes(QDC_FLAGS.QDC_ONLY_ACTIVE_PATHS, out uint apc, out uint amc);
+            var aPaths = new DISPLAYCONFIG_PATH_INFO[apc];
+            var aModes = new DISPLAYCONFIG_MODE_INFO[amc];
+            NativeDisplayApi.QueryDisplayConfig(QDC_FLAGS.QDC_ONLY_ACTIVE_PATHS, ref apc, aPaths, ref amc, aModes, IntPtr.Zero);
+
+            for (int i = 0; i < apc; i++)
+            {
+                // Get GDI device name for this source
+                var srcName = new DISPLAYCONFIG_SOURCE_DEVICE_NAME();
+                srcName.header.type = DISPLAYCONFIG_DEVICE_INFO_TYPE.DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
+                srcName.header.size = (uint)Marshal.SizeOf<DISPLAYCONFIG_SOURCE_DEVICE_NAME>();
+                srcName.header.adapterId = aPaths[i].sourceInfo.adapterId;
+                srcName.header.id = aPaths[i].sourceInfo.id;
+
+                if (NativeDisplayApi.DisplayConfigGetDeviceInfo(ref srcName) != NativeDisplayApi.ERROR_SUCCESS)
+                    continue;
+
+                // Get target EDID for this path
+                var tgtName = new DISPLAYCONFIG_TARGET_DEVICE_NAME();
+                tgtName.header.type = DISPLAYCONFIG_DEVICE_INFO_TYPE.DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME;
+                tgtName.header.size = (uint)Marshal.SizeOf<DISPLAYCONFIG_TARGET_DEVICE_NAME>();
+                tgtName.header.adapterId = aPaths[i].targetInfo.adapterId;
+                tgtName.header.id = aPaths[i].targetInfo.id;
+
+                if (NativeDisplayApi.DisplayConfigGetDeviceInfo(ref tgtName) != NativeDisplayApi.ERROR_SUCCESS)
+                    continue;
+
+                var gdiName = srcName.viewGdiDeviceName?.TrimEnd('\0') ?? "";
+                if (!string.IsNullOrEmpty(gdiName))
+                {
+                    gdiToEdid[gdiName] = (aPaths[i].targetInfo.id,
+                        tgtName.monitorDevicePath ?? "", tgtName.edidManufactureId,
+                        tgtName.edidProductCodeId, tgtName.connectorInstance,
+                        tgtName.monitorFriendlyDeviceName ?? "");
+                }
+            }
+
+            // Step 3: Match NVAPI active displays by GDI name
+            var matchedCcdTargetIds = new HashSet<uint>();
+            var nvapiDisplays = NvAPIWrapper.Display.Display.GetDisplays();
+            foreach (var display in nvapiDisplays)
+            {
+                var nvapiName = display.Name?.TrimEnd('\0') ?? "";
+                if (gdiToEdid.TryGetValue(nvapiName, out var edid))
+                {
+                    map[display.DisplayDevice.DisplayId] = (edid.devicePath, edid.mfrId, edid.prodId, edid.connector, edid.name);
+                    matchedCcdTargetIds.Add(edid.targetId);
+                }
+            }
+
+            // Step 4: Match remaining (inactive) by exclusion
+            // Get all CCD targets with EDID
+            var allCcdEdids = new List<(uint targetId, string devicePath, ushort mfrId, ushort prodId, uint connector, string name)>();
+            var seenTargets = new HashSet<uint>();
             for (int i = 0; i < pc; i++)
             {
                 var tid = paths[i].targetInfo.id;
-                if (seen.Add(tid))
-                    ccdTargets.Add(tid);
+                if (!seenTargets.Add(tid)) continue;
+
+                var dn = new DISPLAYCONFIG_TARGET_DEVICE_NAME();
+                dn.header.type = DISPLAYCONFIG_DEVICE_INFO_TYPE.DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME;
+                dn.header.size = (uint)Marshal.SizeOf<DISPLAYCONFIG_TARGET_DEVICE_NAME>();
+                dn.header.adapterId = paths[i].targetInfo.adapterId;
+                dn.header.id = tid;
+
+                if (NativeDisplayApi.DisplayConfigGetDeviceInfo(ref dn) == NativeDisplayApi.ERROR_SUCCESS &&
+                    !string.IsNullOrEmpty(dn.monitorDevicePath))
+                {
+                    allCcdEdids.Add((tid, dn.monitorDevicePath, dn.edidManufactureId,
+                        dn.edidProductCodeId, dn.connectorInstance, dn.monitorFriendlyDeviceName ?? ""));
+                }
             }
 
-            // Simple order-based mapping: CCD targets and NVAPI connected devices
-            // are typically enumerated in the same order by the driver
-            for (int i = 0; i < Math.Min(ccdTargets.Count, allConnected.Length); i++)
+            var unmatchedCcdEdids = allCcdEdids.Where(e => !matchedCcdTargetIds.Contains(e.targetId)).ToList();
+            var unmatchedNvapiDevices = allConnected.Where(d => !map.ContainsKey(d.DisplayId)).ToList();
+
+            // Match unmatched by EDID uniqueness
+            foreach (var nvapiDevice in unmatchedNvapiDevices)
             {
-                map[ccdTargets[i]] = allConnected[i].DisplayId;
+                if (unmatchedCcdEdids.Count == 1)
+                {
+                    map[nvapiDevice.DisplayId] = (unmatchedCcdEdids[0].devicePath, unmatchedCcdEdids[0].mfrId,
+                        unmatchedCcdEdids[0].prodId, unmatchedCcdEdids[0].connector, unmatchedCcdEdids[0].name);
+                    unmatchedCcdEdids.RemoveAt(0);
+                    break;
+                }
             }
         }
         catch { }
         return map;
-    }
-
-    private static (string devicePath, ushort mfrId, ushort prodId, uint connector, string name)? GetCcdTargetInfo(uint ccdTargetId)
-    {
-        try
-        {
-            int r = NativeDisplayApi.GetDisplayConfigBufferSizes(
-                QDC_FLAGS.QDC_ALL_PATHS, out uint pc, out uint mc);
-            if (r != NativeDisplayApi.ERROR_SUCCESS) return null;
-
-            var paths = new DISPLAYCONFIG_PATH_INFO[pc];
-            var modes = new DISPLAYCONFIG_MODE_INFO[mc];
-            r = NativeDisplayApi.QueryDisplayConfig(
-                QDC_FLAGS.QDC_ALL_PATHS, ref pc, paths, ref mc, modes, IntPtr.Zero);
-            if (r != NativeDisplayApi.ERROR_SUCCESS) return null;
-
-            for (int i = 0; i < pc; i++)
-            {
-                if (paths[i].targetInfo.id != ccdTargetId) continue;
-
-                var dn = new DISPLAYCONFIG_TARGET_DEVICE_NAME();
-                dn.header.type = DISPLAYCONFIG_DEVICE_INFO_TYPE.DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME;
-                dn.header.size = (uint)System.Runtime.InteropServices.Marshal.SizeOf<DISPLAYCONFIG_TARGET_DEVICE_NAME>();
-                dn.header.adapterId = paths[i].targetInfo.adapterId;
-                dn.header.id = ccdTargetId;
-                if (NativeDisplayApi.DisplayConfigGetDeviceInfo(ref dn) == NativeDisplayApi.ERROR_SUCCESS)
-                    return (dn.monitorDevicePath ?? "", dn.edidManufactureId, dn.edidProductCodeId, dn.connectorInstance, dn.monitorFriendlyDeviceName ?? "");
-                break;
-            }
-        }
-        catch { }
-        return null;
     }
 }
