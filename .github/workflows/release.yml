@@ -32,8 +32,8 @@ jobs:
         run: |
           $version = "${{ github.ref_name }}".TrimStart("v")
           if ($version -notmatch '^\d+\.\d+\.\d+\.\d+$') { $version = "$version.0" }
-          (Get-Content src/Mo/Package.appxmanifest) -replace 'Version="[\d.]+"', "Version=`"$version`"" |
-            Set-Content src/Mo/Package.appxmanifest
+          (Get-Content src/Mo/Package.appxmanifest -Raw) -replace 'Version="[\d.]+"', "Version=`"$version`"" |
+            Set-Content src/Mo/Package.appxmanifest -Encoding UTF8 -NoNewline
 
       - name: Restore
         run: dotnet restore src/Mo/Mo.csproj -p:Platform=${{ matrix.platform }}
