@@ -135,18 +135,23 @@ public sealed class NvidiaRotationService
                     catch (Exception ex) { Log($"Full config restore failed: {ex.Message}"); }
                 }
 
-                // Fallback 2: CCD topology extend
+                // Fallback 2: Windows Shell displayswitch (works with NVIDIA)
                 if (currentPaths.Length < enabledInProfile)
                 {
-                    Log("Trying CCD topology extend...");
-                    NativeDisplayApi.SetDisplayConfig(0, null, 0, null,
-                        Interop.DisplayConfig.SDC_FLAGS.SDC_TOPOLOGY_EXTEND |
-                        Interop.DisplayConfig.SDC_FLAGS.SDC_APPLY |
-                        Interop.DisplayConfig.SDC_FLAGS.SDC_ALLOW_CHANGES |
-                        Interop.DisplayConfig.SDC_FLAGS.SDC_SAVE_TO_DATABASE);
-                    Thread.Sleep(1500);
-                    currentPaths = PathInfo.GetDisplaysConfig();
-                    Log($"After CCD extend: {currentPaths.Length} paths");
+                    Log("Trying displayswitch.exe /extend...");
+                    try
+                    {
+                        var psi = new System.Diagnostics.ProcessStartInfo("displayswitch.exe", "/extend")
+                        {
+                            UseShellExecute = true,
+                            WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden,
+                        };
+                        System.Diagnostics.Process.Start(psi);
+                        Thread.Sleep(2000);
+                        currentPaths = PathInfo.GetDisplaysConfig();
+                        Log($"After displayswitch: {currentPaths.Length} paths");
+                    }
+                    catch (Exception ex) { Log($"displayswitch failed: {ex.Message}"); }
                 }
             }
 

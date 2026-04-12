@@ -405,20 +405,20 @@ public sealed class DisplayService : IDisplayService
         NativeDisplayApi.SetCursorPos(cx, cy);
         NativeDisplayApi.ClipCursor(IntPtr.Zero);
 
-        // Force coordinate recalculation via simulated mouse movement
+        // Simulate mouse movement to force coordinate recalculation
         var input = new NativeDisplayApi.INPUT
         {
             type = NativeDisplayApi.INPUT_MOUSE,
             mi = new NativeDisplayApi.MOUSEINPUT
             {
-                dx = 1, dy = 1,
+                dx = 10, dy = 10,
                 dwFlags = NativeDisplayApi.MOUSEEVENTF_MOVE,
             }
         };
-        NativeDisplayApi.SendInput(1, [input], System.Runtime.InteropServices.Marshal.SizeOf<NativeDisplayApi.INPUT>());
+        NativeDisplayApi.SendInput(1, [input], Marshal.SizeOf<NativeDisplayApi.INPUT>());
         Thread.Sleep(50);
-        input.mi.dx = -1; input.mi.dy = -1;
-        NativeDisplayApi.SendInput(1, [input], System.Runtime.InteropServices.Marshal.SizeOf<NativeDisplayApi.INPUT>());
+        input.mi.dx = -10; input.mi.dy = -10;
+        NativeDisplayApi.SendInput(1, [input], Marshal.SizeOf<NativeDisplayApi.INPUT>());
     }
 
     private static Models.DisplayRotation MapRotation(DISPLAYCONFIG_ROTATION rotation) => rotation switch
