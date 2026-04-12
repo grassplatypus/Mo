@@ -39,6 +39,9 @@ public sealed class NvidiaRotationService
         catch { }
     }
 
+    // Cache of NVAPI PathInfo per display (saved when all monitors are active)
+    private static readonly Dictionary<uint, PathInfo> _pathCache = new();
+
     public bool ApplyFullProfile(DisplayProfile profile)
     {
         if (!IsAvailable) { Log("NVAPI not available"); return false; }
@@ -56,26 +59,62 @@ public sealed class NvidiaRotationService
             var currentPaths = PathInfo.GetDisplaysConfig();
             Log($"Current NVAPI paths: {currentPaths.Length}");
 
+            // Cache all active paths for later re-activation
+            foreach (var path in currentPaths)
+                foreach (var target in path.TargetsInfo)
+                    _pathCache[target.DisplayDevice.DisplayId] = path;
+
             var nvapiToCcdEdid = BuildNvapiToEdidMap(allConnected, currentPaths);
             Log($"NVAPI→CCD map entries: {nvapiToCcdEdid.Count}");
             foreach (var (id, edid) in nvapiToCcdEdid)
                 Log($"  NvapiId={id} → name={edid.Item5} mfr=0x{edid.Item2:X4} prod=0x{edid.Item3:X4}");
 
-            // If profile needs MORE monitors than currently active, extend topology first
+            // If profile needs MORE monitors than currently active, try to restore from cache
             int enabledInProfile = profile.Monitors.Count(m => m.IsEnabled);
             if (enabledInProfile > currentPaths.Length)
             {
-                Log($"Need {enabledInProfile} monitors, have {currentPaths.Length} active. Extending topology...");
-                NativeDisplayApi.SetDisplayConfig(0, null, 0, null,
-                    Interop.DisplayConfig.SDC_FLAGS.SDC_TOPOLOGY_EXTEND |
-                    Interop.DisplayConfig.SDC_FLAGS.SDC_APPLY |
-                    Interop.DisplayConfig.SDC_FLAGS.SDC_ALLOW_CHANGES |
-                    Interop.DisplayConfig.SDC_FLAGS.SDC_SAVE_TO_DATABASE);
-                Thread.Sleep(1500);
+                Log($"Need {enabledInProfile} monitors, have {currentPaths.Length} active.");
 
-                // Re-read NVAPI config after topology change
-                currentPaths = PathInfo.GetDisplaysConfig();
-                Log($"After extend: {currentPaths.Length} paths");
+                // Try restoring inactive monitors from cached PathInfo
+                var restoredPaths = new List<PathInfo>(currentPaths);
+                foreach (var device in allConnected)
+                {
+                    if (device.IsActive) continue;
+                    if (_pathCache.TryGetValue(device.DisplayId, out var cachedPath))
+                    {
+                        Log($"  Restoring cached path for DisplayId={device.DisplayId}");
+                        restoredPaths.Add(cachedPath);
+                    }
+                }
+
+                if (restoredPaths.Count > currentPaths.Length)
+                {
+                    try
+                    {
+                        PathInfo.SetDisplaysConfig(restoredPaths.ToArray(), DisplayConfigFlags.DriverReloadAllowed);
+                        Thread.Sleep(1000);
+                        currentPaths = PathInfo.GetDisplaysConfig();
+                        Log($"After restore: {currentPaths.Length} paths");
+                    }
+                    catch (Exception ex)
+                    {
+                        Log($"Restore failed: {ex.Message}");
+                    }
+                }
+
+                // Fallback: CCD topology extend
+                if (currentPaths.Length < enabledInProfile)
+                {
+                    Log("Trying CCD topology extend...");
+                    NativeDisplayApi.SetDisplayConfig(0, null, 0, null,
+                        Interop.DisplayConfig.SDC_FLAGS.SDC_TOPOLOGY_EXTEND |
+                        Interop.DisplayConfig.SDC_FLAGS.SDC_APPLY |
+                        Interop.DisplayConfig.SDC_FLAGS.SDC_ALLOW_CHANGES |
+                        Interop.DisplayConfig.SDC_FLAGS.SDC_SAVE_TO_DATABASE);
+                    Thread.Sleep(1500);
+                    currentPaths = PathInfo.GetDisplaysConfig();
+                    Log($"After CCD extend: {currentPaths.Length} paths");
+                }
             }
 
             // Modify existing paths in-place

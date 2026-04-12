@@ -59,4 +59,99 @@ public static class NativeDisplayApi
     public const uint SPIF_SENDCHANGE = 0x02;
     public const int SM_CXSCREEN = 0;
     public const int SM_CYSCREEN = 1;
+
+    // ChangeDisplaySettingsEx (legacy GDI)
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern int ChangeDisplaySettingsEx(
+        string? lpszDeviceName, ref DEVMODE lpDevMode, IntPtr hwnd, uint dwflags, IntPtr lParam);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern int ChangeDisplaySettingsEx(
+        string? lpszDeviceName, IntPtr lpDevMode, IntPtr hwnd, uint dwflags, IntPtr lParam);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern bool EnumDisplayDevices(
+        string? lpDevice, uint iDevNum, ref DISPLAY_DEVICE lpDisplayDevice, uint dwFlags);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern bool EnumDisplaySettings(
+        string lpszDeviceName, int iModeNum, ref DEVMODE lpDevMode);
+
+    public const int ENUM_CURRENT_SETTINGS = -1;
+    public const uint CDS_UPDATEREGISTRY = 0x01;
+    public const uint CDS_NORESET = 0x10000000;
+    public const uint CDS_RESET = 0x40000000;
+    public const int DISP_CHANGE_SUCCESSFUL = 0;
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    public struct DEVMODE
+    {
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+        public string dmDeviceName;
+        public ushort dmSpecVersion;
+        public ushort dmDriverVersion;
+        public ushort dmSize;
+        public ushort dmDriverExtra;
+        public uint dmFields;
+        public int dmPositionX;
+        public int dmPositionY;
+        public uint dmDisplayOrientation;
+        public uint dmDisplayFixedOutput;
+        public short dmColor;
+        public short dmDuplex;
+        public short dmYResolution;
+        public short dmTTOption;
+        public short dmCollate;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+        public string dmFormName;
+        public ushort dmLogPixels;
+        public uint dmBitsPerPel;
+        public uint dmPelsWidth;
+        public uint dmPelsHeight;
+        public uint dmDisplayFlags;
+        public uint dmDisplayFrequency;
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    public struct DISPLAY_DEVICE
+    {
+        public uint cb;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+        public string DeviceName;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+        public string DeviceString;
+        public uint StateFlags;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+        public string DeviceID;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+        public string DeviceKey;
+    }
+
+    public const uint DISPLAY_DEVICE_ATTACHED_TO_DESKTOP = 0x01;
+    public const uint DISPLAY_DEVICE_PRIMARY_DEVICE = 0x04;
+
+    // SendInput for cursor unstick
+    [DllImport("user32.dll")]
+    public static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct INPUT
+    {
+        public uint type;
+        public MOUSEINPUT mi;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MOUSEINPUT
+    {
+        public int dx;
+        public int dy;
+        public uint mouseData;
+        public uint dwFlags;
+        public uint time;
+        public IntPtr dwExtraInfo;
+    }
+
+    public const uint INPUT_MOUSE = 0;
+    public const uint MOUSEEVENTF_MOVE = 0x0001;
 }
