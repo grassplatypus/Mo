@@ -27,20 +27,39 @@ public sealed class NvidiaRotationService
         }
     }
 
+    private static void Log(string msg)
+    {
+        try
+        {
+            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Mo", "logs");
+            Directory.CreateDirectory(dir);
+            File.AppendAllText(Path.Combine(dir, "nvapi_debug.log"),
+                $"[{DateTime.Now:HH:mm:ss.fff}] {msg}\n");
+        }
+        catch { }
+    }
+
     public bool ApplyFullProfile(DisplayProfile profile)
     {
-        if (!IsAvailable) return false;
+        if (!IsAvailable) { Log("NVAPI not available"); return false; }
 
         try
         {
             var gpu = PhysicalGPU.GetPhysicalGPUs().FirstOrDefault();
-            if (gpu == null) return false;
+            if (gpu == null) { Log("No GPU found"); return false; }
 
             var allConnected = gpu.GetConnectedDisplayDevices(ConnectedIdsFlag.UnCached);
-            var currentPaths = PathInfo.GetDisplaysConfig();
+            Log($"Connected devices: {allConnected.Length}");
+            foreach (var d in allConnected)
+                Log($"  DisplayId={d.DisplayId} IsActive={d.IsActive} IsAvailable={d.IsAvailable}");
 
-            // Build NVAPI DisplayId → CCD EDID map via GDI device name bridge
+            var currentPaths = PathInfo.GetDisplaysConfig();
+            Log($"Current NVAPI paths: {currentPaths.Length}");
+
             var nvapiToCcdEdid = BuildNvapiToEdidMap(allConnected, currentPaths);
+            Log($"NVAPI→CCD map entries: {nvapiToCcdEdid.Count}");
+            foreach (var (id, edid) in nvapiToCcdEdid)
+                Log($"  NvapiId={id} → name={edid.Item5} mfr=0x{edid.Item2:X4} prod=0x{edid.Item3:X4}");
 
             var newPaths = new List<PathInfo>();
             var usedDisplayIds = new HashSet<uint>();
@@ -74,7 +93,12 @@ public sealed class NvidiaRotationService
                     }
                 }
 
-                if (matchedDevice == null) continue;
+                if (matchedDevice == null)
+                {
+                    Log($"  NO MATCH for profile monitor: {pm.FriendlyName} edid=0x{pm.EdidManufacturerId:X4}");
+                    continue;
+                }
+                Log($"  MATCHED: {pm.FriendlyName} → NvapiId={matchedDevice.DisplayId}");
                 usedDisplayIds.Add(matchedDevice.DisplayId);
 
                 var targetInfo = new PathTargetInfo(matchedDevice);
@@ -114,12 +138,22 @@ public sealed class NvidiaRotationService
                 }
             }
 
-            if (newPaths.Count == 0) return false;
+            Log($"Final path count: {newPaths.Count}");
+            if (newPaths.Count == 0) { Log("No paths to apply"); return false; }
 
-            PathInfo.SetDisplaysConfig(newPaths.ToArray(), DisplayConfigFlags.DriverReloadAllowed);
+            try
+            {
+                PathInfo.SetDisplaysConfig(newPaths.ToArray(), DisplayConfigFlags.DriverReloadAllowed);
+                Log("SetDisplaysConfig SUCCESS");
+            }
+            catch (Exception ex)
+            {
+                Log($"SetDisplaysConfig FAILED: {ex.GetType().Name}: {ex.Message}");
+                return false;
+            }
             return true;
         }
-        catch { return false; }
+        catch (Exception ex) { Log($"ApplyFullProfile exception: {ex.GetType().Name}: {ex.Message}"); return false; }
     }
 
     public bool ApplyRotation(MonitorInfo monitor, DisplayRotation rotation)
