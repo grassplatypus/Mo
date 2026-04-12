@@ -37,17 +37,25 @@ jobs:
       - name: Fix MSIX BuildTools .NET 10 compatibility
         shell: pwsh
         run: |
-          # Copy System.Security.Permissions.dll to MSIX BuildTools task directory
-          $permPkg = Get-ChildItem -Path "$env:USERPROFILE\.nuget\packages\system.security.permissions" -Directory | Sort-Object Name -Descending | Select-Object -First 1
-          $msixPkg = Get-ChildItem -Path "$env:USERPROFILE\.nuget\packages\microsoft.windows.sdk.buildtools.msix" -Directory | Sort-Object Name -Descending | Select-Object -First 1
-          if ($permPkg -and $msixPkg) {
-            $dll = Get-ChildItem -Path $permPkg.FullName -Filter "System.Security.Permissions.dll" -Recurse |
-              Where-Object { $_.DirectoryName -match "net[0-9]" } | Select-Object -First 1
-            $taskDir = Join-Path $msixPkg.FullName "build"
-            if ($dll -and (Test-Path $taskDir)) {
-              Copy-Item $dll.FullName $taskDir -Force
-              Write-Host "Copied $($dll.FullName) to $taskDir"
+          $nugetDir = "$env:USERPROFILE\.nuget\packages"
+          $permDll = Get-ChildItem -Path "$nugetDir\system.security.permissions" -Filter "System.Security.Permissions.dll" -Recurse |
+            Where-Object { $_.DirectoryName -match "netstandard|net4|net6|net8" } | Select-Object -First 1
+          $msixTaskDirs = Get-ChildItem -Path "$nugetDir\microsoft.windows.sdk.buildtools.msix" -Directory -Recurse |
+            Where-Object { $_.Name -eq "net472" -or $_.Name -eq "build" }
+          if ($permDll) {
+            foreach ($dir in $msixTaskDirs) {
+              Copy-Item $permDll.FullName $dir.FullName -Force
+              Write-Host "Copied to $($dir.FullName)"
             }
+            # Also copy to MSBuild SDK directory
+            $sdkDir = Split-Path (Get-Command dotnet).Source
+            $msbuildDir = Get-ChildItem -Path $sdkDir -Filter "MSBuild.dll" -Recurse | Select-Object -First 1
+            if ($msbuildDir) {
+              Copy-Item $permDll.FullName $msbuildDir.DirectoryName -Force
+              Write-Host "Copied to MSBuild dir: $($msbuildDir.DirectoryName)"
+            }
+          } else {
+            Write-Host "WARNING: System.Security.Permissions.dll not found"
           }
 
       - name: Publish (portable)
