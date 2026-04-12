@@ -43,9 +43,20 @@ public static class NativeDisplayApi
     public static extern bool PostMessage(
         IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
 
+    [DllImport("user32.dll")]
+    public static extern bool ClipCursor(IntPtr lpRect);
+
+    [DllImport("user32.dll")]
+    public static extern bool SetCursorPos(int x, int y);
+
+    [DllImport("user32.dll")]
+    public static extern int GetSystemMetrics(int nIndex);
+
     public const int ERROR_SUCCESS = 0;
     public static readonly IntPtr HWND_BROADCAST = new(0xffff);
     public const uint WM_DISPLAYCHANGE = 0x007E;
     public const uint SPI_SETWORKAREA = 0x002F;
     public const uint SPIF_SENDCHANGE = 0x02;
+    public const int SM_CXSCREEN = 0;
+    public const int SM_CYSCREEN = 1;
 }

@@ -288,9 +288,16 @@ public sealed class DisplayService : IDisplayService
 
         if (hasRotationChange)
         {
-            Thread.Sleep(200);
+            Thread.Sleep(300);
+            // Release any cursor clipping region that may be stale after rotation
+            NativeDisplayApi.ClipCursor(IntPtr.Zero);
+            // Nudge the coordinate system
             NativeDisplayApi.SystemParametersInfo(
                 NativeDisplayApi.SPI_SETWORKAREA, 0, IntPtr.Zero, NativeDisplayApi.SPIF_SENDCHANGE);
+            // Move cursor to center of primary monitor to unstick it
+            int cx = NativeDisplayApi.GetSystemMetrics(NativeDisplayApi.SM_CXSCREEN) / 2;
+            int cy = NativeDisplayApi.GetSystemMetrics(NativeDisplayApi.SM_CYSCREEN) / 2;
+            NativeDisplayApi.SetCursorPos(cx, cy);
         }
 
         return matchResult.UnmatchedProfile.Count > 0
