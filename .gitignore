@@ -3,6 +3,9 @@ bin/
 obj/
 *.user
 *.suo
+
+## Claude Code (local-only)
+.claude/settings.local.json
 *.userosscache
 *.sln.docstates
 .vs/
