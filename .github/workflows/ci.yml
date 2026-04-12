@@ -24,14 +24,11 @@ jobs:
           dotnet-version: '10.0.x'
           dotnet-quality: 'preview'
 
-      - name: Restore
-        run: dotnet restore src/Mo/Mo.csproj -p:Platform=${{ matrix.platform }}
-
       - name: Build
-        run: dotnet build src/Mo/Mo.csproj -c ${{ matrix.configuration }} -p:Platform=${{ matrix.platform }} --no-restore
+        run: dotnet build src/Mo/Mo.csproj -c ${{ matrix.configuration }} -p:Platform=${{ matrix.platform }}
 
       - name: Test
-        run: dotnet test tests/Mo.Core.Tests/ --no-restore --verbosity normal
+        run: dotnet test tests/Mo.Core.Tests/ --verbosity normal
 
   test:
     runs-on: windows-latest
