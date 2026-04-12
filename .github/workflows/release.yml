@@ -38,18 +38,18 @@ jobs:
       - name: Patch BuildTools.MSIX for .NET 10
         shell: pwsh
         run: |
-          # Find Microsoft.Build.Msix.dll (the MSBuild task assembly)
-          $taskDll = Get-ChildItem "$env:USERPROFILE\.nuget\packages\microsoft.windows.sdk.buildtools.msix" `
-            -Filter "Microsoft.Build.Msix.dll" -Recurse | Select-Object -First 1
-          # Find System.Security.Permissions.dll (net462 version for MSBuild compatibility)
           $permDll = Get-ChildItem "$env:USERPROFILE\.nuget\packages\system.security.permissions" `
             -Filter "System.Security.Permissions.dll" -Recurse |
             Where-Object { $_.DirectoryName -match "net[46]" } | Select-Object -First 1
-          if ($taskDll -and $permDll) {
-            Copy-Item $permDll.FullName $taskDll.DirectoryName -Force
-            Write-Host "OK: Copied $($permDll.FullName) → $($taskDll.DirectoryName)"
+          $taskDlls = Get-ChildItem "$env:USERPROFILE\.nuget\packages\microsoft.windows.sdk.buildtools.msix" `
+            -Filter "Microsoft.Build.Msix.dll" -Recurse
+          if ($permDll -and $taskDlls) {
+            foreach ($t in $taskDlls) {
+              Copy-Item $permDll.FullName $t.DirectoryName -Force
+              Write-Host "Patched: $($t.DirectoryName)"
+            }
           } else {
-            Write-Host "WARN: taskDll=$taskDll permDll=$permDll"
+            Write-Host "WARN: permDll=$permDll taskCount=$($taskDlls.Count)"
           }
 
       # ZIP (portable)
