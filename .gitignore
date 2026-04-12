@@ -21,6 +21,7 @@ obj/
 *.msix
 *.msixbundle
 *.msixupload
+*.pfx
 AppPackages/
 BundleArtifacts/
 
