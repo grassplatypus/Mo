@@ -111,12 +111,45 @@ public sealed class NvidiaRotationService
                 }
             }
 
-            Log($"Modified: {modified}, Paths: {currentPaths.Length}");
-            if (!modified) { Log("Nothing to modify"); return false; }
+            // Remove paths for monitors that should be disabled
+            var finalPaths = currentPaths.AsEnumerable();
+            if (profile.UnmatchedAction == UnmatchedMonitorAction.Disable)
+            {
+                finalPaths = currentPaths.Where(path =>
+                    path.TargetsInfo.Any(t => usedDisplayIds.Contains(t.DisplayDevice.DisplayId)));
+                Log($"Disable unmatched: keeping {finalPaths.Count()} of {currentPaths.Length} paths");
+            }
+
+            // Also remove paths for profile monitors with IsEnabled=false
+            var disabledProfileDisplayIds = new HashSet<uint>();
+            foreach (var pm in profile.Monitors.Where(m => !m.IsEnabled))
+            {
+                foreach (var device in allConnected)
+                {
+                    if (!nvapiToCcdEdid.TryGetValue(device.DisplayId, out var edid)) continue;
+                    if ((pm.EdidManufacturerId != 0 && edid.mfrId == pm.EdidManufacturerId && edid.prodId == pm.EdidProductCodeId) ||
+                        (!string.IsNullOrEmpty(pm.FriendlyName) && edid.name.Contains(pm.FriendlyName, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        disabledProfileDisplayIds.Add(device.DisplayId);
+                        Log($"  Disabling: {pm.FriendlyName} NvapiId={device.DisplayId}");
+                    }
+                }
+            }
+            if (disabledProfileDisplayIds.Count > 0)
+            {
+                finalPaths = finalPaths.Where(path =>
+                    !path.TargetsInfo.Any(t => disabledProfileDisplayIds.Contains(t.DisplayDevice.DisplayId)));
+            }
+
+            var pathArray = finalPaths.ToArray();
+            bool pathsRemoved = pathArray.Length < currentPaths.Length;
+            Log($"Final path count: {pathArray.Length} (modified={modified}, removed={pathsRemoved})");
+            if (pathArray.Length == 0) { Log("No paths to apply"); return false; }
+            if (!modified && !pathsRemoved) { Log("Nothing changed"); return false; }
 
             try
             {
-                PathInfo.SetDisplaysConfig(currentPaths, DisplayConfigFlags.None);
+                PathInfo.SetDisplaysConfig(pathArray, DisplayConfigFlags.None);
                 Log("SetDisplaysConfig SUCCESS");
             }
             catch (Exception ex)
