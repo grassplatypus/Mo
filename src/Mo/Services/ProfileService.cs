@@ -34,7 +34,7 @@ public sealed class ProfileService : IProfileService
             try
             {
                 var json = await File.ReadAllTextAsync(file);
-                var profile = JsonSerializer.Deserialize<DisplayProfile>(json, JsonHelper.Options);
+                var profile = JsonSerializer.Deserialize(json, MoJsonContext.Default.DisplayProfile);
                 if (profile != null)
                     Profiles.Add(profile);
             }
@@ -49,7 +49,7 @@ public sealed class ProfileService : IProfileService
     {
         profile.ModifiedAt = DateTime.UtcNow;
         var filePath = Path.Combine(_profilesDir, $"{profile.Id}.json");
-        var json = JsonSerializer.Serialize(profile, JsonHelper.Options);
+        var json = JsonSerializer.Serialize(profile, MoJsonContext.Default.DisplayProfile);
         await File.WriteAllTextAsync(filePath, json);
 
         var existing = Profiles.FirstOrDefault(p => p.Id == profile.Id);

@@ -376,8 +376,10 @@ public static class SystemInfoHelper
         w.KV("hresult", $"0x{ex.HResult:X8}");
         if (ex.Source != null)
             w.KV("source", $"\"{ex.Source}\"");
-        if (ex.TargetSite != null)
-            w.KV("target_method", $"\"{ex.TargetSite.DeclaringType?.FullName}.{ex.TargetSite.Name}\"");
+        // TargetSite may be unavailable after trimming — acceptable degradation
+#pragma warning disable IL2026
+        try { if (ex.TargetSite != null) w.KV("target_method", $"\"{ex.TargetSite.DeclaringType?.FullName}.{ex.TargetSite.Name}\""); } catch { }
+#pragma warning restore IL2026
 
         w.Line("  stack_trace: |");
         foreach (var line in (ex.StackTrace ?? "(none)").Split('\n'))

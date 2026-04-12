@@ -28,7 +28,7 @@ public sealed class SettingsService : ISettingsService
             if (File.Exists(_settingsFilePath))
             {
                 var json = await File.ReadAllTextAsync(_settingsFilePath);
-                Settings = JsonSerializer.Deserialize<AppSettings>(json, JsonHelper.Options) ?? new();
+                Settings = JsonSerializer.Deserialize(json, MoJsonContext.Default.AppSettings) ?? new();
             }
         }
         catch
@@ -41,7 +41,7 @@ public sealed class SettingsService : ISettingsService
 
     public async Task SaveAsync()
     {
-        var json = JsonSerializer.Serialize(Settings, JsonHelper.Options);
+        var json = JsonSerializer.Serialize(Settings, MoJsonContext.Default.AppSettings);
         await File.WriteAllTextAsync(_settingsFilePath, json);
     }
 

@@ -15,7 +15,7 @@ public sealed class ExportImportService
 
     public async Task ExportProfileAsync(DisplayProfile profile, string filePath)
     {
-        var json = JsonSerializer.Serialize(profile, JsonHelper.Options);
+        var json = JsonSerializer.Serialize(profile, MoJsonContext.Default.DisplayProfile);
         await File.WriteAllTextAsync(filePath, json);
     }
 
@@ -24,7 +24,7 @@ public sealed class ExportImportService
         try
         {
             var json = await File.ReadAllTextAsync(filePath);
-            var profile = JsonSerializer.Deserialize<DisplayProfile>(json, JsonHelper.Options);
+            var profile = JsonSerializer.Deserialize(json, MoJsonContext.Default.DisplayProfile);
             if (profile != null)
             {
                 profile.Id = Guid.NewGuid().ToString("N"); // New ID to avoid conflicts

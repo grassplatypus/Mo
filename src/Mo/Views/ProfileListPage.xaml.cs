@@ -258,7 +258,7 @@ public sealed partial class ProfileListPage : Page
         var file = await picker.PickSaveFileAsync();
         if (file != null)
         {
-            var json = JsonSerializer.Serialize(profile, JsonHelper.Options);
+            var json = JsonSerializer.Serialize(profile, MoJsonContext.Default.DisplayProfile);
             await Windows.Storage.FileIO.WriteTextAsync(file, json);
         }
     }
@@ -464,7 +464,7 @@ public sealed partial class ProfileListPage : Page
         if (file != null)
         {
             var json = await Windows.Storage.FileIO.ReadTextAsync(file);
-            var profile = JsonSerializer.Deserialize<DisplayProfile>(json, JsonHelper.Options);
+            var profile = JsonSerializer.Deserialize(json, MoJsonContext.Default.DisplayProfile);
             if (profile != null)
             {
                 // Assign a new ID to avoid collisions with existing profiles
