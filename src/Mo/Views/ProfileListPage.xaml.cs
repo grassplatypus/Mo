@@ -278,7 +278,7 @@ public sealed partial class ProfileListPage : Page
             PlaceholderText = ResourceHelper.GetString("ProfileNamePlaceholder"),
         };
         var chkAudio = new CheckBox { Content = ResourceHelper.GetString("AudioDevice"), IsChecked = true };
-        var chkWallpaper = new CheckBox { Content = ResourceHelper.GetString("Wallpaper"), IsChecked = true };
+        var chkWallpaper = new CheckBox { Content = ResourceHelper.GetString("Wallpaper"), IsChecked = false };
         var chkNightLight = new CheckBox { Content = ResourceHelper.GetString("NightLight"), IsChecked = false };
         var chkAutoSwitch = new CheckBox { Content = ResourceHelper.GetString("AutoSwitch"), IsChecked = false };
 
@@ -292,7 +292,7 @@ public sealed partial class ProfileListPage : Page
             {
                 var label = provider == Models.LiveWallpaperProvider.WallpaperEngine
                     ? "Wallpaper Engine" : "Lively Wallpaper";
-                chkLiveWallpaper = new CheckBox { Content = $"{ResourceHelper.GetString("LiveWallpaper")} ({label})", IsChecked = true };
+                chkLiveWallpaper = new CheckBox { Content = $"{ResourceHelper.GetString("LiveWallpaper")} ({label})", IsChecked = false };
             }
         }
         catch { }
@@ -345,7 +345,16 @@ public sealed partial class ProfileListPage : Page
             foreach (var m in profile.Monitors)
                 m.ColorSettings = null;
         }
-        if (chkLiveWallpaper?.IsChecked != true)
+        if (chkLiveWallpaper?.IsChecked == true)
+        {
+            try
+            {
+                var liveWpService = App.Services.GetRequiredService<ILiveWallpaperService>();
+                profile.LiveWallpaper = liveWpService.CaptureCurrentConfig();
+            }
+            catch { }
+        }
+        else
         {
             profile.LiveWallpaper = null;
         }

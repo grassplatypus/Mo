@@ -111,14 +111,6 @@ public sealed class ProfileService : IProfileService
         }
         catch { }
 
-        // Capture live wallpaper
-        try
-        {
-            var liveWpService = App.Services.GetRequiredService<ILiveWallpaperService>();
-            profile.LiveWallpaper = liveWpService.CaptureCurrentConfig();
-        }
-        catch { }
-
         // Capture monitor color settings (brightness, contrast, RGB gain)
         try
         {
