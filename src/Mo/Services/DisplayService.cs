@@ -388,10 +388,8 @@ public sealed class DisplayService : IDisplayService
 
     private static void UnstickCursor()
     {
-        // Wait for display changes to settle
         Thread.Sleep(500);
 
-        // Release cursor clipping multiple times (Windows re-clips on display change)
         for (int i = 0; i < 5; i++)
         {
             NativeDisplayApi.ClipCursor(IntPtr.Zero);
@@ -401,12 +399,26 @@ public sealed class DisplayService : IDisplayService
         NativeDisplayApi.SystemParametersInfo(
             NativeDisplayApi.SPI_SETWORKAREA, 0, IntPtr.Zero, NativeDisplayApi.SPIF_SENDCHANGE);
 
-        // Move cursor to center of primary monitor
         NativeDisplayApi.ClipCursor(IntPtr.Zero);
         int cx = NativeDisplayApi.GetSystemMetrics(NativeDisplayApi.SM_CXSCREEN) / 2;
         int cy = NativeDisplayApi.GetSystemMetrics(NativeDisplayApi.SM_CYSCREEN) / 2;
         NativeDisplayApi.SetCursorPos(cx, cy);
         NativeDisplayApi.ClipCursor(IntPtr.Zero);
+
+        // Force coordinate recalculation via simulated mouse movement
+        var input = new NativeDisplayApi.INPUT
+        {
+            type = NativeDisplayApi.INPUT_MOUSE,
+            mi = new NativeDisplayApi.MOUSEINPUT
+            {
+                dx = 1, dy = 1,
+                dwFlags = NativeDisplayApi.MOUSEEVENTF_MOVE,
+            }
+        };
+        NativeDisplayApi.SendInput(1, [input], System.Runtime.InteropServices.Marshal.SizeOf<NativeDisplayApi.INPUT>());
+        Thread.Sleep(50);
+        input.mi.dx = -1; input.mi.dy = -1;
+        NativeDisplayApi.SendInput(1, [input], System.Runtime.InteropServices.Marshal.SizeOf<NativeDisplayApi.INPUT>());
     }
 
     private static Models.DisplayRotation MapRotation(DISPLAYCONFIG_ROTATION rotation) => rotation switch

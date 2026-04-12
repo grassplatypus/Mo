@@ -20,6 +20,20 @@ public sealed class NvidiaRotationService
         {
             NVIDIA.Initialize();
             IsAvailable = PhysicalGPU.GetPhysicalGPUs().Length > 0;
+            if (IsAvailable)
+            {
+                // Pre-populate cache with current config on startup
+                try
+                {
+                    var paths = PathInfo.GetDisplaysConfig();
+                    foreach (var path in paths)
+                        foreach (var target in path.TargetsInfo)
+                            _pathCache[target.DisplayDevice.DisplayId] = path;
+                    if (paths.Length >= PhysicalGPU.GetPhysicalGPUs().First().GetConnectedDisplayDevices(ConnectedIdsFlag.UnCached).Length)
+                        _lastFullConfig = paths;
+                }
+                catch { }
+            }
         }
         catch
         {
@@ -39,8 +53,9 @@ public sealed class NvidiaRotationService
         catch { }
     }
 
-    // Cache of NVAPI PathInfo per display (saved when all monitors are active)
+    // Cache of NVAPI PathInfo per display (persisted when all monitors are active)
     private static readonly Dictionary<uint, PathInfo> _pathCache = new();
+    private static PathInfo[]? _lastFullConfig;
 
     public bool ApplyFullProfile(DisplayProfile profile)
     {
@@ -63,6 +78,10 @@ public sealed class NvidiaRotationService
             foreach (var path in currentPaths)
                 foreach (var target in path.TargetsInfo)
                     _pathCache[target.DisplayDevice.DisplayId] = path;
+
+            // Save full config when all connected monitors are active (for cold start restore)
+            if (currentPaths.Length >= allConnected.Length)
+                _lastFullConfig = currentPaths;
 
             var nvapiToCcdEdid = BuildNvapiToEdidMap(allConnected, currentPaths);
             Log($"NVAPI→CCD map entries: {nvapiToCcdEdid.Count}");
@@ -98,11 +117,25 @@ public sealed class NvidiaRotationService
                     }
                     catch (Exception ex)
                     {
-                        Log($"Restore failed: {ex.Message}");
+                        Log($"Restore from cache failed: {ex.Message}");
                     }
                 }
 
-                // Fallback: CCD topology extend
+                // Fallback 1: Use saved full config
+                if (currentPaths.Length < enabledInProfile && _lastFullConfig != null)
+                {
+                    Log("Trying saved full config...");
+                    try
+                    {
+                        PathInfo.SetDisplaysConfig(_lastFullConfig, DisplayConfigFlags.DriverReloadAllowed);
+                        Thread.Sleep(1000);
+                        currentPaths = PathInfo.GetDisplaysConfig();
+                        Log($"After full config restore: {currentPaths.Length} paths");
+                    }
+                    catch (Exception ex) { Log($"Full config restore failed: {ex.Message}"); }
+                }
+
+                // Fallback 2: CCD topology extend
                 if (currentPaths.Length < enabledInProfile)
                 {
                     Log("Trying CCD topology extend...");
