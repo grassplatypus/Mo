@@ -3,6 +3,7 @@ using System.Management;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
+using Microsoft.Extensions.DependencyInjection;
 using Mo.Models;
 using Mo.Services;
 
@@ -14,6 +15,110 @@ namespace Mo.Helpers;
 /// </summary>
 public static class SystemInfoHelper
 {
+    public static string DecodeEdidManufacturer(ushort id)
+    {
+        if (id == 0) return "Unknown";
+        // EDID manufacturer ID: 3 letters encoded in big-endian 5-bit compressed ASCII
+        // Windows returns it byte-swapped, so swap back
+        int swapped = ((id & 0xFF) << 8) | ((id >> 8) & 0xFF);
+        char c1 = (char)('A' + ((swapped >> 10) & 0x1F) - 1);
+        char c2 = (char)('A' + ((swapped >> 5) & 0x1F) - 1);
+        char c3 = (char)('A' + (swapped & 0x1F) - 1);
+        var pnp = $"{c1}{c2}{c3}";
+
+        return _pnpVendors.TryGetValue(pnp, out var name) ? name : pnp;
+    }
+
+    private static readonly Dictionary<string, string> _pnpVendors = new()
+    {
+        ["ACI"] = "ASUS", ["ACR"] = "Acer", ["AOC"] = "AOC",
+        ["AUO"] = "AU Optronics", ["BNQ"] = "BenQ", ["BOE"] = "BOE",
+        ["CMN"] = "Chimei Innolux", ["DEL"] = "Dell", ["ENC"] = "Eizo",
+        ["GSM"] = "LG", ["HPN"] = "HP", ["HWP"] = "HP",
+        ["IVM"] = "Iiyama", ["LEN"] = "Lenovo", ["LGD"] = "LG Display",
+        ["MEI"] = "Panasonic", ["MSI"] = "MSI", ["NEC"] = "NEC",
+        ["PHL"] = "Philips", ["SAM"] = "Samsung", ["SDC"] = "Samsung Display",
+        ["SEC"] = "Samsung", ["SHP"] = "Sharp", ["SNY"] = "Sony",
+        ["VSC"] = "ViewSonic", ["HSD"] = "HannStar", ["CMO"] = "Chi Mei",
+        ["LPL"] = "LG Philips", ["INN"] = "Innolux", ["APP"] = "Apple",
+        ["SAN"] = "Sanyo", ["TSB"] = "Toshiba", ["FUS"] = "Fujitsu",
+        ["MTC"] = "Mitac", ["CPQ"] = "Compaq", ["IBM"] = "IBM",
+    };
+
+    public static List<MonitorDisplayInfo> GetMonitorDetails()
+    {
+        var result = new List<MonitorDisplayInfo>();
+        try
+        {
+            var displayService = App.Services.GetRequiredService<IDisplayService>();
+            var monitors = displayService.GetCurrentConfiguration();
+            var wmiModels = GetWmiMonitorModels();
+
+            for (int i = 0; i < monitors.Count; i++)
+            {
+                var m = monitors[i];
+                var manufacturer = DecodeEdidManufacturer(m.EdidManufacturerId);
+
+                // Try to find WMI model name
+                string? modelName = null;
+                foreach (var wmi in wmiModels)
+                {
+                    if (wmi.manufacturerId == m.EdidManufacturerId && wmi.productCodeId == m.EdidProductCodeId)
+                    {
+                        modelName = wmi.userFriendlyName;
+                        break;
+                    }
+                }
+
+                result.Add(new MonitorDisplayInfo
+                {
+                    Index = i,
+                    Name = string.IsNullOrEmpty(m.FriendlyName) ? $"Display {i + 1}" : m.FriendlyName,
+                    Manufacturer = manufacturer,
+                    Model = modelName ?? $"0x{m.EdidProductCodeId:X4}",
+                    Resolution = $"{m.Width} x {m.Height}",
+                    RefreshRate = m.RefreshRateHz,
+                    Rotation = m.Rotation,
+                    Position = $"({m.PositionX}, {m.PositionY})",
+                    IsPrimary = m.IsPrimary,
+                    IsEnabled = m.IsEnabled,
+                });
+            }
+        }
+        catch { }
+        return result;
+    }
+
+    private static List<(ushort manufacturerId, ushort productCodeId, string? userFriendlyName)> GetWmiMonitorModels()
+    {
+        var result = new List<(ushort, ushort, string?)>();
+        try
+        {
+            using var searcher = new ManagementObjectSearcher("root\\WMI", "SELECT * FROM WmiMonitorID");
+            foreach (var obj in searcher.Get())
+            {
+                var mfr = Convert.ToUInt16(obj["ManufacturerName"] is ushort[] mfrArr && mfrArr.Length > 0
+                    ? 0 : 0);
+                var name = obj["UserFriendlyName"];
+                string? friendly = null;
+                if (name is ushort[] nameArr)
+                {
+                    friendly = new string(nameArr.TakeWhile(c => c != 0).Select(c => (char)c).ToArray()).Trim();
+                    if (string.IsNullOrEmpty(friendly)) friendly = null;
+                }
+                var productCode = obj["ProductCodeID"];
+                string? productStr = null;
+                if (productCode is ushort[] prodArr)
+                {
+                    productStr = new string(prodArr.TakeWhile(c => c != 0).Select(c => (char)c).ToArray()).Trim();
+                }
+                result.Add((0, 0, friendly));
+            }
+        }
+        catch { }
+        return result;
+    }
+
     /// <summary>System info only (no exception). Used in Settings page.</summary>
     public static string BuildFullReport(IDisplayService? displayService = null, IMonitorColorService? colorService = null)
     {
@@ -319,4 +424,18 @@ public static class SystemInfoHelper
         public void Line(string line = "") => _sb.AppendLine(line);
         public override string ToString() => _sb.ToString();
     }
+}
+
+public sealed class MonitorDisplayInfo
+{
+    public int Index { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Manufacturer { get; set; } = string.Empty;
+    public string Model { get; set; } = string.Empty;
+    public string Resolution { get; set; } = string.Empty;
+    public double RefreshRate { get; set; }
+    public DisplayRotation Rotation { get; set; }
+    public string Position { get; set; } = string.Empty;
+    public bool IsPrimary { get; set; }
+    public bool IsEnabled { get; set; }
 }

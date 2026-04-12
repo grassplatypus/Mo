@@ -187,7 +187,13 @@ Press Delete or Backspace to clear. Escape to cancel.</value></data>
   <data name="Later" xml:space="preserve"><value>Later</value></data>
 
   <!-- System Info -->
-  <data name="SystemInfoSection" xml:space="preserve"><value>System Information</value></data>
+  <data name="SystemInfoSection" xml:space="preserve"><value>System</value></data>
+  <data name="MonitorSection" xml:space="preserve"><value>Monitors</value></data>
+  <data name="DebugInfoSection" xml:space="preserve"><value>Debug Information</value></data>
+  <data name="DebugInfoDesc" xml:space="preserve"><value>Copy debug information for bug reporting or troubleshooting.</value></data>
+  <data name="CopyDebugInfo" xml:space="preserve"><value>Copy Debug Info</value></data>
+  <data name="ShowDebugInfo" xml:space="preserve"><value>Show Details</value></data>
+  <data name="HideDebugInfo" xml:space="preserve"><value>Hide Details</value></data>
 
   <!-- Rotation Warning -->
   <data name="RotationWarning" xml:space="preserve"><value>Applying rotation via Windows CCD API may cause mouse pointer coordinate issues. This is a known Windows limitation. Lock and unlock your PC (Win+L) if the cursor behaves incorrectly.</value></data>

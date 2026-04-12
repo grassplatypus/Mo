@@ -1,7 +1,9 @@
+using System.Runtime.InteropServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Mo.Helpers;
+using Mo.Models;
 using Mo.Services;
 using Mo.ViewModels;
 using Windows.ApplicationModel.DataTransfer;
@@ -32,19 +34,107 @@ public sealed partial class SettingsPage : Page
         ThemeCombo.SelectedIndex = themeIndex;
         _themeLoaded = true;
 
-        // Load system info (async-like to not block UI)
-        DispatcherQueue.TryEnqueue(() =>
+        _ = LoadSystemInfoAsync();
+    }
+
+    private async Task LoadSystemInfoAsync()
+    {
+        var (os, cpu, ram, gpu, monitors, debugReport) = await Task.Run(() =>
         {
+            string osInfo = $"{Environment.OSVersion} ({RuntimeInformation.OSArchitecture})";
+            string cpuInfo, ramInfo, gpuInfo;
             try
             {
-                SystemInfoBox.Text = SystemInfoHelper.BuildFullReport();
+                using var cpuSearcher = new System.Management.ManagementObjectSearcher("SELECT Name FROM Win32_Processor");
+                cpuInfo = "";
+                foreach (System.Management.ManagementObject obj in cpuSearcher.Get())
+                    cpuInfo = obj["Name"]?.ToString()?.Trim() ?? "Unknown";
             }
-            catch
+            catch { cpuInfo = "Unknown"; }
+
+            try
             {
-                SystemInfoBox.Text = "(Failed to load system info)";
+                var gcInfo = GC.GetGCMemoryInfo();
+                ramInfo = $"{gcInfo.TotalAvailableMemoryBytes / (1024 * 1024 * 1024.0):F1} GB";
             }
+            catch { ramInfo = "Unknown"; }
+
+            try
+            {
+                using var gpuSearcher = new System.Management.ManagementObjectSearcher("SELECT Name FROM Win32_VideoController");
+                var gpus = new List<string>();
+                foreach (System.Management.ManagementObject obj in gpuSearcher.Get())
+                    gpus.Add(obj["Name"]?.ToString()?.Trim() ?? "Unknown");
+                gpuInfo = string.Join(", ", gpus);
+            }
+            catch { gpuInfo = "Unknown"; }
+
+            var monitorList = SystemInfoHelper.GetMonitorDetails();
+            string debug;
+            try { debug = SystemInfoHelper.BuildFullReport(); }
+            catch { debug = "(Failed to load)"; }
+
+            return (osInfo, cpuInfo, ramInfo, gpuInfo, monitorList, debug);
         });
+
+        SysOsText.Text = $"OS: {os}";
+        SysCpuText.Text = $"CPU: {cpu}";
+        SysRamText.Text = $"RAM: {ram}";
+        SysGpuText.Text = $"GPU: {gpu}";
+
+        MonitorCardsPanel.Children.Clear();
+        foreach (var m in monitors)
+        {
+            var card = new Grid
+            {
+                Padding = new Thickness(16),
+                CornerRadius = new CornerRadius(8),
+                Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
+                BorderBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+                BorderThickness = new Thickness(1),
+            };
+
+            var stack = new StackPanel { Spacing = 4 };
+
+            var header = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+            header.Children.Add(new TextBlock
+            {
+                Text = m.Name,
+                Style = (Style)Application.Current.Resources["BodyStrongTextBlockStyle"],
+            });
+            if (m.IsPrimary)
+            {
+                header.Children.Add(new Border
+                {
+                    Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AccentFillColorDefaultBrush"],
+                    CornerRadius = new CornerRadius(4),
+                    Padding = new Thickness(6, 1, 6, 1),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Child = new TextBlock { Text = "P", FontSize = 10, Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.White) },
+                });
+            }
+            stack.Children.Add(header);
+
+            stack.Children.Add(MakeInfoLine($"{m.Manufacturer}  ·  {m.Model}"));
+            stack.Children.Add(MakeInfoLine($"{m.Resolution}  ·  {m.RefreshRate:F1} Hz" +
+                (m.Rotation != DisplayRotation.None ? $"  ·  {(int)m.Rotation}°" : "")));
+            stack.Children.Add(MakeInfoLine($"Position: {m.Position}"));
+
+            card.Children.Add(stack);
+            MonitorCardsPanel.Children.Add(card);
+        }
+
+        _debugReport = debugReport;
     }
+
+    private string _debugReport = string.Empty;
+
+    private static TextBlock MakeInfoLine(string text) => new()
+    {
+        Text = text,
+        Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
+        Opacity = 0.7,
+    };
 
     private void ThemeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -106,9 +196,24 @@ public sealed partial class SettingsPage : Page
     private void CopySystemInfo_Click(object sender, RoutedEventArgs e)
     {
         var dp = new DataPackage();
-        dp.SetText(SystemInfoBox.Text);
+        dp.SetText(_debugReport);
         Clipboard.SetContent(dp);
         CopySystemInfoBtn.Content = ResourceHelper.GetString("Copied");
+    }
+
+    private void ShowDebugInfo_Click(object sender, RoutedEventArgs e)
+    {
+        if (SystemInfoBox.Visibility == Visibility.Collapsed)
+        {
+            SystemInfoBox.Text = _debugReport;
+            SystemInfoBox.Visibility = Visibility.Visible;
+            ShowDebugBtn.Content = ResourceHelper.GetString("HideDebugInfo");
+        }
+        else
+        {
+            SystemInfoBox.Visibility = Visibility.Collapsed;
+            ShowDebugBtn.Content = ResourceHelper.GetString("ShowDebugInfo");
+        }
     }
 
     private void ApplyLocalization()
@@ -133,7 +238,11 @@ public sealed partial class SettingsPage : Page
         AboutVersion.Text = $"Version {UpdateService.CurrentVersion}";
         AboutDesc.Text = ResourceHelper.GetString("AboutDescription");
         SystemInfoTitle.Text = ResourceHelper.GetString("SystemInfoSection");
-        CopySystemInfoBtn.Content = ResourceHelper.GetString("CopyErrorInfo");
+        MonitorSectionTitle.Text = ResourceHelper.GetString("MonitorSection");
+        DebugInfoTitle.Text = ResourceHelper.GetString("DebugInfoSection");
+        DebugInfoDesc.Text = ResourceHelper.GetString("DebugInfoDesc");
+        CopySystemInfoBtn.Content = ResourceHelper.GetString("CopyDebugInfo");
+        ShowDebugBtn.Content = ResourceHelper.GetString("ShowDebugInfo");
 
         ThemeCombo.Items.Clear();
         ThemeCombo.Items.Add(ResourceHelper.GetString("ThemeSystem"));

@@ -187,7 +187,13 @@ Delete 또는 Backspace로 삭제. Escape로 취소.</value></data>
   <data name="Later" xml:space="preserve"><value>나중에</value></data>
 
   <!-- System Info -->
-  <data name="SystemInfoSection" xml:space="preserve"><value>시스템 정보</value></data>
+  <data name="SystemInfoSection" xml:space="preserve"><value>시스템</value></data>
+  <data name="MonitorSection" xml:space="preserve"><value>모니터</value></data>
+  <data name="DebugInfoSection" xml:space="preserve"><value>디버그 정보</value></data>
+  <data name="DebugInfoDesc" xml:space="preserve"><value>버그 보고 또는 문제 해결을 위한 디버그 정보를 복사합니다.</value></data>
+  <data name="CopyDebugInfo" xml:space="preserve"><value>디버그 정보 복사</value></data>
+  <data name="ShowDebugInfo" xml:space="preserve"><value>상세 보기</value></data>
+  <data name="HideDebugInfo" xml:space="preserve"><value>상세 숨기기</value></data>
 
   <!-- Rotation Warning -->
   <data name="RotationWarning" xml:space="preserve"><value>Windows CCD API를 통한 회전 적용 시 마우스 포인터 좌표 문제가 발생할 수 있습니다. 이는 Windows 알려진 제한 사항입니다. 커서가 비정상적으로 동작하면 PC를 잠금/해제(Win+L)하세요.</value></data>
