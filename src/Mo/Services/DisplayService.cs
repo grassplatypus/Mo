@@ -146,18 +146,7 @@ public sealed class DisplayService : IDisplayService
             var nvService = App.Services.GetRequiredService<NvidiaRotationService>();
             if (nvService.IsAvailable && nvService.ApplyFullProfile(profile))
             {
-                // Aggressive mouse unstick after NVAPI display change
-                for (int i = 0; i < 3; i++)
-                {
-                    Thread.Sleep(300);
-                    NativeDisplayApi.ClipCursor(IntPtr.Zero);
-                }
-                NativeDisplayApi.SystemParametersInfo(
-                    NativeDisplayApi.SPI_SETWORKAREA, 0, IntPtr.Zero, NativeDisplayApi.SPIF_SENDCHANGE);
-                NativeDisplayApi.ClipCursor(IntPtr.Zero);
-                int cx = NativeDisplayApi.GetSystemMetrics(NativeDisplayApi.SM_CXSCREEN) / 2;
-                int cy = NativeDisplayApi.GetSystemMetrics(NativeDisplayApi.SM_CYSCREEN) / 2;
-                NativeDisplayApi.SetCursorPos(cx, cy);
+                UnstickCursor();
 
                 return matchResult.UnmatchedProfile.Count > 0
                     ? DisplayApplyResult.PartialMatch
@@ -322,17 +311,7 @@ public sealed class DisplayService : IDisplayService
         }
 
         if (hasRotationChange)
-        {
-            Thread.Sleep(500);
-            NativeDisplayApi.ClipCursor(IntPtr.Zero);
-            NativeDisplayApi.SystemParametersInfo(
-                NativeDisplayApi.SPI_SETWORKAREA, 0, IntPtr.Zero, NativeDisplayApi.SPIF_SENDCHANGE);
-            Thread.Sleep(200);
-            NativeDisplayApi.ClipCursor(IntPtr.Zero);
-            int cx = NativeDisplayApi.GetSystemMetrics(NativeDisplayApi.SM_CXSCREEN) / 2;
-            int cy = NativeDisplayApi.GetSystemMetrics(NativeDisplayApi.SM_CYSCREEN) / 2;
-            NativeDisplayApi.SetCursorPos(cx, cy);
-        }
+            UnstickCursor();
 
         return matchResult.UnmatchedProfile.Count > 0
             ? DisplayApplyResult.PartialMatch
@@ -405,6 +384,29 @@ public sealed class DisplayService : IDisplayService
         }
         catch { }
         return result;
+    }
+
+    private static void UnstickCursor()
+    {
+        // Wait for display changes to settle
+        Thread.Sleep(500);
+
+        // Release cursor clipping multiple times (Windows re-clips on display change)
+        for (int i = 0; i < 5; i++)
+        {
+            NativeDisplayApi.ClipCursor(IntPtr.Zero);
+            Thread.Sleep(100);
+        }
+
+        NativeDisplayApi.SystemParametersInfo(
+            NativeDisplayApi.SPI_SETWORKAREA, 0, IntPtr.Zero, NativeDisplayApi.SPIF_SENDCHANGE);
+
+        // Move cursor to center of primary monitor
+        NativeDisplayApi.ClipCursor(IntPtr.Zero);
+        int cx = NativeDisplayApi.GetSystemMetrics(NativeDisplayApi.SM_CXSCREEN) / 2;
+        int cy = NativeDisplayApi.GetSystemMetrics(NativeDisplayApi.SM_CYSCREEN) / 2;
+        NativeDisplayApi.SetCursorPos(cx, cy);
+        NativeDisplayApi.ClipCursor(IntPtr.Zero);
     }
 
     private static Models.DisplayRotation MapRotation(DISPLAYCONFIG_ROTATION rotation) => rotation switch

@@ -61,7 +61,24 @@ public sealed class NvidiaRotationService
             foreach (var (id, edid) in nvapiToCcdEdid)
                 Log($"  NvapiId={id} → name={edid.Item5} mfr=0x{edid.Item2:X4} prod=0x{edid.Item3:X4}");
 
-            // Modify existing paths in-place instead of creating new ones
+            // If profile needs MORE monitors than currently active, extend topology first
+            int enabledInProfile = profile.Monitors.Count(m => m.IsEnabled);
+            if (enabledInProfile > currentPaths.Length)
+            {
+                Log($"Need {enabledInProfile} monitors, have {currentPaths.Length} active. Extending topology...");
+                NativeDisplayApi.SetDisplayConfig(0, null, 0, null,
+                    Interop.DisplayConfig.SDC_FLAGS.SDC_TOPOLOGY_EXTEND |
+                    Interop.DisplayConfig.SDC_FLAGS.SDC_APPLY |
+                    Interop.DisplayConfig.SDC_FLAGS.SDC_ALLOW_CHANGES |
+                    Interop.DisplayConfig.SDC_FLAGS.SDC_SAVE_TO_DATABASE);
+                Thread.Sleep(1500);
+
+                // Re-read NVAPI config after topology change
+                currentPaths = PathInfo.GetDisplaysConfig();
+                Log($"After extend: {currentPaths.Length} paths");
+            }
+
+            // Modify existing paths in-place
             bool modified = false;
             var usedDisplayIds = new HashSet<uint>();
 
