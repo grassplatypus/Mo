@@ -46,8 +46,34 @@ public sealed partial class ProfileListPage : Page
         var profileId = (sender as FrameworkElement)?.Tag as string;
         if (profileId == null) return;
 
-        // Capture the current configuration before applying so we can revert
         var displayService = App.Services.GetRequiredService<IDisplayService>();
+        var profile = ViewModel.Profiles.FirstOrDefault(p => p.Id == profileId);
+        if (profile == null) return;
+
+        // Pre-apply compatibility check
+        var compat = displayService.CheckCompatibility(profile);
+        if (!compat.IsFullMatch && (compat.MissingMonitors.Count > 0 || compat.ExtraMonitors.Count > 0))
+        {
+            var lines = new List<string>();
+            if (compat.MissingMonitors.Count > 0)
+                lines.Add($"{ResourceHelper.GetString("MissingMonitors")}: {string.Join(", ", compat.MissingMonitors)}");
+            if (compat.ExtraMonitors.Count > 0)
+                lines.Add($"{ResourceHelper.GetString("ExtraMonitors")}: {string.Join(", ", compat.ExtraMonitors)}");
+
+            var compatDialog = new ContentDialog
+            {
+                Title = ResourceHelper.GetString("CompatWarningTitle"),
+                Content = string.Join("\n", lines),
+                PrimaryButtonText = ResourceHelper.GetString("ApplyAnyway"),
+                CloseButtonText = ResourceHelper.GetString("Cancel"),
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = this.XamlRoot,
+            };
+            if (await compatDialog.ShowAsync() != ContentDialogResult.Primary)
+                return;
+        }
+
+        // Capture the current configuration before applying so we can revert
         var previousConfig = displayService.GetCurrentConfiguration();
 
         await ViewModel.ApplyProfileCommand.ExecuteAsync(profileId);

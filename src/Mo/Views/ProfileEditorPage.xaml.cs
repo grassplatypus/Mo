@@ -82,6 +82,9 @@ public sealed partial class ProfileEditorPage : Page
             LiveWallpaperCard.Visibility = Visibility.Collapsed;
         }
 
+        // Unmatched monitor action
+        UnmatchedCombo.SelectedIndex = (int)_profile.UnmatchedAction;
+
         // Auto-switch
         AutoSwitchToggle.IsOn = _profile.AutoSwitch;
 
@@ -395,6 +398,12 @@ public sealed partial class ProfileEditorPage : Page
         _navigationService.GoBack();
     }
 
+    private void UnmatchedCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || _profile == null) return;
+        _profile.UnmatchedAction = (UnmatchedMonitorAction)UnmatchedCombo.SelectedIndex;
+    }
+
     private void MonitorEnabledToggle_Toggled(object sender, RoutedEventArgs e)
     {
         if (_loading || _selectedMonitor == null) return;
@@ -421,6 +430,11 @@ public sealed partial class ProfileEditorPage : Page
         WallpaperClearBtn.Content = ResourceHelper.GetString("WallpaperClear");
         NightLightLabel.Text = ResourceHelper.GetString("NightLight");
         NightLightDesc.Text = ResourceHelper.GetString("NightLightDesc");
+        UnmatchedLabel.Text = ResourceHelper.GetString("UnmatchedMonitors");
+        UnmatchedDesc.Text = ResourceHelper.GetString("UnmatchedMonitorsDesc");
+        UnmatchedCombo.Items.Clear();
+        UnmatchedCombo.Items.Add(ResourceHelper.GetString("UnmatchedKeep"));
+        UnmatchedCombo.Items.Add(ResourceHelper.GetString("UnmatchedDisable"));
         AutoSwitchLabel.Text = ResourceHelper.GetString("AutoSwitch");
         AutoSwitchDescText.Text = ResourceHelper.GetString("AutoSwitchDesc");
         ScheduleLabel.Text = ResourceHelper.GetString("ScheduleSection");

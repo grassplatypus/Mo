@@ -60,6 +60,10 @@
   <data name="Export" xml:space="preserve"><value>Export...</value></data>
   <data name="Import" xml:space="preserve"><value>Import</value></data>
   <data name="Rename" xml:space="preserve"><value>Rename</value></data>
+  <data name="UnmatchedMonitors" xml:space="preserve"><value>Unlisted Monitors</value></data>
+  <data name="UnmatchedMonitorsDesc" xml:space="preserve"><value>What to do with monitors not listed in this profile</value></data>
+  <data name="UnmatchedKeep" xml:space="preserve"><value>Keep current state</value></data>
+  <data name="UnmatchedDisable" xml:space="preserve"><value>Turn off</value></data>
   <data name="AutoSwitch" xml:space="preserve"><value>Auto-switch</value></data>
   <data name="AutoSwitchDesc" xml:space="preserve"><value>Automatically apply when these monitors are detected</value></data>
 
@@ -120,7 +124,7 @@ Press Delete or Backspace to clear. Escape to cancel.</value></data>
   <!-- About -->
   <data name="AboutSection" xml:space="preserve"><value>About</value></data>
   <data name="AboutName" xml:space="preserve"><value>Mo — Monitor Profile Manager</value></data>
-  <data name="AboutVersion" xml:space="preserve"><value>Version 0.11.0</value></data>
+  <data name="AboutVersion" xml:space="preserve"><value>Version 0.12.0</value></data>
   <data name="AboutDescription" xml:space="preserve"><value>Save and restore your multi-monitor configurations with one click.</value></data>
 
   <!-- Profile Editor -->
@@ -199,6 +203,10 @@ Press Delete or Backspace to clear. Escape to cancel.</value></data>
   <data name="RotationWarning" xml:space="preserve"><value>Applying rotation via Windows CCD API may cause mouse pointer coordinate issues. This is a known Windows limitation. Lock and unlock your PC (Win+L) if the cursor behaves incorrectly.</value></data>
 
   <!-- Apply Error -->
+  <data name="CompatWarningTitle" xml:space="preserve"><value>Monitor Mismatch</value></data>
+  <data name="MissingMonitors" xml:space="preserve"><value>Not connected</value></data>
+  <data name="ExtraMonitors" xml:space="preserve"><value>Not in profile</value></data>
+  <data name="ApplyAnyway" xml:space="preserve"><value>Apply Anyway</value></data>
   <data name="ApplyErrorTitle" xml:space="preserve"><value>Failed to Apply Profile</value></data>
   <data name="ApplyFailed" xml:space="preserve"><value>The display configuration could not be applied. Some monitors may not be connected or the configuration is incompatible.</value></data>
   <data name="ApplyValidationError" xml:space="preserve"><value>The display configuration is invalid for the current hardware setup. Please check monitor connections and profile settings.</value></data>

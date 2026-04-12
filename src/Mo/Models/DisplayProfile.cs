@@ -33,6 +33,9 @@ public sealed class DisplayProfile
     // Live wallpaper (WallpaperEngine / Lively)
     public LiveWallpaperConfig? LiveWallpaper { get; set; }
 
+    // What to do with monitors not listed in this profile
+    public UnmatchedMonitorAction UnmatchedAction { get; set; } = UnmatchedMonitorAction.Keep;
+
     [JsonIgnore]
     public int MonitorCount => Monitors.Count;
 }
@@ -54,6 +57,12 @@ public sealed class LiveWallpaperEntry
 {
     public int MonitorIndex { get; set; }
     public string FilePath { get; set; } = string.Empty;
+}
+
+public enum UnmatchedMonitorAction
+{
+    Keep,
+    Disable,
 }
 
 public sealed class ScheduleConfig

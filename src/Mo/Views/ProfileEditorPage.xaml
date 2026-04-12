@@ -237,6 +237,21 @@
                     </StackPanel>
                 </Grid>
 
+                <!-- Unmatched monitors -->
+                <Grid Padding="16" CornerRadius="8"
+                      Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock x:Name="UnmatchedLabel" />
+                        <TextBlock x:Name="UnmatchedDesc" Opacity="0.6" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <ComboBox Grid.Column="1" x:Name="UnmatchedCombo" MinWidth="120" MaxWidth="180" SelectionChanged="UnmatchedCombo_SelectionChanged" />
+                </Grid>
+
                 <!-- Auto-switch -->
                 <Grid Padding="16" CornerRadius="8"
                       Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"

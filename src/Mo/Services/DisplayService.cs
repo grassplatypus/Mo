@@ -91,7 +91,32 @@ public sealed class DisplayService : IDisplayService
 
     public DisplayApplyResult ApplyProfile(DisplayProfile profile)
     {
-        // Match profile monitors to currently connected hardware
+        // Phase 1: Match profile monitors against ALL connected monitors (including inactive)
+        int result = NativeDisplayApi.GetDisplayConfigBufferSizes(
+            QDC_FLAGS.QDC_ALL_PATHS, out uint allPathCount, out uint allModeCount);
+        if (result != NativeDisplayApi.ERROR_SUCCESS) return DisplayApplyResult.Failed;
+
+        var allPaths = new DISPLAYCONFIG_PATH_INFO[allPathCount];
+        var allModes = new DISPLAYCONFIG_MODE_INFO[allModeCount];
+        result = NativeDisplayApi.QueryDisplayConfig(
+            QDC_FLAGS.QDC_ALL_PATHS, ref allPathCount, allPaths, ref allModeCount, allModes, IntPtr.Zero);
+        if (result != NativeDisplayApi.ERROR_SUCCESS) return DisplayApplyResult.Failed;
+
+        // Build identity map for all connected targets
+        var allTargetIdentities = new Dictionary<uint, (string devicePath, ushort mfrId, ushort prodId, uint connector, string name)>();
+        for (int p = 0; p < allPathCount; p++)
+        {
+            var tid = allPaths[p].targetInfo.id;
+            if (allTargetIdentities.ContainsKey(tid)) continue;
+            var dn = new DISPLAYCONFIG_TARGET_DEVICE_NAME();
+            dn.header.type = DISPLAYCONFIG_DEVICE_INFO_TYPE.DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME;
+            dn.header.size = (uint)System.Runtime.InteropServices.Marshal.SizeOf<DISPLAYCONFIG_TARGET_DEVICE_NAME>();
+            dn.header.adapterId = allPaths[p].targetInfo.adapterId;
+            dn.header.id = tid;
+            if (NativeDisplayApi.DisplayConfigGetDeviceInfo(ref dn) == NativeDisplayApi.ERROR_SUCCESS)
+                allTargetIdentities[tid] = (dn.monitorDevicePath ?? "", dn.edidManufactureId, dn.edidProductCodeId, dn.connectorInstance, dn.monitorFriendlyDeviceName ?? "");
+        }
+
         var currentConfig = GetCurrentConfiguration();
         var profileIdentities = profile.Monitors.Select(m =>
             new MonitorMatcher.MonitorIdentity(m.DevicePath, m.EdidManufacturerId, m.EdidProductCodeId, m.ConnectorInstance, m.FriendlyName)).ToList();
@@ -99,42 +124,77 @@ public sealed class DisplayService : IDisplayService
             new MonitorMatcher.MonitorIdentity(m.DevicePath, m.EdidManufacturerId, m.EdidProductCodeId, m.ConnectorInstance, m.FriendlyName)).ToList();
 
         var matchResult = MonitorMatcher.Match(profileIdentities, currentIdentities);
-
         if (matchResult.Matches.Count == 0 && profile.Monitors.Count > 0)
             return DisplayApplyResult.Failed;
 
-        // Build set of current monitor indices that should be DISABLED
-        // Only explicitly disabled monitors (IsEnabled=false) in the profile are removed.
-        // Unmatched monitors (not in profile) keep their current state.
+        // Phase 2: Check if any enabled profile monitors are currently inactive
+        bool needsTopologyExtend = false;
+        foreach (var (profileIdx, _) in matchResult.Matches)
+        {
+            if (!profile.Monitors[profileIdx].IsEnabled) continue;
+            var pm = profile.Monitors[profileIdx];
+            bool isActive = currentConfig.Any(c =>
+                c.DevicePath == pm.DevicePath ||
+                (c.EdidManufacturerId == pm.EdidManufacturerId && c.EdidProductCodeId == pm.EdidProductCodeId && c.ConnectorInstance == pm.ConnectorInstance));
+            if (!isActive) { needsTopologyExtend = true; break; }
+        }
+
+        // Also check unmatched profile monitors — they might be connected but inactive
+        foreach (var unmatchedIdx in matchResult.UnmatchedProfile)
+        {
+            var pm = profile.Monitors[unmatchedIdx];
+            if (!pm.IsEnabled) continue;
+            foreach (var (tid, info) in allTargetIdentities)
+            {
+                if (info.devicePath == pm.DevicePath ||
+                    (info.mfrId == pm.EdidManufacturerId && info.prodId == pm.EdidProductCodeId && info.connector == pm.ConnectorInstance))
+                {
+                    needsTopologyExtend = true;
+                    break;
+                }
+            }
+            if (needsTopologyExtend) break;
+        }
+
+        // Phase 3: If inactive monitors need activation, extend topology first
+        if (needsTopologyExtend)
+        {
+            NativeDisplayApi.SetDisplayConfig(0, null, 0, null,
+                SDC_FLAGS.SDC_TOPOLOGY_EXTEND | SDC_FLAGS.SDC_APPLY | SDC_FLAGS.SDC_ALLOW_CHANGES);
+            Thread.Sleep(500);
+
+            // Re-read current config after topology change
+            currentConfig = GetCurrentConfiguration();
+            currentIdentities = currentConfig.Select(m =>
+                new MonitorMatcher.MonitorIdentity(m.DevicePath, m.EdidManufacturerId, m.EdidProductCodeId, m.ConnectorInstance, m.FriendlyName)).ToList();
+            matchResult = MonitorMatcher.Match(profileIdentities, currentIdentities);
+        }
+
+        // Phase 4: Determine which monitors to disable
         var disabledCurrentIndices = new HashSet<int>();
         foreach (var (profileIdx, currentIdx) in matchResult.Matches)
         {
             if (!profile.Monitors[profileIdx].IsEnabled)
                 disabledCurrentIndices.Add(currentIdx);
         }
+        // Handle unmatched monitors based on profile's UnmatchedAction
+        if (profile.UnmatchedAction == Models.UnmatchedMonitorAction.Disable)
+        {
+            foreach (var unmatchedCurrentIdx in matchResult.UnmatchedCurrent)
+                disabledCurrentIndices.Add(unmatchedCurrentIdx);
+        }
 
-        // Query current active paths
-        int result = NativeDisplayApi.GetDisplayConfigBufferSizes(
-            QDC_FLAGS.QDC_ONLY_ACTIVE_PATHS,
-            out uint activePathCount,
-            out uint activeModeCount);
-
-        if (result != NativeDisplayApi.ERROR_SUCCESS)
-            return DisplayApplyResult.Failed;
+        // Phase 5: Query active paths and build new configuration
+        result = NativeDisplayApi.GetDisplayConfigBufferSizes(
+            QDC_FLAGS.QDC_ONLY_ACTIVE_PATHS, out uint activePathCount, out uint activeModeCount);
+        if (result != NativeDisplayApi.ERROR_SUCCESS) return DisplayApplyResult.Failed;
 
         var activePaths = new DISPLAYCONFIG_PATH_INFO[activePathCount];
         var activeModes = new DISPLAYCONFIG_MODE_INFO[activeModeCount];
-
         result = NativeDisplayApi.QueryDisplayConfig(
-            QDC_FLAGS.QDC_ONLY_ACTIVE_PATHS,
-            ref activePathCount, activePaths,
-            ref activeModeCount, activeModes,
-            IntPtr.Zero);
+            QDC_FLAGS.QDC_ONLY_ACTIVE_PATHS, ref activePathCount, activePaths, ref activeModeCount, activeModes, IntPtr.Zero);
+        if (result != NativeDisplayApi.ERROR_SUCCESS) return DisplayApplyResult.Failed;
 
-        if (result != NativeDisplayApi.ERROR_SUCCESS)
-            return DisplayApplyResult.Failed;
-
-        // Build filtered path/mode arrays: keep only enabled matched monitors
         var newPaths = new List<DISPLAYCONFIG_PATH_INFO>();
         var newModes = new List<DISPLAYCONFIG_MODE_INFO>();
         bool hasRotationChange = false;
@@ -143,7 +203,6 @@ public sealed class DisplayService : IDisplayService
         {
             var activePath = activePaths[p];
 
-            // Find which current monitor this path corresponds to
             int? matchedCurrentIdx = null;
             int? matchedProfileIdx = null;
             for (int c = 0; c < currentConfig.Count; c++)
@@ -160,18 +219,14 @@ public sealed class DisplayService : IDisplayService
                 }
             }
 
-            // Skip only explicitly disabled monitors
             if (matchedCurrentIdx.HasValue && disabledCurrentIndices.Contains(matchedCurrentIdx.Value))
                 continue;
 
-            // Apply profile settings to matched paths
             if (matchedProfileIdx.HasValue)
             {
                 var profileMonitor = profile.Monitors[matchedProfileIdx.Value];
                 var newRotation = MapRotationBack(profileMonitor.Rotation);
-
-                if (activePath.targetInfo.rotation != newRotation)
-                    hasRotationChange = true;
+                if (activePath.targetInfo.rotation != newRotation) hasRotationChange = true;
 
                 activePath.targetInfo.rotation = newRotation;
                 activePath.targetInfo.refreshRate.Numerator = profileMonitor.RefreshRateNumerator;
@@ -183,13 +238,11 @@ public sealed class DisplayService : IDisplayService
                     mode.sourceMode.position.x = profileMonitor.PositionX;
                     mode.sourceMode.position.y = profileMonitor.PositionY;
 
-                    // Profile stores logical (rotated) dimensions; reverse for CCD source mode
                     var w = profileMonitor.Width;
                     var h = profileMonitor.Height;
                     if (profileMonitor.Rotation is Models.DisplayRotation.Rotate90 or Models.DisplayRotation.Rotate270)
                     {
-                        if (w < h)
-                            (w, h) = (h, w);
+                        if (w < h) (w, h) = (h, w);
                     }
                     mode.sourceMode.width = (uint)w;
                     mode.sourceMode.height = (uint)h;
@@ -200,7 +253,6 @@ public sealed class DisplayService : IDisplayService
             }
             else
             {
-                // Unmatched but still active (not in profile) — keep mode as-is with remapped index
                 if (activePath.sourceInfo.modeInfoIdx < activeModeCount)
                 {
                     var mode = activeModes[activePath.sourceInfo.modeInfoIdx];
@@ -209,7 +261,6 @@ public sealed class DisplayService : IDisplayService
                 }
             }
 
-            // Remap target mode index if present
             if (activePath.targetInfo.modeInfoIdx < activeModeCount)
             {
                 var targetMode = activeModes[activePath.targetInfo.modeInfoIdx];
@@ -220,33 +271,21 @@ public sealed class DisplayService : IDisplayService
             newPaths.Add(activePath);
         }
 
-        if (newPaths.Count == 0)
-            return DisplayApplyResult.Failed;
+        if (newPaths.Count == 0) return DisplayApplyResult.Failed;
 
         var pathArray = newPaths.ToArray();
         var modeArray = newModes.ToArray();
         var pathLen = (uint)pathArray.Length;
         var modeLen = (uint)modeArray.Length;
 
-        // Validate first
-        result = NativeDisplayApi.SetDisplayConfig(
-            pathLen, pathArray,
-            modeLen, modeArray,
+        result = NativeDisplayApi.SetDisplayConfig(pathLen, pathArray, modeLen, modeArray,
             SDC_FLAGS.SDC_USE_SUPPLIED_DISPLAY_CONFIG | SDC_FLAGS.SDC_VALIDATE);
+        if (result != NativeDisplayApi.ERROR_SUCCESS) return DisplayApplyResult.ValidationError;
 
-        if (result != NativeDisplayApi.ERROR_SUCCESS)
-            return DisplayApplyResult.ValidationError;
-
-        // Apply
-        result = NativeDisplayApi.SetDisplayConfig(
-            pathLen, pathArray,
-            modeLen, modeArray,
+        result = NativeDisplayApi.SetDisplayConfig(pathLen, pathArray, modeLen, modeArray,
             SDC_FLAGS.SDC_USE_SUPPLIED_DISPLAY_CONFIG | SDC_FLAGS.SDC_APPLY | SDC_FLAGS.SDC_SAVE_TO_DATABASE | SDC_FLAGS.SDC_ALLOW_CHANGES);
+        if (result != NativeDisplayApi.ERROR_SUCCESS) return DisplayApplyResult.Failed;
 
-        if (result != NativeDisplayApi.ERROR_SUCCESS)
-            return DisplayApplyResult.Failed;
-
-        // Workaround for Windows CCD rotation bug: nudge the coordinate system
         if (hasRotationChange)
         {
             Thread.Sleep(200);

@@ -60,6 +60,10 @@
   <data name="Export" xml:space="preserve"><value>내보내기...</value></data>
   <data name="Import" xml:space="preserve"><value>가져오기</value></data>
   <data name="Rename" xml:space="preserve"><value>이름 변경</value></data>
+  <data name="UnmatchedMonitors" xml:space="preserve"><value>미등록 모니터</value></data>
+  <data name="UnmatchedMonitorsDesc" xml:space="preserve"><value>이 프로필에 포함되지 않은 모니터를 어떻게 처리할지 선택합니다</value></data>
+  <data name="UnmatchedKeep" xml:space="preserve"><value>현재 상태 유지</value></data>
+  <data name="UnmatchedDisable" xml:space="preserve"><value>끄기</value></data>
   <data name="AutoSwitch" xml:space="preserve"><value>자동 전환</value></data>
   <data name="AutoSwitchDesc" xml:space="preserve"><value>해당 모니터가 감지되면 자동으로 적용</value></data>
 
@@ -120,7 +124,7 @@ Delete 또는 Backspace로 삭제. Escape로 취소.</value></data>
   <!-- About -->
   <data name="AboutSection" xml:space="preserve"><value>정보</value></data>
   <data name="AboutName" xml:space="preserve"><value>Mo — 모니터 프로필 관리자</value></data>
-  <data name="AboutVersion" xml:space="preserve"><value>버전 0.11.0</value></data>
+  <data name="AboutVersion" xml:space="preserve"><value>버전 0.12.0</value></data>
   <data name="AboutDescription" xml:space="preserve"><value>다중 모니터 구성을 저장하고 원클릭으로 복원합니다.</value></data>
 
   <!-- Profile Editor -->
@@ -199,6 +203,10 @@ Delete 또는 Backspace로 삭제. Escape로 취소.</value></data>
   <data name="RotationWarning" xml:space="preserve"><value>Windows CCD API를 통한 회전 적용 시 마우스 포인터 좌표 문제가 발생할 수 있습니다. 이는 Windows 알려진 제한 사항입니다. 커서가 비정상적으로 동작하면 PC를 잠금/해제(Win+L)하세요.</value></data>
 
   <!-- Apply Error -->
+  <data name="CompatWarningTitle" xml:space="preserve"><value>모니터 불일치</value></data>
+  <data name="MissingMonitors" xml:space="preserve"><value>연결되지 않음</value></data>
+  <data name="ExtraMonitors" xml:space="preserve"><value>프로필에 없음</value></data>
+  <data name="ApplyAnyway" xml:space="preserve"><value>그래도 적용</value></data>
   <data name="ApplyErrorTitle" xml:space="preserve"><value>프로필 적용 실패</value></data>
   <data name="ApplyFailed" xml:space="preserve"><value>디스플레이 구성을 적용할 수 없습니다. 일부 모니터가 연결되지 않았거나 구성이 호환되지 않을 수 있습니다.</value></data>
   <data name="ApplyValidationError" xml:space="preserve"><value>현재 하드웨어 구성에 유효하지 않은 디스플레이 설정입니다. 모니터 연결 상태와 프로필 설정을 확인하세요.</value></data>
