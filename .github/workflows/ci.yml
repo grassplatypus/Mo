@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         platform: [x64]
-        configuration: [Debug, Release]
+        configuration: [Release]
 
     steps:
       - uses: actions/checkout@v4
