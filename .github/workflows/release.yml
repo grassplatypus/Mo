@@ -28,16 +28,14 @@ jobs:
         uses: microsoft/setup-msbuild@v2
 
       - name: Set Version in Manifest
-        shell: pwsh
+        shell: bash
         run: |
-          $version = "${{ github.ref_name }}".TrimStart("v")
-          if ($version -notmatch '^\d+\.\d+\.\d+\.\d+$') { $version = "$version.0" }
-          $path = "src/Mo/Package.appxmanifest"
-          $bytes = [IO.File]::ReadAllBytes($path)
-          $hasBom = $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
-          $text = [System.Text.Encoding]::UTF8.GetString($bytes)
-          $text = $text -replace 'Version="[\d.]+"', "Version=`"$version`""
-          [IO.File]::WriteAllText($path, $text, [System.Text.UTF8Encoding]::new($hasBom))
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            VERSION="${VERSION}.0"
+          fi
+          sed -i "s/Version=\"[0-9.]*\"/Version=\"${VERSION}\"/" src/Mo/Package.appxmanifest
 
       - name: Restore
         run: dotnet restore src/Mo/Mo.csproj -p:Platform=${{ matrix.platform }}
