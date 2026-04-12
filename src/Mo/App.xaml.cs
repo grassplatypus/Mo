@@ -180,6 +180,7 @@ public partial class App : Application
         services.AddSingleton<ExportImportService>();
         services.AddSingleton<ILiveWallpaperService, LiveWallpaperService>();
         services.AddSingleton<IMonitorColorService, MonitorColorService>();
+        services.AddSingleton<NvidiaRotationService>();
 
         services.AddTransient<ProfileListViewModel>();
         services.AddTransient<SettingsViewModel>();

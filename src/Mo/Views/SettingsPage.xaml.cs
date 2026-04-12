@@ -34,7 +34,27 @@ public sealed partial class SettingsPage : Page
         ThemeCombo.SelectedIndex = themeIndex;
         _themeLoaded = true;
 
+        // Rotation method
+        var nvService = App.Services.GetRequiredService<NvidiaRotationService>();
+        var settingsService = App.Services.GetRequiredService<ISettingsService>();
+        RotationMethodCombo.SelectedIndex = (int)settingsService.Settings.RotationMethod;
+
+        // Disable NVIDIA option if no NVIDIA GPU
+        if (!nvService.IsAvailable && settingsService.Settings.RotationMethod == RotationMethod.NvidiaDriver)
+        {
+            settingsService.Settings.RotationMethod = RotationMethod.Windows;
+            RotationMethodCombo.SelectedIndex = 0;
+        }
+
         _ = LoadSystemInfoAsync();
+    }
+
+    private void RotationMethodCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_themeLoaded) return;
+        var settingsService = App.Services.GetRequiredService<ISettingsService>();
+        settingsService.Settings.RotationMethod = (RotationMethod)RotationMethodCombo.SelectedIndex;
+        _ = settingsService.SaveAsync();
     }
 
     private async Task LoadSystemInfoAsync()
@@ -237,6 +257,21 @@ public sealed partial class SettingsPage : Page
         AboutName.Text = ResourceHelper.GetString("AboutName");
         AboutVersion.Text = $"Version {UpdateService.CurrentVersion}";
         AboutDesc.Text = ResourceHelper.GetString("AboutDescription");
+        ExperimentalText.Text = ResourceHelper.GetString("ExperimentalSection");
+        ExperimentalWarning.Message = ResourceHelper.GetString("ExperimentalWarning");
+        RotationMethodLabel.Text = ResourceHelper.GetString("RotationMethod");
+        RotationMethodDesc.Text = ResourceHelper.GetString("RotationMethodDesc");
+        RotationMethodCombo.Items.Clear();
+        RotationMethodCombo.Items.Add(ResourceHelper.GetString("RotationWindows"));
+        var nvService2 = App.Services.GetRequiredService<NvidiaRotationService>();
+        RotationMethodCombo.Items.Add(nvService2.IsAvailable
+            ? ResourceHelper.GetString("RotationNvidia")
+            : ResourceHelper.GetString("RotationNvidiaUnavailable"));
+        if (!nvService2.IsAvailable)
+        {
+            // Disable NVIDIA option in ComboBox
+            RotationMethodCombo.IsEnabled = RotationMethodCombo.SelectedIndex != 1;
+        }
         SystemInfoTitle.Text = ResourceHelper.GetString("SystemInfoSection");
         MonitorSectionTitle.Text = ResourceHelper.GetString("MonitorSection");
         DebugInfoTitle.Text = ResourceHelper.GetString("DebugInfoSection");

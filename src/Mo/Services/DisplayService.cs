@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using Microsoft.Extensions.DependencyInjection;
 using Mo.Core.DisplayConfiguration;
 using Mo.Interop.DisplayConfig;
 using Mo.Models;
@@ -7,6 +8,18 @@ namespace Mo.Services;
 
 public sealed class DisplayService : IDisplayService
 {
+    private bool UseNvidiaRotation
+    {
+        get
+        {
+            try
+            {
+                var settings = App.Services.GetRequiredService<ISettingsService>();
+                return settings.Settings.RotationMethod == RotationMethod.NvidiaDriver;
+            }
+            catch { return false; }
+        }
+    }
     public List<MonitorInfo> GetCurrentConfiguration()
     {
         var monitors = new List<MonitorInfo>();
@@ -198,6 +211,8 @@ public sealed class DisplayService : IDisplayService
         var newPaths = new List<DISPLAYCONFIG_PATH_INFO>();
         var newModes = new List<DISPLAYCONFIG_MODE_INFO>();
         bool hasRotationChange = false;
+        bool useNvRotation = UseNvidiaRotation;
+        var nvidiaRotationTasks = new List<(MonitorInfo monitor, DisplayRotation rotation)>();
 
         for (int p = 0; p < activePathCount; p++)
         {
@@ -228,7 +243,15 @@ public sealed class DisplayService : IDisplayService
                 var newRotation = MapRotationBack(profileMonitor.Rotation);
                 if (activePath.targetInfo.rotation != newRotation) hasRotationChange = true;
 
-                activePath.targetInfo.rotation = newRotation;
+                if (useNvRotation && profileMonitor.Rotation != DisplayRotation.None)
+                {
+                    // Defer rotation to NVIDIA driver; keep CCD at identity
+                    nvidiaRotationTasks.Add((currentConfig[matchedCurrentIdx!.Value], profileMonitor.Rotation));
+                }
+                else
+                {
+                    activePath.targetInfo.rotation = newRotation;
+                }
                 activePath.targetInfo.refreshRate.Numerator = profileMonitor.RefreshRateNumerator;
                 activePath.targetInfo.refreshRate.Denominator = profileMonitor.RefreshRateDenominator;
 
@@ -286,15 +309,24 @@ public sealed class DisplayService : IDisplayService
             SDC_FLAGS.SDC_USE_SUPPLIED_DISPLAY_CONFIG | SDC_FLAGS.SDC_APPLY | SDC_FLAGS.SDC_SAVE_TO_DATABASE | SDC_FLAGS.SDC_ALLOW_CHANGES);
         if (result != NativeDisplayApi.ERROR_SUCCESS) return DisplayApplyResult.Failed;
 
+        // Apply NVIDIA driver-level rotation if configured
+        if (nvidiaRotationTasks.Count > 0)
+        {
+            try
+            {
+                var nvService = App.Services.GetRequiredService<NvidiaRotationService>();
+                foreach (var (monitor, rotation) in nvidiaRotationTasks)
+                    nvService.ApplyRotation(monitor, rotation);
+            }
+            catch { }
+        }
+
         if (hasRotationChange)
         {
             Thread.Sleep(300);
-            // Release any cursor clipping region that may be stale after rotation
             NativeDisplayApi.ClipCursor(IntPtr.Zero);
-            // Nudge the coordinate system
             NativeDisplayApi.SystemParametersInfo(
                 NativeDisplayApi.SPI_SETWORKAREA, 0, IntPtr.Zero, NativeDisplayApi.SPIF_SENDCHANGE);
-            // Move cursor to center of primary monitor to unstick it
             int cx = NativeDisplayApi.GetSystemMetrics(NativeDisplayApi.SM_CXSCREEN) / 2;
             int cy = NativeDisplayApi.GetSystemMetrics(NativeDisplayApi.SM_CYSCREEN) / 2;
             NativeDisplayApi.SetCursorPos(cx, cy);

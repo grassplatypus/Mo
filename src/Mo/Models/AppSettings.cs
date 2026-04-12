@@ -11,7 +11,14 @@ public sealed class AppSettings
     public bool AutoSwitchEnabled { get; set; } = true;
     public bool CheckForUpdates { get; set; } = true;
     public string? LastUpdateCheck { get; set; }
+    public RotationMethod RotationMethod { get; set; } = RotationMethod.Windows;
     public WindowPlacement? WindowPlacement { get; set; }
+}
+
+public enum RotationMethod
+{
+    Windows,
+    NvidiaDriver,
 }
 
 public sealed class WindowPlacement

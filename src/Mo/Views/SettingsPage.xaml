@@ -97,6 +97,32 @@
                 </Grid>
             </Grid>
 
+            <!-- Experimental -->
+            <TextBlock x:Name="ExperimentalText" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,24,0,8" />
+
+            <Grid Padding="16" CornerRadius="8"
+                  Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                <StackPanel Spacing="12">
+                    <InfoBar
+                        x:Name="ExperimentalWarning"
+                        Severity="Warning"
+                        IsOpen="True"
+                        IsClosable="False" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock x:Name="RotationMethodLabel" />
+                            <TextBlock x:Name="RotationMethodDesc" Opacity="0.6" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <ComboBox Grid.Column="1" x:Name="RotationMethodCombo" MinWidth="140" MaxWidth="240" SelectionChanged="RotationMethodCombo_SelectionChanged" />
+                    </Grid>
+                </StackPanel>
+            </Grid>
+
             <!-- About -->
             <TextBlock x:Name="AboutText" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,24,0,8" />
 

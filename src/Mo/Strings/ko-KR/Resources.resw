@@ -190,6 +190,15 @@ Delete 또는 Backspace로 삭제. Escape로 취소.</value></data>
   <data name="DownloadUpdate" xml:space="preserve"><value>다운로드</value></data>
   <data name="Later" xml:space="preserve"><value>나중에</value></data>
 
+  <!-- Experimental -->
+  <data name="ExperimentalSection" xml:space="preserve"><value>실험적 기능</value></data>
+  <data name="ExperimentalWarning" xml:space="preserve"><value>이 기능은 실험적이며 모든 시스템에서 올바르게 작동하지 않을 수 있습니다.</value></data>
+  <data name="RotationMethod" xml:space="preserve"><value>회전 방식</value></data>
+  <data name="RotationMethodDesc" xml:space="preserve"><value>NVIDIA 드라이버 회전은 회전된 디스플레이에서 발생하는 Windows 마우스 커서 버그를 회피합니다.</value></data>
+  <data name="RotationWindows" xml:space="preserve"><value>Windows (CCD API)</value></data>
+  <data name="RotationNvidia" xml:space="preserve"><value>NVIDIA 드라이버 (NVAPI)</value></data>
+  <data name="RotationNvidiaUnavailable" xml:space="preserve"><value>NVIDIA 드라이버 (사용 불가)</value></data>
+
   <!-- System Info -->
   <data name="SystemInfoSection" xml:space="preserve"><value>시스템</value></data>
   <data name="MonitorSection" xml:space="preserve"><value>모니터</value></data>

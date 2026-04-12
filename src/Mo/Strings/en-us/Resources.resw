@@ -190,6 +190,15 @@ Press Delete or Backspace to clear. Escape to cancel.</value></data>
   <data name="DownloadUpdate" xml:space="preserve"><value>Download</value></data>
   <data name="Later" xml:space="preserve"><value>Later</value></data>
 
+  <!-- Experimental -->
+  <data name="ExperimentalSection" xml:space="preserve"><value>Experimental</value></data>
+  <data name="ExperimentalWarning" xml:space="preserve"><value>These features are experimental and may not work correctly on all systems.</value></data>
+  <data name="RotationMethod" xml:space="preserve"><value>Rotation Method</value></data>
+  <data name="RotationMethodDesc" xml:space="preserve"><value>NVIDIA driver rotation avoids the Windows mouse cursor bug with rotated displays.</value></data>
+  <data name="RotationWindows" xml:space="preserve"><value>Windows (CCD API)</value></data>
+  <data name="RotationNvidia" xml:space="preserve"><value>NVIDIA Driver (NVAPI)</value></data>
+  <data name="RotationNvidiaUnavailable" xml:space="preserve"><value>NVIDIA Driver (not available)</value></data>
+
   <!-- System Info -->
   <data name="SystemInfoSection" xml:space="preserve"><value>System</value></data>
   <data name="MonitorSection" xml:space="preserve"><value>Monitors</value></data>
