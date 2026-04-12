@@ -7,6 +7,7 @@ on:
 jobs:
   build-and-release:
     runs-on: windows-latest
+    timeout-minutes: 30
     permissions:
       contents: write
 
@@ -20,7 +21,9 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: |
+            8.0.x
+            10.0.x
           dotnet-quality: 'preview'
 
       - name: Set Version in Manifest
@@ -31,40 +34,22 @@ jobs:
           (Get-Content src/Mo/Package.appxmanifest) -replace 'Version="[\d.]+"', "Version=`"$version`"" |
             Set-Content src/Mo/Package.appxmanifest
 
-      - name: Restore packages
-        run: dotnet restore src/Mo/Mo.csproj -p:Platform=${{ matrix.platform }}
-
-      - name: Fix MSIX BuildTools .NET 10 compatibility
-        shell: pwsh
-        run: |
-          $nugetDir = "$env:USERPROFILE\.nuget\packages"
-          $permDll = Get-ChildItem -Path "$nugetDir\system.security.permissions" -Filter "System.Security.Permissions.dll" -Recurse |
-            Where-Object { $_.DirectoryName -match "netstandard|net4|net6|net8" } | Select-Object -First 1
-          $msixTaskDirs = Get-ChildItem -Path "$nugetDir\microsoft.windows.sdk.buildtools.msix" -Directory -Recurse |
-            Where-Object { $_.Name -eq "net472" -or $_.Name -eq "build" }
-          if ($permDll) {
-            foreach ($dir in $msixTaskDirs) {
-              Copy-Item $permDll.FullName $dir.FullName -Force
-              Write-Host "Copied to $($dir.FullName)"
-            }
-            # Also copy to MSBuild SDK directory
-            $sdkDir = Split-Path (Get-Command dotnet).Source
-            $msbuildDir = Get-ChildItem -Path $sdkDir -Filter "MSBuild.dll" -Recurse | Select-Object -First 1
-            if ($msbuildDir) {
-              Copy-Item $permDll.FullName $msbuildDir.DirectoryName -Force
-              Write-Host "Copied to MSBuild dir: $($msbuildDir.DirectoryName)"
-            }
-          } else {
-            Write-Host "WARNING: System.Security.Permissions.dll not found"
-          }
-
+      # ZIP (portable) — .NET 10
       - name: Publish (portable)
         run: dotnet publish src/Mo/Mo.csproj -c Release -p:Platform=${{ matrix.platform }} -p:PublishReadyToRun=true -p:PublishTrimmed=true -p:WindowsPackageType=None -p:EnableMsixTooling=false -o publish/${{ matrix.platform }}
+        timeout-minutes: 15
 
       - name: Create ZIP
         run: Compress-Archive -Path publish/${{ matrix.platform }}/* -DestinationPath Mo-${{ github.ref_name }}-${{ matrix.platform }}.zip
 
-      # Unsigned MSIX
+      # MSIX — .NET 8 SDK (BuildTools.MSIX has .NET 10 compatibility issue)
+      - name: Create global.json for .NET 8
+        shell: pwsh
+        run: |
+          $sdk8 = dotnet --list-sdks | Where-Object { $_ -match "^8\." } | ForEach-Object { ($_ -split " ")[0] } | Select-Object -Last 1
+          Write-Host "Using .NET 8 SDK: $sdk8"
+          '{"sdk":{"version":"' + $sdk8 + '","rollForward":"latestFeature"}}' | Set-Content global.json
+
       - name: Build MSIX (unsigned)
         shell: pwsh
         run: |
@@ -83,7 +68,6 @@ jobs:
             Copy-Item $msix.FullName "Mo-${{ github.ref_name }}-${{ matrix.platform }}-unsigned.msix"
           }
 
-      # Signed MSIX
       - name: Build and sign MSIX
         if: env.SIGNING_CERT_BASE64 != ''
         shell: pwsh
@@ -118,6 +102,9 @@ jobs:
           if ($msix) {
             Copy-Item $msix.FullName "Mo-${{ github.ref_name }}-${{ matrix.platform }}.msix"
           }
+
+      - name: Remove global.json
+        run: Remove-Item global.json -ErrorAction SilentlyContinue
 
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v2
