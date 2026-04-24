@@ -207,6 +207,9 @@ public partial class App : Application
             SafeInit(() => Services.GetRequiredService<IAutoSwitchService>().Start());
             SafeInit(() => Services.GetRequiredService<IScheduleService>().Start());
 
+            // Restore last-applied profile after reboot (NVIDIA/CCD persistence is unreliable).
+            _ = RestoreLastAppliedProfileAsync();
+
             SafeInit(() =>
             {
                 var hotkeyService = (HotkeyService)Services.GetRequiredService<IHotkeyService>();
@@ -227,6 +230,40 @@ public partial class App : Application
 
         // Auto-check for updates (after everything else, non-blocking)
         _ = CheckForUpdateOnStartupAsync();
+    }
+
+    private static async Task RestoreLastAppliedProfileAsync()
+    {
+        try
+        {
+            var settings = Services.GetRequiredService<ISettingsService>();
+            if (!settings.Settings.RestoreOnStartup) return;
+
+            var profileId = settings.Settings.LastAppliedProfileId;
+            if (string.IsNullOrEmpty(profileId)) return;
+
+            var profileService = Services.GetRequiredService<IProfileService>();
+            var profile = profileService.Profiles.FirstOrDefault(p => p.Id == profileId);
+            if (profile == null) return;
+
+            // Let the shell settle before touching displays.
+            await Task.Delay(1500);
+
+            var displayService = Services.GetRequiredService<IDisplayService>();
+            var compatibility = displayService.CheckCompatibility(profile);
+            if (!compatibility.IsFullMatch && compatibility.MissingMonitors.Count > 0 &&
+                compatibility.MissingMonitors.Count == profile.Monitors.Count)
+            {
+                // No profile monitor is present — skip silently; user likely on a different setup.
+                return;
+            }
+
+            await profileService.ApplyProfileAsync(profileId, applyColor: settings.Settings.RestoreColorOnStartup);
+        }
+        catch (Exception ex)
+        {
+            LogException("RestoreLastAppliedProfileAsync", ex);
+        }
     }
 
     private static async Task CheckForUpdateOnStartupAsync()

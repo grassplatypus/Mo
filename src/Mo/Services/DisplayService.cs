@@ -165,7 +165,8 @@ public sealed class DisplayService : IDisplayService
         if (needsTopologyExtend)
         {
             NativeDisplayApi.SetDisplayConfig(0, null, 0, null,
-                SDC_FLAGS.SDC_TOPOLOGY_EXTEND | SDC_FLAGS.SDC_APPLY | SDC_FLAGS.SDC_ALLOW_CHANGES | SDC_FLAGS.SDC_SAVE_TO_DATABASE);
+                SDC_FLAGS.SDC_TOPOLOGY_EXTEND | SDC_FLAGS.SDC_APPLY | SDC_FLAGS.SDC_ALLOW_CHANGES
+                | SDC_FLAGS.SDC_SAVE_TO_DATABASE | SDC_FLAGS.SDC_VIRTUAL_MODE_AWARE | SDC_FLAGS.SDC_PATH_PERSIST_IF_REQUIRED);
 
             // Wait and retry matching until all monitors appear or timeout
             for (int attempt = 0; attempt < 3; attempt++)
@@ -278,11 +279,26 @@ public sealed class DisplayService : IDisplayService
 
         if (finalPaths.Length == 0) return DisplayApplyResult.Failed;
 
-        // Try apply with ALLOW_CHANGES (skip validation - it can be too strict)
+        // Try apply with ALLOW_CHANGES (skip validation - it can be too strict).
+        // VIRTUAL_MODE_AWARE + PATH_PERSIST_IF_REQUIRED ensures Windows 10 1903+ persists
+        // DPI/rotation-aware configuration across reboots.
+        var persistFlags = SDC_FLAGS.SDC_USE_SUPPLIED_DISPLAY_CONFIG | SDC_FLAGS.SDC_APPLY
+            | SDC_FLAGS.SDC_SAVE_TO_DATABASE | SDC_FLAGS.SDC_ALLOW_CHANGES
+            | SDC_FLAGS.SDC_VIRTUAL_MODE_AWARE | SDC_FLAGS.SDC_PATH_PERSIST_IF_REQUIRED;
         result = NativeDisplayApi.SetDisplayConfig(
             (uint)finalPaths.Length, finalPaths,
             activeModeCount, activeModes,
-            SDC_FLAGS.SDC_USE_SUPPLIED_DISPLAY_CONFIG | SDC_FLAGS.SDC_APPLY | SDC_FLAGS.SDC_SAVE_TO_DATABASE | SDC_FLAGS.SDC_ALLOW_CHANGES);
+            persistFlags);
+
+        // Some older configs reject VIRTUAL_MODE_AWARE; retry without it.
+        if (result != NativeDisplayApi.ERROR_SUCCESS)
+        {
+            result = NativeDisplayApi.SetDisplayConfig(
+                (uint)finalPaths.Length, finalPaths,
+                activeModeCount, activeModes,
+                SDC_FLAGS.SDC_USE_SUPPLIED_DISPLAY_CONFIG | SDC_FLAGS.SDC_APPLY
+                | SDC_FLAGS.SDC_SAVE_TO_DATABASE | SDC_FLAGS.SDC_ALLOW_CHANGES);
+        }
 
         if (result != NativeDisplayApi.ERROR_SUCCESS)
             return DisplayApplyResult.Failed;

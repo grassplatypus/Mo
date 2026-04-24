@@ -128,7 +128,7 @@ public sealed class ProfileService : IProfileService
         return profile;
     }
 
-    public async Task<DisplayApplyResult> ApplyProfileAsync(string profileId)
+    public async Task<DisplayApplyResult> ApplyProfileAsync(string profileId, bool applyColor = true)
     {
         var profile = Profiles.FirstOrDefault(p => p.Id == profileId);
         if (profile == null)
@@ -162,19 +162,23 @@ public sealed class ProfileService : IProfileService
                 catch { }
             }
 
-            // Apply monitor color settings
-            try
+            // Apply monitor color settings (DDC/CI is not persisted by Windows, so this must
+            // run on every apply, including the post-reboot auto-restore).
+            if (applyColor)
             {
-                var colorService = App.Services.GetRequiredService<IMonitorColorService>();
-                var entries = profile.Monitors
-                    .Select((m, i) => (index: i, settings: m.ColorSettings))
-                    .Where(e => e.settings is { HasValues: true })
-                    .Select(e => (e.index, e.settings!))
-                    .ToList();
-                if (entries.Count > 0)
-                    colorService.ApplyAll(entries);
+                try
+                {
+                    var colorService = App.Services.GetRequiredService<IMonitorColorService>();
+                    var entries = profile.Monitors
+                        .Select((m, i) => (index: i, settings: m.ColorSettings))
+                        .Where(e => e.settings is { HasValues: true })
+                        .Select(e => (e.index, e.settings!))
+                        .ToList();
+                    if (entries.Count > 0)
+                        colorService.ApplyAll(entries);
+                }
+                catch { }
             }
-            catch { }
 
             // Apply live wallpaper
             if (profile.LiveWallpaper is { Provider: not Models.LiveWallpaperProvider.None, Entries.Count: > 0 })
@@ -187,10 +191,22 @@ public sealed class ProfileService : IProfileService
                 catch { }
             }
 
+            // Remember the last-applied profile so App.InitializeAsync can restore it
+            // after reboot (reboot-persistence is unreliable on NVIDIA driver paths).
+            try
+            {
+                var settings = App.Services.GetRequiredService<ISettingsService>();
+                if (settings.Settings.LastAppliedProfileId != profileId)
+                {
+                    settings.Settings.LastAppliedProfileId = profileId;
+                    await settings.SaveAsync();
+                }
+            }
+            catch { }
+
             ProfileApplied?.Invoke(this, profile);
         }
 
-        await Task.CompletedTask;
         return result;
     }
 

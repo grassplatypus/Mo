@@ -12,6 +12,6 @@ public interface IProfileService
     Task SaveProfileAsync(DisplayProfile profile);
     Task DeleteProfileAsync(string profileId);
     Task<DisplayProfile> CaptureCurrentAsync(string name);
-    Task<DisplayApplyResult> ApplyProfileAsync(string profileId);
+    Task<DisplayApplyResult> ApplyProfileAsync(string profileId, bool applyColor = true);
     event EventHandler<DisplayProfile>? ProfileApplied;
 }

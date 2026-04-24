@@ -13,6 +13,11 @@ public sealed class AppSettings
     public string? LastUpdateCheck { get; set; }
     public RotationMethod RotationMethod { get; set; } = RotationMethod.Windows;
     public WindowPlacement? WindowPlacement { get; set; }
+
+    // Re-apply the last-applied profile on app startup so reboots don't lose the layout.
+    public bool RestoreOnStartup { get; set; } = true;
+    // Re-push DDC/CI brightness/contrast/RGB gain on startup (Windows doesn't persist these).
+    public bool RestoreColorOnStartup { get; set; } = true;
 }
 
 public enum RotationMethod
