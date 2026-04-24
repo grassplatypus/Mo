@@ -76,6 +76,10 @@
   <data name="RestoreColorOnStartupDesc" xml:space="preserve"><value>Windows doesn't persist DDC/CI brightness or contrast across reboots. Re-push them on launch.</value></data>
   <data name="HotkeysEnabled" xml:space="preserve"><value>Global hotkeys</value></data>
   <data name="HotkeysEnabledDesc" xml:space="preserve"><value>Trigger profiles with your system-wide shortcuts.</value></data>
+  <data name="AppearanceSection" xml:space="preserve"><value>Appearance</value></data>
+  <data name="ProfilesSection" xml:space="preserve"><value>Profiles</value></data>
+  <data name="UpdatesSection" xml:space="preserve"><value>Updates</value></data>
+  <data name="AdvancedSection" xml:space="preserve"><value>Advanced</value></data>
   <data name="NavDisplayTuning" xml:space="preserve"><value>Display Tuning</value></data>
   <data name="DisplayTuningTitle" xml:space="preserve"><value>Display Tuning</value></data>
   <data name="DisplayTuningSubtitle" xml:space="preserve"><value>Real-time brightness, contrast, and color controls for the selected monitor.</value></data>

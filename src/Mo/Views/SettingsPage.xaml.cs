@@ -253,18 +253,26 @@ public sealed partial class SettingsPage : Page
         TrayDesc.Text = ResourceHelper.GetString("MinimizeToTrayDesc");
         MinimizedLabel.Text = ResourceHelper.GetString("StartMinimized");
         MinimizedDesc.Text = ResourceHelper.GetString("StartMinimizedDesc");
+        AppearanceText.Text = ResourceHelper.GetString("AppearanceSection");
         ThemeLabel.Text = ResourceHelper.GetString("Theme");
         ThemeDesc.Text = ResourceHelper.GetString("ThemeDesc");
+        ProfilesText.Text = ResourceHelper.GetString("ProfilesSection");
         AutoSwitchLabel.Text = ResourceHelper.GetString("AutoSwitchSetting");
         AutoSwitchDesc.Text = ResourceHelper.GetString("AutoSwitchSettingDesc");
+        HotkeysLabel.Text = ResourceHelper.GetString("HotkeysEnabled");
+        HotkeysDesc.Text = ResourceHelper.GetString("HotkeysEnabledDesc");
+        RestoreLabel.Text = ResourceHelper.GetString("RestoreOnStartup");
+        RestoreDesc.Text = ResourceHelper.GetString("RestoreOnStartupDesc");
+        RestoreColorLabel.Text = ResourceHelper.GetString("RestoreColorOnStartup");
+        RestoreColorDesc.Text = ResourceHelper.GetString("RestoreColorOnStartupDesc");
+        UpdatesText.Text = ResourceHelper.GetString("UpdatesSection");
         UpdateLabel.Text = ResourceHelper.GetString("CheckForUpdates");
         UpdateDesc.Text = ResourceHelper.GetString("CheckForUpdatesDesc");
         CheckNowButton.Content = ResourceHelper.GetString("CheckNow");
-        AboutText.Text = ResourceHelper.GetString("AboutSection");
         AboutName.Text = ResourceHelper.GetString("AboutName");
         AboutVersion.Text = $"Version {UpdateService.CurrentVersion}";
         AboutDesc.Text = ResourceHelper.GetString("AboutDescription");
-        ExperimentalText.Text = ResourceHelper.GetString("ExperimentalSection");
+        AdvancedText.Text = ResourceHelper.GetString("AdvancedSection");
         RotationMethodLabel.Text = ResourceHelper.GetString("RotationMethod");
         RotationMethodDesc.Text = ResourceHelper.GetString("RotationMethodDesc");
         RotationMethodCombo.Items.Clear();
@@ -281,7 +289,6 @@ public sealed partial class SettingsPage : Page
         RotationMethodCombo.Items.Add(intel.IsAvailable
             ? ResourceHelper.GetString("RotationIntel")
             : ResourceHelper.GetString("RotationIntelUnavailable"));
-        SystemInfoTitle.Text = ResourceHelper.GetString("SystemInfoSection");
         MonitorSectionTitle.Text = ResourceHelper.GetString("MonitorSection");
         DebugInfoDesc.Text = ResourceHelper.GetString("DebugInfoDesc");
         CopySystemInfoBtn.Content = ResourceHelper.GetString("CopyDebugInfo");

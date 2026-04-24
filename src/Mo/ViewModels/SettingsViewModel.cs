@@ -65,4 +65,47 @@ public partial class SettingsViewModel : ObservableObject
         get => _settingsService.Settings.CheckForUpdates;
         set { if (_settingsService.Settings.CheckForUpdates != value) { _settingsService.Settings.CheckForUpdates = value; _ = _settingsService.SaveAsync(); OnPropertyChanged(); } }
     }
+
+    public bool RestoreOnStartup
+    {
+        get => _settingsService.Settings.RestoreOnStartup;
+        set { if (_settingsService.Settings.RestoreOnStartup != value) { _settingsService.Settings.RestoreOnStartup = value; _ = _settingsService.SaveAsync(); OnPropertyChanged(); } }
+    }
+
+    public bool RestoreColorOnStartup
+    {
+        get => _settingsService.Settings.RestoreColorOnStartup;
+        set { if (_settingsService.Settings.RestoreColorOnStartup != value) { _settingsService.Settings.RestoreColorOnStartup = value; _ = _settingsService.SaveAsync(); OnPropertyChanged(); } }
+    }
+
+    public bool HotkeysEnabled
+    {
+        get => _settingsService.Settings.HotkeysEnabled;
+        set
+        {
+            if (_settingsService.Settings.HotkeysEnabled != value)
+            {
+                _settingsService.Settings.HotkeysEnabled = value;
+                _ = _settingsService.SaveAsync();
+                OnPropertyChanged();
+
+                // Register/unregister the global hotkey subscriptions accordingly.
+                try
+                {
+                    var hotkeys = App.Services.GetRequiredService<IHotkeyService>();
+                    var profiles = App.Services.GetRequiredService<IProfileService>();
+                    if (value)
+                    {
+                        foreach (var p in profiles.Profiles)
+                            if (p.Hotkey != null) hotkeys.RegisterProfileHotkey(p.Id, p.Hotkey);
+                    }
+                    else
+                    {
+                        hotkeys.UnregisterAll();
+                    }
+                }
+                catch { }
+            }
+        }
+    }
 }

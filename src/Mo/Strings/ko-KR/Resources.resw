@@ -76,6 +76,10 @@
   <data name="RestoreColorOnStartupDesc" xml:space="preserve"><value>Windows는 DDC/CI 밝기·대비를 재부팅 후 유지하지 않습니다. 시작 시 다시 전송합니다.</value></data>
   <data name="HotkeysEnabled" xml:space="preserve"><value>전역 단축키</value></data>
   <data name="HotkeysEnabledDesc" xml:space="preserve"><value>시스템 전역 단축키로 프로파일을 실행합니다.</value></data>
+  <data name="AppearanceSection" xml:space="preserve"><value>모양</value></data>
+  <data name="ProfilesSection" xml:space="preserve"><value>프로파일</value></data>
+  <data name="UpdatesSection" xml:space="preserve"><value>업데이트</value></data>
+  <data name="AdvancedSection" xml:space="preserve"><value>고급</value></data>
   <data name="NavDisplayTuning" xml:space="preserve"><value>디스플레이 조정</value></data>
   <data name="DisplayTuningTitle" xml:space="preserve"><value>디스플레이 조정</value></data>
   <data name="DisplayTuningSubtitle" xml:space="preserve"><value>선택한 모니터의 밝기·대비·색상을 실시간으로 조정합니다.</value></data>
