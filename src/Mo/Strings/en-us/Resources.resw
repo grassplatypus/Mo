@@ -64,6 +64,18 @@
   <data name="Rename" xml:space="preserve"><value>Rename</value></data>
   <data name="UnmatchedMonitors" xml:space="preserve"><value>Unlisted Monitors</value></data>
   <data name="UnmatchedMonitorsDesc" xml:space="preserve"><value>What to do with monitors not listed in this profile</value></data>
+  <data name="ImportCurrent" xml:space="preserve"><value>Import current</value></data>
+  <data name="AlignHorizontal" xml:space="preserve"><value>Align horizontal</value></data>
+  <data name="AlignGrid" xml:space="preserve"><value>Arrange grid</value></data>
+  <data name="SetPrimary" xml:space="preserve"><value>Set primary</value></data>
+  <data name="AvailableMonitors" xml:space="preserve"><value>Available Monitors</value></data>
+  <data name="AvailableMonitorsDesc" xml:space="preserve"><value>Currently connected displays not in this profile. Click + to add.</value></data>
+  <data name="RestoreOnStartup" xml:space="preserve"><value>Restore last profile on startup</value></data>
+  <data name="RestoreOnStartupDesc" xml:space="preserve"><value>Automatically re-apply the most recently used profile when the app launches.</value></data>
+  <data name="RestoreColorOnStartup" xml:space="preserve"><value>Restore color settings on startup</value></data>
+  <data name="RestoreColorOnStartupDesc" xml:space="preserve"><value>Windows doesn't persist DDC/CI brightness or contrast across reboots. Re-push them on launch.</value></data>
+  <data name="HotkeysEnabled" xml:space="preserve"><value>Global hotkeys</value></data>
+  <data name="HotkeysEnabledDesc" xml:space="preserve"><value>Trigger profiles with your system-wide shortcuts.</value></data>
   <data name="UnmatchedKeep" xml:space="preserve"><value>Keep current state</value></data>
   <data name="UnmatchedDisable" xml:space="preserve"><value>Turn off</value></data>
   <data name="AutoSwitch" xml:space="preserve"><value>Auto-switch</value></data>

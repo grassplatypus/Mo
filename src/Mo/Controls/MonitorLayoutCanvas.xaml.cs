@@ -1,6 +1,10 @@
+using Microsoft.UI;
 using Microsoft.UI.Xaml;
+using Windows.UI;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Shapes;
 using Mo.Core.DisplayConfiguration;
 using Mo.Models;
 
@@ -8,6 +12,8 @@ namespace Mo.Controls;
 
 public sealed partial class MonitorLayoutCanvas : UserControl
 {
+    private const int SnapToleranceDesktopPx = 30;
+
     private List<MonitorInfo> _monitors = [];
     private readonly List<MonitorTile> _tiles = [];
     private MonitorTile? _selectedTile;
@@ -16,12 +22,20 @@ public sealed partial class MonitorLayoutCanvas : UserControl
     private double _tileStartLeft;
     private double _tileStartTop;
 
+    // Cached layout state, refreshed by RebuildLayout, consumed by drag handlers.
+    private DisplayTopology.Bounds _bounds = new(0, 0, 0, 0);
+    private double _scale = 1.0;
+    private double _canvasW;
+    private double _canvasH;
+
     public MonitorLayoutCanvas()
     {
         InitializeComponent();
     }
 
     public event EventHandler<MonitorInfo?>? MonitorSelected;
+    public event EventHandler? MonitorPositionChanged;
+
     public bool IsEditable { get; set; }
 
     public void SetMonitors(List<MonitorInfo> monitors)
@@ -35,6 +49,7 @@ public sealed partial class MonitorLayoutCanvas : UserControl
     private void RebuildLayout()
     {
         LayoutCanvas.Children.Clear();
+        GuideCanvas.Children.Clear();
         _tiles.Clear();
         _selectedTile = null;
 
@@ -49,14 +64,14 @@ public sealed partial class MonitorLayoutCanvas : UserControl
         var rects = _monitors.Select(m =>
             new DisplayTopology.MonitorRect(m.PositionX, m.PositionY, m.Width, m.Height)).ToList();
 
-        var bounds = DisplayTopology.ComputeBoundingBox(rects);
-        double canvasWidth = LayoutCanvas.ActualWidth > 0 ? LayoutCanvas.ActualWidth : ActualWidth;
-        double canvasHeight = LayoutCanvas.ActualHeight > 0 ? LayoutCanvas.ActualHeight : ActualHeight;
+        _bounds = DisplayTopology.ComputeBoundingBox(rects);
+        _canvasW = LayoutCanvas.ActualWidth > 0 ? LayoutCanvas.ActualWidth : ActualWidth;
+        _canvasH = LayoutCanvas.ActualHeight > 0 ? LayoutCanvas.ActualHeight : ActualHeight;
 
-        if (canvasWidth <= 0 || canvasHeight <= 0)
+        if (_canvasW <= 0 || _canvasH <= 0)
             return;
 
-        double scale = DisplayTopology.ComputeScaleFactor(bounds, canvasWidth, canvasHeight, 20);
+        _scale = DisplayTopology.ComputeScaleFactor(_bounds, _canvasW, _canvasH, 20);
 
         for (int i = 0; i < _monitors.Count; i++)
         {
@@ -65,13 +80,13 @@ public sealed partial class MonitorLayoutCanvas : UserControl
             {
                 Monitor = monitor,
                 MonitorIndex = i,
-                Width = monitor.Width * scale,
-                Height = monitor.Height * scale,
+                Width = monitor.Width * _scale,
+                Height = monitor.Height * _scale,
             };
 
             var (x, y) = DisplayTopology.TransformToCanvas(
                 monitor.PositionX, monitor.PositionY,
-                bounds, scale, canvasWidth, canvasHeight);
+                _bounds, _scale, _canvasW, _canvasH);
 
             Canvas.SetLeft(tile, x);
             Canvas.SetTop(tile, y);
@@ -89,7 +104,6 @@ public sealed partial class MonitorLayoutCanvas : UserControl
     {
         if (sender is not MonitorTile tile) return;
 
-        // Select
         if (_selectedTile != null)
             _selectedTile.IsSelected = false;
 
@@ -97,7 +111,6 @@ public sealed partial class MonitorLayoutCanvas : UserControl
         _selectedTile = tile;
         MonitorSelected?.Invoke(this, tile.Monitor);
 
-        // Start drag if editable
         if (IsEditable)
         {
             _draggingTile = tile;
@@ -116,8 +129,28 @@ public sealed partial class MonitorLayoutCanvas : UserControl
         double dx = current.X - _dragStart.X;
         double dy = current.Y - _dragStart.Y;
 
-        Canvas.SetLeft(_draggingTile, _tileStartLeft + dx);
-        Canvas.SetTop(_draggingTile, _tileStartTop + dy);
+        double newLeft = _tileStartLeft + dx;
+        double newTop = _tileStartTop + dy;
+
+        // Compute candidate desktop coords and snap preview.
+        if (_draggingTile.Monitor is { } m && _scale > 0)
+        {
+            var (px, py) = DisplayTopology.TransformFromCanvas(newLeft, newTop, _bounds, _scale, _canvasW, _canvasH);
+            var dragRect = new DisplayTopology.MonitorRect(px, py, m.Width, m.Height);
+            var others = OtherRects(m);
+            var snap = SnapCalculator.ComputeSnap(dragRect, px, py, others, SnapToleranceDesktopPx);
+
+            var (snapCanvasX, snapCanvasY) = DisplayTopology.TransformToCanvas(
+                snap.X, snap.Y, _bounds, _scale, _canvasW, _canvasH);
+            Canvas.SetLeft(_draggingTile, snapCanvasX);
+            Canvas.SetTop(_draggingTile, snapCanvasY);
+
+            DrawGuides(snap.Guides);
+            return;
+        }
+
+        Canvas.SetLeft(_draggingTile, newLeft);
+        Canvas.SetTop(_draggingTile, newTop);
     }
 
     private void Tile_PointerReleased(object sender, PointerRoutedEventArgs e)
@@ -125,16 +158,76 @@ public sealed partial class MonitorLayoutCanvas : UserControl
         if (_draggingTile == null) return;
 
         _draggingTile.ReleasePointerCapture(e.Pointer);
+        GuideCanvas.Children.Clear();
 
-        // Update monitor position from canvas coordinates
-        if (IsEditable && _draggingTile.Monitor != null)
+        if (IsEditable && _draggingTile.Monitor is { } m && _scale > 0)
         {
-            // Reverse transform: canvas coords → desktop coords
-            // For simplicity in v1, we'll recalculate relative positions
-            // based on the visual layout after drag
+            double canvasX = Canvas.GetLeft(_draggingTile);
+            double canvasY = Canvas.GetTop(_draggingTile);
+            var (px, py) = DisplayTopology.TransformFromCanvas(canvasX, canvasY, _bounds, _scale, _canvasW, _canvasH);
+
+            var others = OtherRects(m);
+            var candidate = new DisplayTopology.MonitorRect(px, py, m.Width, m.Height);
+            var (finalX, finalY) = SnapCalculator.ResolveOverlap(candidate, others);
+
+            if (m.PositionX != finalX || m.PositionY != finalY)
+            {
+                m.PositionX = finalX;
+                m.PositionY = finalY;
+                MonitorPositionChanged?.Invoke(this, EventArgs.Empty);
+            }
+
+            // Redraw so snapped/resolved position is reflected cleanly.
+            RebuildLayout();
+            // Preserve selection visually after rebuild.
+            ReselectByMonitor(m);
         }
 
         _draggingTile = null;
+    }
+
+    private void ReselectByMonitor(MonitorInfo monitor)
+    {
+        var tile = _tiles.FirstOrDefault(t => ReferenceEquals(t.Monitor, monitor));
+        if (tile != null)
+        {
+            tile.IsSelected = true;
+            _selectedTile = tile;
+        }
+    }
+
+    private List<DisplayTopology.MonitorRect> OtherRects(MonitorInfo self)
+    {
+        return _monitors
+            .Where(o => !ReferenceEquals(o, self))
+            .Select(o => new DisplayTopology.MonitorRect(o.PositionX, o.PositionY, o.Width, o.Height))
+            .ToList();
+    }
+
+    private void DrawGuides(IReadOnlyList<SnapCalculator.AlignmentLine> guides)
+    {
+        GuideCanvas.Children.Clear();
+        if (_scale <= 0) return;
+
+        var brush = new SolidColorBrush(Color.FromArgb(0xFF, 0x00, 0x78, 0xD4));
+
+        foreach (var g in guides)
+        {
+            if (g.IsVertical)
+            {
+                var (cx, cTop) = DisplayTopology.TransformToCanvas(g.DesktopPos, g.StartPerp, _bounds, _scale, _canvasW, _canvasH);
+                var (_, cBottom) = DisplayTopology.TransformToCanvas(g.DesktopPos, g.EndPerp, _bounds, _scale, _canvasW, _canvasH);
+                var line = new Line { X1 = cx, X2 = cx, Y1 = cTop, Y2 = cBottom, Stroke = brush, StrokeThickness = 1, StrokeDashArray = [4, 3] };
+                GuideCanvas.Children.Add(line);
+            }
+            else
+            {
+                var (cLeft, cy) = DisplayTopology.TransformToCanvas(g.StartPerp, g.DesktopPos, _bounds, _scale, _canvasW, _canvasH);
+                var (cRight, _) = DisplayTopology.TransformToCanvas(g.EndPerp, g.DesktopPos, _bounds, _scale, _canvasW, _canvasH);
+                var line = new Line { X1 = cLeft, X2 = cRight, Y1 = cy, Y2 = cy, Stroke = brush, StrokeThickness = 1, StrokeDashArray = [4, 3] };
+                GuideCanvas.Children.Add(line);
+            }
+        }
     }
 
     private void UserControl_SizeChanged(object sender, SizeChangedEventArgs e)

@@ -64,6 +64,18 @@
   <data name="Rename" xml:space="preserve"><value>이름 변경</value></data>
   <data name="UnmatchedMonitors" xml:space="preserve"><value>미등록 모니터</value></data>
   <data name="UnmatchedMonitorsDesc" xml:space="preserve"><value>이 프로필에 포함되지 않은 모니터를 어떻게 처리할지 선택합니다</value></data>
+  <data name="ImportCurrent" xml:space="preserve"><value>현재 레이아웃 가져오기</value></data>
+  <data name="AlignHorizontal" xml:space="preserve"><value>가로로 정렬</value></data>
+  <data name="AlignGrid" xml:space="preserve"><value>격자 정렬</value></data>
+  <data name="SetPrimary" xml:space="preserve"><value>기본 모니터로</value></data>
+  <data name="AvailableMonitors" xml:space="preserve"><value>추가 가능한 모니터</value></data>
+  <data name="AvailableMonitorsDesc" xml:space="preserve"><value>연결되어 있지만 프로필에 없는 디스플레이. + 버튼으로 추가합니다.</value></data>
+  <data name="RestoreOnStartup" xml:space="preserve"><value>시작 시 마지막 프로파일 복원</value></data>
+  <data name="RestoreOnStartupDesc" xml:space="preserve"><value>앱 시작 시 가장 최근에 적용한 프로파일을 자동으로 다시 적용합니다.</value></data>
+  <data name="RestoreColorOnStartup" xml:space="preserve"><value>시작 시 색상 설정 복원</value></data>
+  <data name="RestoreColorOnStartupDesc" xml:space="preserve"><value>Windows는 DDC/CI 밝기·대비를 재부팅 후 유지하지 않습니다. 시작 시 다시 전송합니다.</value></data>
+  <data name="HotkeysEnabled" xml:space="preserve"><value>전역 단축키</value></data>
+  <data name="HotkeysEnabledDesc" xml:space="preserve"><value>시스템 전역 단축키로 프로파일을 실행합니다.</value></data>
   <data name="UnmatchedKeep" xml:space="preserve"><value>현재 상태 유지</value></data>
   <data name="UnmatchedDisable" xml:space="preserve"><value>끄기</value></data>
   <data name="AutoSwitch" xml:space="preserve"><value>자동 전환</value></data>

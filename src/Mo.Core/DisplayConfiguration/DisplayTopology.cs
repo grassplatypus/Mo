@@ -56,4 +56,21 @@ public static class DisplayTopology
 
         return (x, y);
     }
+
+    // Inverse of TransformToCanvas: turn a canvas-relative point back into desktop pixels.
+    public static (int MonitorX, int MonitorY) TransformFromCanvas(
+        double canvasX, double canvasY, Bounds bounds, double scale, double canvasWidth, double canvasHeight)
+    {
+        if (scale <= 0) return (bounds.Left, bounds.Top);
+
+        double totalScaledWidth = bounds.Width * scale;
+        double totalScaledHeight = bounds.Height * scale;
+        double offsetX = (canvasWidth - totalScaledWidth) / 2;
+        double offsetY = (canvasHeight - totalScaledHeight) / 2;
+
+        double x = (canvasX - offsetX) / scale + bounds.Left;
+        double y = (canvasY - offsetY) / scale + bounds.Top;
+
+        return ((int)Math.Round(x), (int)Math.Round(y));
+    }
 }

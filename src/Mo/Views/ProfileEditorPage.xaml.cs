@@ -1,7 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
+using Mo.Core.DisplayConfiguration;
 using Mo.Helpers;
 using Mo.Models;
 using Mo.Services;
@@ -12,6 +14,7 @@ public sealed partial class ProfileEditorPage : Page
 {
     private readonly IProfileService _profileService;
     private readonly INavigationService _navigationService;
+    private readonly IDisplayService _displayService;
     private DisplayProfile? _profile;
     private MonitorInfo? _selectedMonitor;
     private int _selectedMonitorIndex = -1;
@@ -23,8 +26,10 @@ public sealed partial class ProfileEditorPage : Page
     {
         _profileService = App.Services.GetRequiredService<IProfileService>();
         _navigationService = App.Services.GetRequiredService<INavigationService>();
+        _displayService = App.Services.GetRequiredService<IDisplayService>();
         InitializeComponent();
         ApplyLocalization();
+        LayoutCanvas.MonitorPositionChanged += (_, _) => RefreshAvailableMonitors();
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -49,6 +54,7 @@ public sealed partial class ProfileEditorPage : Page
         ProfileNameBox.Text = _profile.Name;
         DescriptionBox.Text = _profile.Description;
         LayoutCanvas.SetMonitors(_profile.Monitors);
+        RefreshAvailableMonitors();
 
         // Wallpaper (immediate — no I/O)
         WallpaperPathText.Text = string.IsNullOrEmpty(_profile.WallpaperPath)
@@ -196,6 +202,7 @@ public sealed partial class ProfileEditorPage : Page
     private void LayoutCanvas_MonitorSelected(object? sender, MonitorInfo? monitor)
     {
         _selectedMonitor = monitor;
+        SetPrimaryBtn.IsEnabled = monitor != null && monitor.IsEnabled && !monitor.IsPrimary;
         if (monitor == null)
         {
             _selectedMonitorIndex = -1;
@@ -408,14 +415,24 @@ public sealed partial class ProfileEditorPage : Page
     private void RotationCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_loading || _selectedMonitor == null) return;
-        _selectedMonitor.Rotation = RotationCombo.SelectedIndex switch
+        var previous = _selectedMonitor.Rotation;
+        var next = RotationCombo.SelectedIndex switch
         {
             1 => DisplayRotation.Rotate90,
             2 => DisplayRotation.Rotate180,
             3 => DisplayRotation.Rotate270,
             _ => DisplayRotation.None,
         };
-        RotationWarningBar.IsOpen = _selectedMonitor.Rotation != DisplayRotation.None;
+
+        bool wasPortrait = previous is DisplayRotation.Rotate90 or DisplayRotation.Rotate270;
+        bool willBePortrait = next is DisplayRotation.Rotate90 or DisplayRotation.Rotate270;
+        if (wasPortrait != willBePortrait)
+        {
+            (_selectedMonitor.Width, _selectedMonitor.Height) = (_selectedMonitor.Height, _selectedMonitor.Width);
+        }
+
+        _selectedMonitor.Rotation = next;
+        RotationWarningBar.IsOpen = next != DisplayRotation.None;
         LayoutCanvas.SetMonitors(_profile!.Monitors);
     }
 
@@ -447,6 +464,196 @@ public sealed partial class ProfileEditorPage : Page
     private void CancelButton_Click(object sender, RoutedEventArgs e) => _navigationService.GoBack();
     private void BackButton_Click(object sender, RoutedEventArgs e) => _navigationService.GoBack();
 
+    // --- Layout toolbar + available monitors ---
+
+    private void RefreshAvailableMonitors()
+    {
+        if (_profile == null) return;
+
+        List<MonitorInfo> current;
+        try { current = _displayService.GetCurrentConfiguration(); }
+        catch { current = []; }
+
+        var profileIds = _profile.Monitors
+            .Select(m => new MonitorMatcher.MonitorIdentity(
+                m.DevicePath, m.EdidManufacturerId, m.EdidProductCodeId, m.ConnectorInstance, m.FriendlyName))
+            .ToList();
+        var currentIds = current
+            .Select(m => new MonitorMatcher.MonitorIdentity(
+                m.DevicePath, m.EdidManufacturerId, m.EdidProductCodeId, m.ConnectorInstance, m.FriendlyName))
+            .ToList();
+
+        var match = MonitorMatcher.Match(profileIds, currentIds);
+        var available = match.UnmatchedCurrent
+            .Select(i => current[i])
+            .ToList();
+
+        AvailableMonitorsList.Items.Clear();
+        foreach (var monitor in available)
+        {
+            AvailableMonitorsList.Items.Add(BuildAvailableRow(monitor));
+        }
+
+        AvailableMonitorsPanel.Visibility = available.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private UIElement BuildAvailableRow(MonitorInfo monitor)
+    {
+        var grid = new Grid { Padding = new Thickness(8) };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.Background = (Brush)Application.Current.Resources["SubtleFillColorTransparentBrush"];
+        grid.CornerRadius = new CornerRadius(6);
+
+        var info = new StackPanel();
+        info.Children.Add(new TextBlock { Text = string.IsNullOrEmpty(monitor.FriendlyName) ? monitor.DevicePath : monitor.FriendlyName, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        info.Children.Add(new TextBlock
+        {
+            Text = $"{monitor.ResolutionText}  ·  {monitor.RefreshRateHz:F0} Hz",
+            Opacity = 0.6,
+            Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
+        });
+
+        var addBtn = new Button
+        {
+            Content = new FontIcon { Glyph = "\uE710", FontSize = 14 },
+            VerticalAlignment = VerticalAlignment.Center,
+            Tag = monitor,
+        };
+        addBtn.Click += AddMonitor_Click;
+
+        Grid.SetColumn(info, 0);
+        Grid.SetColumn(addBtn, 1);
+        grid.Children.Add(info);
+        grid.Children.Add(addBtn);
+        return grid;
+    }
+
+    private void AddMonitor_Click(object sender, RoutedEventArgs e)
+    {
+        if (_profile == null || sender is not Button btn || btn.Tag is not MonitorInfo source) return;
+
+        // Place to the right of the current layout.
+        int placeX = 0;
+        if (_profile.Monitors.Count > 0)
+        {
+            placeX = _profile.Monitors.Max(m => m.PositionX + m.Width);
+        }
+
+        var copy = new MonitorInfo
+        {
+            DevicePath = source.DevicePath,
+            FriendlyName = source.FriendlyName,
+            EdidManufacturerId = source.EdidManufacturerId,
+            EdidProductCodeId = source.EdidProductCodeId,
+            ConnectorInstance = source.ConnectorInstance,
+            PositionX = placeX,
+            PositionY = 0,
+            Width = source.Width,
+            Height = source.Height,
+            Rotation = source.Rotation,
+            RefreshRateNumerator = source.RefreshRateNumerator,
+            RefreshRateDenominator = source.RefreshRateDenominator,
+            DpiScale = source.DpiScale,
+            IsPrimary = false,
+            IsEnabled = true,
+            HdrEnabled = source.HdrEnabled,
+            AdapterId = source.AdapterId,
+            SourceId = source.SourceId,
+            TargetId = source.TargetId,
+        };
+        _profile.Monitors.Add(copy);
+        LayoutCanvas.SetMonitors(_profile.Monitors);
+        RefreshAvailableMonitors();
+        DescriptionBox.Text = $"{_profile.Monitors.Count} monitor(s)";
+    }
+
+    private void ImportCurrent_Click(object sender, RoutedEventArgs e)
+    {
+        if (_profile == null) return;
+        List<MonitorInfo> current;
+        try { current = _displayService.GetCurrentConfiguration(); }
+        catch { return; }
+
+        // Preserve any color settings by matching via identity before replace.
+        var oldByKey = _profile.Monitors.ToDictionary(
+            m => m.DevicePath ?? string.Empty, m => m, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var m in current)
+        {
+            if (oldByKey.TryGetValue(m.DevicePath, out var prev) && prev.ColorSettings != null)
+                m.ColorSettings = prev.ColorSettings;
+        }
+
+        _profile.Monitors.Clear();
+        foreach (var m in current) _profile.Monitors.Add(m);
+
+        _selectedMonitor = null;
+        _selectedMonitorIndex = -1;
+        MonitorDetailsPanel.Visibility = Visibility.Collapsed;
+        ColorSettingsPanel.Visibility = Visibility.Collapsed;
+        LayoutCanvas.SetMonitors(_profile.Monitors);
+        RefreshAvailableMonitors();
+        DescriptionBox.Text = $"{_profile.Monitors.Count} monitor(s)";
+    }
+
+    private void AlignHorizontal_Click(object sender, RoutedEventArgs e)
+    {
+        if (_profile == null || _profile.Monitors.Count == 0) return;
+
+        int x = 0;
+        foreach (var m in _profile.Monitors)
+        {
+            m.PositionX = x;
+            m.PositionY = 0;
+            x += m.Width;
+        }
+        LayoutCanvas.SetMonitors(_profile.Monitors);
+    }
+
+    private void AlignGrid_Click(object sender, RoutedEventArgs e)
+    {
+        if (_profile == null || _profile.Monitors.Count == 0) return;
+
+        int cols = (int)Math.Ceiling(Math.Sqrt(_profile.Monitors.Count));
+        int colX = 0, rowY = 0, colIdx = 0, rowHeight = 0;
+
+        foreach (var m in _profile.Monitors)
+        {
+            m.PositionX = colX;
+            m.PositionY = rowY;
+            colX += m.Width;
+            rowHeight = Math.Max(rowHeight, m.Height);
+            colIdx++;
+            if (colIdx >= cols)
+            {
+                colIdx = 0;
+                colX = 0;
+                rowY += rowHeight;
+                rowHeight = 0;
+            }
+        }
+        LayoutCanvas.SetMonitors(_profile.Monitors);
+    }
+
+    private void SetPrimary_Click(object sender, RoutedEventArgs e)
+    {
+        if (_profile == null || _selectedMonitor == null) return;
+
+        int dx = _selectedMonitor.PositionX;
+        int dy = _selectedMonitor.PositionY;
+
+        foreach (var m in _profile.Monitors)
+        {
+            m.PositionX -= dx;
+            m.PositionY -= dy;
+            m.IsPrimary = ReferenceEquals(m, _selectedMonitor);
+        }
+
+        LayoutCanvas.SetMonitors(_profile.Monitors);
+        SetPrimaryBtn.IsEnabled = false;
+    }
+
     private void ApplyLocalization()
     {
         ProfileNameBox.PlaceholderText = ResourceHelper.GetString("ProfileNamePlaceholder");
@@ -465,6 +672,12 @@ public sealed partial class ProfileEditorPage : Page
         NightLightDesc.Text = ResourceHelper.GetString("NightLightDesc");
         UnmatchedLabel.Text = ResourceHelper.GetString("UnmatchedMonitors");
         UnmatchedDesc.Text = ResourceHelper.GetString("UnmatchedMonitorsDesc");
+        ImportCurrentLabel.Text = ResourceHelper.GetString("ImportCurrent");
+        AlignHorizontalLabel.Text = ResourceHelper.GetString("AlignHorizontal");
+        AlignGridLabel.Text = ResourceHelper.GetString("AlignGrid");
+        SetPrimaryLabel.Text = ResourceHelper.GetString("SetPrimary");
+        AvailableMonitorsTitle.Text = ResourceHelper.GetString("AvailableMonitors");
+        AvailableMonitorsDesc.Text = ResourceHelper.GetString("AvailableMonitorsDesc");
         UnmatchedCombo.Items.Clear();
         UnmatchedCombo.Items.Add(ResourceHelper.GetString("UnmatchedKeep"));
         UnmatchedCombo.Items.Add(ResourceHelper.GetString("UnmatchedDisable"));

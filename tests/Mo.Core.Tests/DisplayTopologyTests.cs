@@ -51,4 +51,26 @@ public class DisplayTopologyTests
         Assert.Equal(50, x);
         Assert.Equal(50, y);
     }
+
+    [Fact]
+    public void TransformFromCanvas_RoundTripsOrigin()
+    {
+        var bounds = new DisplayTopology.Bounds(-1080, 0, 2840, 1080);
+        var (cx, cy) = DisplayTopology.TransformToCanvas(1000, 300, bounds, 0.25, 600, 400);
+        var (mx, my) = DisplayTopology.TransformFromCanvas(cx, cy, bounds, 0.25, 600, 400);
+
+        Assert.Equal(1000, mx);
+        Assert.Equal(300, my);
+    }
+
+    [Fact]
+    public void TransformFromCanvas_NegativeOrigin_RoundTrips()
+    {
+        var bounds = new DisplayTopology.Bounds(-1920, -1080, 1920, 1080);
+        var (cx, cy) = DisplayTopology.TransformToCanvas(-500, -200, bounds, 0.1, 400, 400);
+        var (mx, my) = DisplayTopology.TransformFromCanvas(cx, cy, bounds, 0.1, 400, 400);
+
+        Assert.Equal(-500, mx);
+        Assert.Equal(-200, my);
+    }
 }

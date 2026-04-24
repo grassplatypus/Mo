@@ -13,6 +13,7 @@
         CornerRadius="8"
         Padding="0">
         <Canvas x:Name="LayoutCanvas" />
+        <Canvas x:Name="GuideCanvas" IsHitTestVisible="False" />
 
         <!-- No monitors message -->
         <TextBlock

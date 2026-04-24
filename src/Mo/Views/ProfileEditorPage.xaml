@@ -52,12 +52,57 @@
                     Background="Transparent"
                     Opacity="0.7" />
 
+                <!-- Layout toolbar -->
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Button x:Name="ImportCurrentBtn" Click="ImportCurrent_Click" ToolTipService.ToolTip="Import current system layout">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon Glyph="&#xE896;" FontSize="14" />
+                            <TextBlock x:Name="ImportCurrentLabel" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="AlignHorizontalBtn" Click="AlignHorizontal_Click" ToolTipService.ToolTip="Align monitors horizontally, top-edge aligned">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon Glyph="&#xE8A1;" FontSize="14" />
+                            <TextBlock x:Name="AlignHorizontalLabel" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="AlignGridBtn" Click="AlignGrid_Click" ToolTipService.ToolTip="Arrange monitors in a grid">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon Glyph="&#xE80A;" FontSize="14" />
+                            <TextBlock x:Name="AlignGridLabel" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="SetPrimaryBtn" Click="SetPrimary_Click" IsEnabled="False" ToolTipService.ToolTip="Make selected monitor primary">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon Glyph="&#xE735;" FontSize="14" />
+                            <TextBlock x:Name="SetPrimaryLabel" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
                 <!-- Monitor Layout -->
                 <controls:MonitorLayoutCanvas
                     x:Name="LayoutCanvas"
                     MinHeight="220"
                     IsEditable="True"
                     MonitorSelected="LayoutCanvas_MonitorSelected" />
+
+                <!-- Available Monitors (connected but not in profile) -->
+                <Grid x:Name="AvailableMonitorsPanel" Padding="16" CornerRadius="8" Visibility="Collapsed"
+                      Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                    <StackPanel Spacing="8">
+                        <TextBlock x:Name="AvailableMonitorsTitle" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                        <TextBlock x:Name="AvailableMonitorsDesc" Opacity="0.6" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap" />
+                        <ItemsControl x:Name="AvailableMonitorsList">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Spacing="6" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </StackPanel>
+                </Grid>
 
                 <!-- Selected Monitor Details -->
                 <Grid
