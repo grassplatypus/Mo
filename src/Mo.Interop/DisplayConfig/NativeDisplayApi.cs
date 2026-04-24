@@ -36,6 +36,14 @@ public static class NativeDisplayApi
         ref DISPLAYCONFIG_SOURCE_DEVICE_NAME requestPacket);
 
     [DllImport("user32.dll")]
+    public static extern int DisplayConfigGetDeviceInfo(
+        ref DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO requestPacket);
+
+    [DllImport("user32.dll")]
+    public static extern int DisplayConfigSetDeviceInfo(
+        ref DISPLAYCONFIG_SET_ADVANCED_COLOR_STATE setPacket);
+
+    [DllImport("user32.dll")]
     public static extern bool SystemParametersInfo(
         uint uiAction, uint uiParam, IntPtr pvParam, uint fWinIni);
 

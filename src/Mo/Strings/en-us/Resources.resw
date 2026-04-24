@@ -76,6 +76,19 @@
   <data name="RestoreColorOnStartupDesc" xml:space="preserve"><value>Windows doesn't persist DDC/CI brightness or contrast across reboots. Re-push them on launch.</value></data>
   <data name="HotkeysEnabled" xml:space="preserve"><value>Global hotkeys</value></data>
   <data name="HotkeysEnabledDesc" xml:space="preserve"><value>Trigger profiles with your system-wide shortcuts.</value></data>
+  <data name="NavDisplayTuning" xml:space="preserve"><value>Display Tuning</value></data>
+  <data name="DisplayTuningTitle" xml:space="preserve"><value>Display Tuning</value></data>
+  <data name="DisplayTuningSubtitle" xml:space="preserve"><value>Real-time brightness, contrast, and color controls for the selected monitor.</value></data>
+  <data name="Refresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="DdcCiSection" xml:space="preserve"><value>Brightness &amp; Color</value></data>
+  <data name="DdcCiUnsupported" xml:space="preserve"><value>This monitor doesn't expose DDC/CI controls.</value></data>
+  <data name="ResetDefaults" xml:space="preserve"><value>Reset</value></data>
+  <data name="ColorPreset" xml:space="preserve"><value>Color preset</value></data>
+  <data name="ColorPresetDesc" xml:space="preserve"><value>Switch between sRGB, warm/cool color temperatures, and your custom preset.</value></data>
+  <data name="PresetNative" xml:space="preserve"><value>Native</value></data>
+  <data name="PresetUser" xml:space="preserve"><value>User</value></data>
+  <data name="Hdr" xml:space="preserve"><value>HDR</value></data>
+  <data name="HdrDesc" xml:space="preserve"><value>Toggle Windows advanced color (HDR) for this display.</value></data>
   <data name="UnmatchedKeep" xml:space="preserve"><value>Keep current state</value></data>
   <data name="UnmatchedDisable" xml:space="preserve"><value>Turn off</value></data>
   <data name="AutoSwitch" xml:space="preserve"><value>Auto-switch</value></data>

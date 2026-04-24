@@ -64,6 +64,19 @@ public static class MonitorConfigApi
     public static extern bool SetMonitorRedGreenOrBlueGain(
         nint hMonitor, MC_GAIN_TYPE gtGainType, uint dwNewGain);
 
+    // ── Generic VCP access (color temp presets, input switch, etc.) ──
+
+    public const byte VCP_SELECT_COLOR_PRESET = 0x14;  // 5000K/6500K/sRGB/User
+    public const byte VCP_INPUT_SOURCE = 0x60;
+
+    [DllImport("dxva2.dll", SetLastError = true)]
+    public static extern bool GetVCPFeatureAndVCPFeatureReply(
+        nint hMonitor, byte bVCPCode, nint pvct,
+        out uint pdwCurrentValue, out uint pdwMaximumValue);
+
+    [DllImport("dxva2.dll", SetLastError = true)]
+    public static extern bool SetVCPFeature(nint hMonitor, byte bVCPCode, uint dwNewValue);
+
     // ── Monitor Enumeration ──
 
     public delegate bool MonitorEnumProc(nint hMonitor, nint hdcMonitor, ref RECT lprcMonitor, nint dwData);

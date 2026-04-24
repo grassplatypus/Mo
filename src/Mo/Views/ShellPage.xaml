@@ -21,6 +21,11 @@
                     <FontIcon Glyph="&#xE7F4;" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
+            <NavigationViewItem x:Name="NavDisplayTuningItem" Tag="DisplayTuning">
+                <NavigationViewItem.Icon>
+                    <FontIcon Glyph="&#xE706;" />
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
         </NavigationView.MenuItems>
 
         <Frame x:Name="ContentFrame" />

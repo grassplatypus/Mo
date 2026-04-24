@@ -452,4 +452,45 @@ public sealed class DisplayService : IDisplayService
         Models.DisplayRotation.Rotate270 => DISPLAYCONFIG_ROTATION.DISPLAYCONFIG_ROTATION_ROTATE270,
         _ => DISPLAYCONFIG_ROTATION.DISPLAYCONFIG_ROTATION_IDENTITY,
     };
+
+    // ── HDR / Advanced Color ──
+
+    public HdrState GetHdrState(MonitorInfo monitor)
+    {
+        var request = new DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO
+        {
+            header = new DISPLAYCONFIG_DEVICE_INFO_HEADER
+            {
+                type = DISPLAYCONFIG_DEVICE_INFO_TYPE.DISPLAYCONFIG_DEVICE_INFO_GET_ADVANCED_COLOR_INFO,
+                size = (uint)Marshal.SizeOf<DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO>(),
+                adapterId = new LUID { LowPart = (uint)(monitor.AdapterId & 0xFFFFFFFF), HighPart = (int)(monitor.AdapterId >> 32) },
+                id = monitor.TargetId,
+            },
+        };
+
+        if (NativeDisplayApi.DisplayConfigGetDeviceInfo(ref request) != NativeDisplayApi.ERROR_SUCCESS)
+            return new HdrState(false, false, false);
+
+        bool supported = (request.value & 0x1) != 0;
+        bool enabled = (request.value & 0x2) != 0;
+        bool forceDisabled = (request.value & 0x8) != 0;
+        return new HdrState(supported, enabled, forceDisabled);
+    }
+
+    public bool SetHdrEnabled(MonitorInfo monitor, bool enabled)
+    {
+        var request = new DISPLAYCONFIG_SET_ADVANCED_COLOR_STATE
+        {
+            header = new DISPLAYCONFIG_DEVICE_INFO_HEADER
+            {
+                type = DISPLAYCONFIG_DEVICE_INFO_TYPE.DISPLAYCONFIG_DEVICE_INFO_SET_ADVANCED_COLOR_STATE,
+                size = (uint)Marshal.SizeOf<DISPLAYCONFIG_SET_ADVANCED_COLOR_STATE>(),
+                adapterId = new LUID { LowPart = (uint)(monitor.AdapterId & 0xFFFFFFFF), HighPart = (int)(monitor.AdapterId >> 32) },
+                id = monitor.TargetId,
+            },
+            enableAdvancedColor = enabled ? 1u : 0u,
+        };
+
+        return NativeDisplayApi.DisplayConfigSetDeviceInfo(ref request) == NativeDisplayApi.ERROR_SUCCESS;
+    }
 }

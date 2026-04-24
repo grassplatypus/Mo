@@ -76,6 +76,19 @@
   <data name="RestoreColorOnStartupDesc" xml:space="preserve"><value>Windows는 DDC/CI 밝기·대비를 재부팅 후 유지하지 않습니다. 시작 시 다시 전송합니다.</value></data>
   <data name="HotkeysEnabled" xml:space="preserve"><value>전역 단축키</value></data>
   <data name="HotkeysEnabledDesc" xml:space="preserve"><value>시스템 전역 단축키로 프로파일을 실행합니다.</value></data>
+  <data name="NavDisplayTuning" xml:space="preserve"><value>디스플레이 조정</value></data>
+  <data name="DisplayTuningTitle" xml:space="preserve"><value>디스플레이 조정</value></data>
+  <data name="DisplayTuningSubtitle" xml:space="preserve"><value>선택한 모니터의 밝기·대비·색상을 실시간으로 조정합니다.</value></data>
+  <data name="Refresh" xml:space="preserve"><value>새로고침</value></data>
+  <data name="DdcCiSection" xml:space="preserve"><value>밝기·색상</value></data>
+  <data name="DdcCiUnsupported" xml:space="preserve"><value>이 모니터는 DDC/CI 제어를 지원하지 않습니다.</value></data>
+  <data name="ResetDefaults" xml:space="preserve"><value>초기화</value></data>
+  <data name="ColorPreset" xml:space="preserve"><value>색 프리셋</value></data>
+  <data name="ColorPresetDesc" xml:space="preserve"><value>sRGB, 색온도(5000K/6500K 등), 사용자 정의 프리셋 간 전환합니다.</value></data>
+  <data name="PresetNative" xml:space="preserve"><value>기본</value></data>
+  <data name="PresetUser" xml:space="preserve"><value>사용자</value></data>
+  <data name="Hdr" xml:space="preserve"><value>HDR</value></data>
+  <data name="HdrDesc" xml:space="preserve"><value>이 디스플레이의 Windows 고급 색상(HDR)을 켜고 끕니다.</value></data>
   <data name="UnmatchedKeep" xml:space="preserve"><value>현재 상태 유지</value></data>
   <data name="UnmatchedDisable" xml:space="preserve"><value>끄기</value></data>
   <data name="AutoSwitch" xml:space="preserve"><value>자동 전환</value></data>

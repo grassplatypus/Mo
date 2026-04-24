@@ -100,6 +100,66 @@ public sealed class MonitorColorService : IMonitorColorService
         }
     }
 
+    public (uint current, uint max)? GetVcpFeature(int monitorIndex, byte vcpCode)
+    {
+        var handles = GetPhysicalMonitorHandles();
+        int idx = 0;
+        (uint current, uint max)? result = null;
+        try
+        {
+            foreach (var (physicalMonitors, _) in handles)
+            {
+                foreach (var pm in physicalMonitors)
+                {
+                    if (idx == monitorIndex)
+                    {
+                        try
+                        {
+                            if (GetVCPFeatureAndVCPFeatureReply(pm.hPhysicalMonitor, vcpCode, IntPtr.Zero, out uint cur, out uint max))
+                                result = (cur, max);
+                        }
+                        catch { }
+                    }
+                    idx++;
+                }
+            }
+        }
+        finally
+        {
+            foreach (var (physicalMonitors, _) in handles)
+                DestroyPhysicalMonitors((uint)physicalMonitors.Length, physicalMonitors);
+        }
+        return result;
+    }
+
+    public bool SetVcpFeature(int monitorIndex, byte vcpCode, uint value)
+    {
+        var handles = GetPhysicalMonitorHandles();
+        int idx = 0;
+        bool applied = false;
+        try
+        {
+            foreach (var (physicalMonitors, _) in handles)
+            {
+                foreach (var pm in physicalMonitors)
+                {
+                    if (idx == monitorIndex)
+                    {
+                        try { applied = SetVCPFeature(pm.hPhysicalMonitor, vcpCode, value); }
+                        catch { }
+                    }
+                    idx++;
+                }
+            }
+        }
+        finally
+        {
+            foreach (var (physicalMonitors, _) in handles)
+                DestroyPhysicalMonitors((uint)physicalMonitors.Length, physicalMonitors);
+        }
+        return applied;
+    }
+
     // ── Capability Detection ──
 
     private static MonitorColorCapabilities ProbeCapabilities(nint hPhysicalMonitor)

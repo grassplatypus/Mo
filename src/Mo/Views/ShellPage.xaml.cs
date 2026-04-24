@@ -19,6 +19,7 @@ public sealed partial class ShellPage : Page
 
         // Apply localized strings
         NavProfilesItem.Content = ResourceHelper.GetString("NavProfiles");
+        NavDisplayTuningItem.Content = ResourceHelper.GetString("NavDisplayTuning");
 
         Loaded += ShellPage_Loaded;
     }
@@ -42,6 +43,7 @@ public sealed partial class ShellPage : Page
             var pageType = item.Tag?.ToString() switch
             {
                 "Profiles" => typeof(ProfileListPage),
+                "DisplayTuning" => typeof(DisplayTuningPage),
                 _ => typeof(ProfileListPage),
             };
             _navigationService.NavigateTo(pageType);

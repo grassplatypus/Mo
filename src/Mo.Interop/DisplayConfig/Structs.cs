@@ -145,3 +145,33 @@ public struct DISPLAYCONFIG_SOURCE_DEVICE_NAME
     [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
     public string viewGdiDeviceName;
 }
+
+// value bit layout:
+//   bit 0: advancedColorSupported
+//   bit 1: advancedColorEnabled (HDR on/off)
+//   bit 2: wideColorEnforced
+//   bit 3: advancedColorForceDisabled
+[StructLayout(LayoutKind.Sequential)]
+public struct DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO
+{
+    public DISPLAYCONFIG_DEVICE_INFO_HEADER header;
+    public uint value;
+    public DISPLAYCONFIG_COLOR_ENCODING colorEncoding;
+    public uint bitsPerColorChannel;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public struct DISPLAYCONFIG_SET_ADVANCED_COLOR_STATE
+{
+    public DISPLAYCONFIG_DEVICE_INFO_HEADER header;
+    public uint enableAdvancedColor; // bit 0 = enable/disable
+}
+
+public enum DISPLAYCONFIG_COLOR_ENCODING : uint
+{
+    DISPLAYCONFIG_COLOR_ENCODING_RGB = 0,
+    DISPLAYCONFIG_COLOR_ENCODING_YCBCR444 = 1,
+    DISPLAYCONFIG_COLOR_ENCODING_YCBCR422 = 2,
+    DISPLAYCONFIG_COLOR_ENCODING_YCBCR420 = 3,
+    DISPLAYCONFIG_COLOR_ENCODING_INTENSITY = 4,
+}
