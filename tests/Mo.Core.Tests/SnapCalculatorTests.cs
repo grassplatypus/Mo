@@ -91,6 +91,35 @@ public class SnapCalculatorTests
     }
 
     [Fact]
+    public void ComputeSnap_CenterYAlignment_Snaps()
+    {
+        // Dragging rect is being positioned to the right of a larger anchor.
+        // Request puts the dragging Y a few pixels off the center line → should snap to center-aligned.
+        var anchor = new DisplayTopology.MonitorRect(0, 0, 1920, 1080); // centerY = 540
+        var dragging = new DisplayTopology.MonitorRect(1920, 0, 1920, 1440); // Dragging.height=1440
+
+        // If centers align: dragging.centerY == 540 → dragging.Y = 540 - 720 = -180.
+        // Request Y=-175 (5px off), tolerance 30.
+        var result = SnapCalculator.ComputeSnap(dragging, requestedX: 1920, requestedY: -175, new[] { anchor }, 30);
+
+        Assert.Equal(-180, result.Y);
+        Assert.Contains(result.Guides, g => !g.IsVertical && g.DesktopPos == 540);
+    }
+
+    [Fact]
+    public void ComputeSnap_CenterXAlignment_Snaps()
+    {
+        var anchor = new DisplayTopology.MonitorRect(0, 0, 1920, 1080); // centerX = 960
+        var dragging = new DisplayTopology.MonitorRect(0, 1080, 1440, 900);
+
+        // Center align: dragging.centerX == 960 → dragging.X = 960 - 720 = 240.
+        var result = SnapCalculator.ComputeSnap(dragging, requestedX: 245, requestedY: 1080, new[] { anchor }, 30);
+
+        Assert.Equal(240, result.X);
+        Assert.Contains(result.Guides, g => g.IsVertical && g.DesktopPos == 960);
+    }
+
+    [Fact]
     public void HasAdjacentEdge_SharedEdge_True()
     {
         var a = Rect(0, 0);

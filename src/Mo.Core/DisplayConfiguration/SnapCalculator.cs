@@ -26,34 +26,47 @@ public static class SnapCalculator
         int draggingRight = requestedX + dragging.Width;
         int draggingBottom = requestedY + dragging.Height;
 
+        int draggingCenterX = requestedX + dragging.Width / 2;
+        int draggingCenterY = requestedY + dragging.Height / 2;
+
         foreach (var o in others)
         {
             int oRight = o.X + o.Width;
             int oBottom = o.Y + o.Height;
+            int oCenterX = o.X + o.Width / 2;
+            int oCenterY = o.Y + o.Height / 2;
 
-            // Horizontal edge candidates: my.left==o.right, my.right==o.left, my.left==o.left, my.right==o.right
+            // Horizontal X-axis candidates: flush edges + column-aligned edges.
             TryX(requestedX, o.X, o.X, ref snappedX, ref bestDxDist);
             TryX(requestedX, oRight, oRight, ref snappedX, ref bestDxDist);
             TryX(draggingRight, o.X, o.X - dragging.Width, ref snappedX, ref bestDxDist);
             TryX(draggingRight, oRight, oRight - dragging.Width, ref snappedX, ref bestDxDist);
+            // Center-aligned: my.centerX == o.centerX (macOS-style middle guide).
+            TryX(draggingCenterX, oCenterX, oCenterX - dragging.Width / 2, ref snappedX, ref bestDxDist);
 
-            // Vertical edge candidates
+            // Vertical Y-axis candidates.
             TryY(requestedY, o.Y, o.Y, ref snappedY, ref bestDyDist);
             TryY(requestedY, oBottom, oBottom, ref snappedY, ref bestDyDist);
             TryY(draggingBottom, o.Y, o.Y - dragging.Height, ref snappedY, ref bestDyDist);
             TryY(draggingBottom, oBottom, oBottom - dragging.Height, ref snappedY, ref bestDyDist);
+            // Center-aligned: my.centerY == o.centerY.
+            TryY(draggingCenterY, oCenterY, oCenterY - dragging.Height / 2, ref snappedY, ref bestDyDist);
         }
 
         // Collect alignment guides for whatever snap actually took
         if (bestDxDist <= toleranceDesktopPx)
         {
+            int snappedCenterX = snappedX + dragging.Width / 2;
             foreach (var o in others)
             {
                 int oRight = o.X + o.Width;
+                int oCenterX = o.X + o.Width / 2;
                 if (snappedX == o.X || snappedX + dragging.Width == o.X)
                     guides.Add(VerticalGuide(o.X, snappedY, dragging, o));
                 if (snappedX == oRight || snappedX + dragging.Width == oRight)
                     guides.Add(VerticalGuide(oRight, snappedY, dragging, o));
+                if (snappedCenterX == oCenterX)
+                    guides.Add(VerticalGuide(oCenterX, snappedY, dragging, o));
             }
         }
         else
@@ -63,13 +76,17 @@ public static class SnapCalculator
 
         if (bestDyDist <= toleranceDesktopPx)
         {
+            int snappedCenterY = snappedY + dragging.Height / 2;
             foreach (var o in others)
             {
                 int oBottom = o.Y + o.Height;
+                int oCenterY = o.Y + o.Height / 2;
                 if (snappedY == o.Y || snappedY + dragging.Height == o.Y)
                     guides.Add(HorizontalGuide(o.Y, snappedX, dragging, o));
                 if (snappedY == oBottom || snappedY + dragging.Height == oBottom)
                     guides.Add(HorizontalGuide(oBottom, snappedX, dragging, o));
+                if (snappedCenterY == oCenterY)
+                    guides.Add(HorizontalGuide(oCenterY, snappedX, dragging, o));
             }
         }
         else

@@ -1,6 +1,7 @@
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Windows.UI;
+using Windows.System;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
@@ -31,6 +32,9 @@ public sealed partial class MonitorLayoutCanvas : UserControl
     public MonitorLayoutCanvas()
     {
         InitializeComponent();
+        // Opt into keyboard events so Arrow/Shift+Arrow can nudge the selected tile.
+        IsTabStop = true;
+        KeyDown += MonitorLayoutCanvas_KeyDown;
     }
 
     public event EventHandler<MonitorInfo?>? MonitorSelected;
@@ -138,6 +142,9 @@ public sealed partial class MonitorLayoutCanvas : UserControl
         _selectedTile = tile;
         MonitorSelected?.Invoke(this, tile.Monitor);
 
+        // Take keyboard focus so Arrow-key nudges work without clicking anywhere else.
+        Focus(FocusState.Pointer);
+
         if (IsEditable)
         {
             _draggingTile = tile;
@@ -146,6 +153,55 @@ public sealed partial class MonitorLayoutCanvas : UserControl
             _tileStartTop = Canvas.GetTop(tile);
             tile.CapturePointer(e.Pointer);
         }
+    }
+
+    // Arrow keys nudge the selected monitor by 1 px, Shift+Arrow by 10 px. Snap and
+    // adjacency enforcement run on each step, so the tile "sticks" to neighbors just
+    // like with drag.
+    private void MonitorLayoutCanvas_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (!IsEditable || _selectedTile?.Monitor is not { } m) return;
+
+        int dx = 0, dy = 0;
+        switch (e.Key)
+        {
+            case VirtualKey.Left:  dx = -1; break;
+            case VirtualKey.Right: dx =  1; break;
+            case VirtualKey.Up:    dy = -1; break;
+            case VirtualKey.Down:  dy =  1; break;
+            default: return;
+        }
+
+        bool shift = (Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift)
+            & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
+        int step = shift ? 10 : 1;
+
+        int requestedX = m.PositionX + dx * step;
+        int requestedY = m.PositionY + dy * step;
+
+        var others = OtherRects(m);
+        var dragRect = new DisplayTopology.MonitorRect(requestedX, requestedY, m.Width, m.Height);
+        var snap = SnapCalculator.ComputeSnap(dragRect, requestedX, requestedY, others, SnapToleranceDesktopPx);
+        var resolved = SnapCalculator.ResolveOverlap(
+            new DisplayTopology.MonitorRect(snap.X, snap.Y, m.Width, m.Height), others);
+        var adjacent = SnapCalculator.EnforceAdjacency(
+            new DisplayTopology.MonitorRect(resolved.X, resolved.Y, m.Width, m.Height), others);
+
+        if (m.PositionX == adjacent.X && m.PositionY == adjacent.Y)
+        {
+            e.Handled = true;
+            return;
+        }
+
+        m.PositionX = adjacent.X;
+        m.PositionY = adjacent.Y;
+        MonitorPositionChanged?.Invoke(this, EventArgs.Empty);
+
+        RebuildLayout();
+        ReselectByMonitor(m);
+        DrawGuides(snap.Guides);
+
+        e.Handled = true;
     }
 
     private void Tile_PointerMoved(object sender, PointerRoutedEventArgs e)
