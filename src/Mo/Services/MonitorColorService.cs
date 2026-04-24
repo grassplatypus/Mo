@@ -1,24 +1,66 @@
 using System.Management;
+using Microsoft.Win32;
 using Mo.Interop.Monitor;
 using Mo.Models;
 using static Mo.Interop.Monitor.MonitorConfigApi;
 
 namespace Mo.Services;
 
+// Physical monitor handles are expensive to open (~50-100 ms round trip). Interactive
+// slider UIs cannot pay that cost per-change, so we open once and hold onto them until
+// Windows reports a display-settings change — at which point we rebuild the cache.
 public sealed class MonitorColorService : IMonitorColorService
 {
+    private readonly object _cacheLock = new();
+    private List<(PHYSICAL_MONITOR[] physicalMonitors, nint hMonitor)>? _cachedHandles;
+    private bool _disposed;
+
+    public MonitorColorService()
+    {
+        SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
+        DestroyCache();
+    }
+
+    private void OnDisplaySettingsChanged(object? sender, EventArgs e) => DestroyCache();
+
+    private List<(PHYSICAL_MONITOR[] physicalMonitors, nint hMonitor)> GetHandles()
+    {
+        lock (_cacheLock)
+        {
+            if (_cachedHandles != null) return _cachedHandles;
+            _cachedHandles = GetPhysicalMonitorHandles();
+            return _cachedHandles;
+        }
+    }
+
+    private void DestroyCache()
+    {
+        lock (_cacheLock)
+        {
+            if (_cachedHandles == null) return;
+            foreach (var (monitors, _) in _cachedHandles)
+            {
+                try { DestroyPhysicalMonitors((uint)monitors.Length, monitors); } catch { }
+            }
+            _cachedHandles = null;
+        }
+    }
+
     public List<MonitorColorCapabilities> DetectCapabilities()
     {
         var result = new List<MonitorColorCapabilities>();
-        var handles = GetPhysicalMonitorHandles();
 
-        foreach (var (physicalMonitors, _) in handles)
+        foreach (var (physicalMonitors, _) in GetHandles())
         {
             foreach (var pm in physicalMonitors)
-            {
                 result.Add(ProbeCapabilities(pm.hPhysicalMonitor));
-            }
-            DestroyPhysicalMonitors((uint)physicalMonitors.Length, physicalMonitors);
         }
 
         // If no DDC/CI brightness found, check WMI for laptop display (first monitor)
@@ -32,16 +74,12 @@ public sealed class MonitorColorService : IMonitorColorService
 
     public List<MonitorColorSettings> CaptureAllMonitors()
     {
-        var handles = GetPhysicalMonitorHandles();
         var results = new List<MonitorColorSettings>();
 
-        foreach (var (physicalMonitors, _) in handles)
+        foreach (var (physicalMonitors, _) in GetHandles())
         {
             foreach (var pm in physicalMonitors)
-            {
                 results.Add(ReadSettings(pm.hPhysicalMonitor));
-            }
-            DestroyPhysicalMonitors((uint)physicalMonitors.Length, physicalMonitors);
         }
 
         // WMI fallback for first monitor if DDC/CI brightness not available
@@ -57,33 +95,27 @@ public sealed class MonitorColorService : IMonitorColorService
 
     public void ApplyToMonitor(int monitorIndex, MonitorColorSettings settings)
     {
-        var handles = GetPhysicalMonitorHandles();
         int idx = 0;
-        bool applied = false;
-
-        foreach (var (physicalMonitors, _) in handles)
+        foreach (var (physicalMonitors, _) in GetHandles())
         {
             foreach (var pm in physicalMonitors)
             {
                 if (idx == monitorIndex)
                 {
-                    applied = WriteSettings(pm.hPhysicalMonitor, settings);
-                    // WMI fallback for brightness
+                    bool applied = WriteSettings(pm.hPhysicalMonitor, settings);
                     if (!applied && settings.Brightness.HasValue && idx == 0)
                         SetWmiBrightness(settings.Brightness.Value);
+                    return;
                 }
                 idx++;
             }
-            DestroyPhysicalMonitors((uint)physicalMonitors.Length, physicalMonitors);
         }
     }
 
     public void ApplyAll(List<(int index, MonitorColorSettings settings)> entries)
     {
-        var handles = GetPhysicalMonitorHandles();
         int idx = 0;
-
-        foreach (var (physicalMonitors, _) in handles)
+        foreach (var (physicalMonitors, _) in GetHandles())
         {
             foreach (var pm in physicalMonitors)
             {
@@ -96,68 +128,48 @@ public sealed class MonitorColorService : IMonitorColorService
                 }
                 idx++;
             }
-            DestroyPhysicalMonitors((uint)physicalMonitors.Length, physicalMonitors);
         }
     }
 
     public (uint current, uint max)? GetVcpFeature(int monitorIndex, byte vcpCode)
     {
-        var handles = GetPhysicalMonitorHandles();
         int idx = 0;
-        (uint current, uint max)? result = null;
-        try
+        foreach (var (physicalMonitors, _) in GetHandles())
         {
-            foreach (var (physicalMonitors, _) in handles)
+            foreach (var pm in physicalMonitors)
             {
-                foreach (var pm in physicalMonitors)
+                if (idx == monitorIndex)
                 {
-                    if (idx == monitorIndex)
+                    try
                     {
-                        try
-                        {
-                            if (GetVCPFeatureAndVCPFeatureReply(pm.hPhysicalMonitor, vcpCode, IntPtr.Zero, out uint cur, out uint max))
-                                result = (cur, max);
-                        }
-                        catch { }
+                        if (GetVCPFeatureAndVCPFeatureReply(pm.hPhysicalMonitor, vcpCode, IntPtr.Zero, out uint cur, out uint max))
+                            return (cur, max);
                     }
-                    idx++;
+                    catch { }
+                    return null;
                 }
+                idx++;
             }
         }
-        finally
-        {
-            foreach (var (physicalMonitors, _) in handles)
-                DestroyPhysicalMonitors((uint)physicalMonitors.Length, physicalMonitors);
-        }
-        return result;
+        return null;
     }
 
     public bool SetVcpFeature(int monitorIndex, byte vcpCode, uint value)
     {
-        var handles = GetPhysicalMonitorHandles();
         int idx = 0;
-        bool applied = false;
-        try
+        foreach (var (physicalMonitors, _) in GetHandles())
         {
-            foreach (var (physicalMonitors, _) in handles)
+            foreach (var pm in physicalMonitors)
             {
-                foreach (var pm in physicalMonitors)
+                if (idx == monitorIndex)
                 {
-                    if (idx == monitorIndex)
-                    {
-                        try { applied = SetVCPFeature(pm.hPhysicalMonitor, vcpCode, value); }
-                        catch { }
-                    }
-                    idx++;
+                    try { return SetVCPFeature(pm.hPhysicalMonitor, vcpCode, value); }
+                    catch { return false; }
                 }
+                idx++;
             }
         }
-        finally
-        {
-            foreach (var (physicalMonitors, _) in handles)
-                DestroyPhysicalMonitors((uint)physicalMonitors.Length, physicalMonitors);
-        }
-        return applied;
+        return false;
     }
 
     // ── Capability Detection ──

@@ -2,7 +2,7 @@ using Mo.Models;
 
 namespace Mo.Services;
 
-public interface IMonitorColorService
+public interface IMonitorColorService : IDisposable
 {
     /// <summary>Detect DDC/CI capabilities for each monitor.</summary>
     List<MonitorColorCapabilities> DetectCapabilities();

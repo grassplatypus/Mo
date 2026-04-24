@@ -397,5 +397,6 @@ public partial class App : Application
         try { Services.GetRequiredService<IAutoSwitchService>().Dispose(); } catch { }
         try { Services.GetRequiredService<IScheduleService>().Dispose(); } catch { }
         try { Services.GetRequiredService<ITrayService>().Dispose(); } catch { }
+        try { Services.GetRequiredService<IMonitorColorService>().Dispose(); } catch { }
     }
 }

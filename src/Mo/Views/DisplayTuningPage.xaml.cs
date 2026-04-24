@@ -15,12 +15,17 @@ public sealed partial class DisplayTuningPage : Page
     private readonly IDisplayService _displayService;
     private readonly IMonitorColorService _colorService;
     private readonly AmdColorService _amdColorService;
-    private readonly Microsoft.UI.Dispatching.DispatcherQueueTimer _applyTimer;
 
     private List<MonitorInfo> _monitors = [];
     private List<MonitorColorCapabilities> _caps = [];
     private int _selected = -1;
     private bool _loading;
+
+    // Ensures only one DDC/CI write is in flight at a time. A value change during the
+    // write flips _pending; the worker picks it up immediately after the current apply
+    // returns, so the UI always converges on the latest slider values without stacking.
+    private int _inFlight;
+    private volatile bool _pending;
 
     public DisplayTuningPage()
     {
@@ -29,12 +34,6 @@ public sealed partial class DisplayTuningPage : Page
         _amdColorService = App.Services.GetRequiredService<AmdColorService>();
         InitializeComponent();
         ApplyLocalization();
-
-        _applyTimer = DispatcherQueue.CreateTimer();
-        _applyTimer.Interval = TimeSpan.FromMilliseconds(60);
-        _applyTimer.IsRepeating = false;
-        _applyTimer.Tick += (_, _) => ApplyPendingColorSettings();
-
         _ = LoadMonitorsAsync();
     }
 
@@ -286,8 +285,56 @@ public sealed partial class DisplayTuningPage : Page
     {
         if (_loading || _selected < 0) return;
         UpdateValueLabels();
-        _applyTimer.Stop();
-        _applyTimer.Start();
+        _pending = true;
+        KickApplyWorker();
+    }
+
+    // Starts a background worker that drains _pending until the latest slider values
+    // have been pushed to DDC/CI. Interlocked.CompareExchange ensures only one worker
+    // is ever running.
+    private void KickApplyWorker()
+    {
+        if (System.Threading.Interlocked.CompareExchange(ref _inFlight, 1, 0) != 0) return;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                while (_pending)
+                {
+                    _pending = false;
+                    int index = _selected;
+                    MonitorColorSettings snapshot = null!;
+                    // Capture slider values on the UI thread so we don't race XAML state.
+                    var tcs = new TaskCompletionSource<MonitorColorSettings?>();
+                    DispatcherQueue.TryEnqueue(() => tcs.SetResult(BuildPendingSettings(index)));
+                    snapshot = (await tcs.Task) ?? new MonitorColorSettings();
+                    if (!snapshot.HasValues || index < 0) continue;
+
+                    try { _colorService.ApplyToMonitor(index, snapshot); }
+                    catch { }
+                }
+            }
+            finally
+            {
+                System.Threading.Interlocked.Exchange(ref _inFlight, 0);
+                // If a change slipped in between the last drain check and the release,
+                // restart so we don't miss it.
+                if (_pending) KickApplyWorker();
+            }
+        });
+    }
+
+    private MonitorColorSettings? BuildPendingSettings(int index)
+    {
+        if (index < 0 || index >= _caps.Count) return null;
+        var caps = _caps[index];
+        var s = new MonitorColorSettings();
+        if (caps.SupportsBrightness || caps.SupportsWmiBrightness) s.Brightness = (int)BrightnessSlider.Value;
+        if (caps.SupportsContrast) s.Contrast = (int)ContrastSlider.Value;
+        if (caps.SupportsRedGain) s.RedGain = (int)RedSlider.Value;
+        if (caps.SupportsGreenGain) s.GreenGain = (int)GreenSlider.Value;
+        if (caps.SupportsBlueGain) s.BlueGain = (int)BlueSlider.Value;
+        return s;
     }
 
     private void UpdateValueLabels()
@@ -299,23 +346,6 @@ public sealed partial class DisplayTuningPage : Page
         BlueValue.Text = $"{(int)BlueSlider.Value}";
     }
 
-    private void ApplyPendingColorSettings()
-    {
-        if (_selected < 0) return;
-        var caps = _selected < _caps.Count ? _caps[_selected] : null;
-        if (caps == null) return;
-
-        var settings = new MonitorColorSettings();
-        if (caps.SupportsBrightness || caps.SupportsWmiBrightness) settings.Brightness = (int)BrightnessSlider.Value;
-        if (caps.SupportsContrast) settings.Contrast = (int)ContrastSlider.Value;
-        if (caps.SupportsRedGain) settings.RedGain = (int)RedSlider.Value;
-        if (caps.SupportsGreenGain) settings.GreenGain = (int)GreenSlider.Value;
-        if (caps.SupportsBlueGain) settings.BlueGain = (int)BlueSlider.Value;
-
-        if (!settings.HasValues) return;
-        try { _colorService.ApplyToMonitor(_selected, settings); }
-        catch { }
-    }
 
     private void PresetCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -342,7 +372,8 @@ public sealed partial class DisplayTuningPage : Page
         BlueSlider.Value = 50;
         _loading = false;
         UpdateValueLabels();
-        ApplyPendingColorSettings();
+        _pending = true;
+        KickApplyWorker();
     }
 
     private void RefreshBtn_Click(object sender, RoutedEventArgs e)

@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <MoVersion>0.18.0</MoVersion>
+    <MoVersion>0.18.1</MoVersion>
     <MoVersionFull>$(MoVersion).0</MoVersionFull>
     <NoWarn>$(NoWarn);NETSDK1233</NoWarn>
   </PropertyGroup>
