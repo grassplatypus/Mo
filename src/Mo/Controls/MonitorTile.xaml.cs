@@ -42,10 +42,10 @@ public sealed partial class MonitorTile : UserControl
         set
         {
             _isSelected = value;
-            RootGrid.BorderBrush = value
+            RootBorder.BorderBrush = value
                 ? (Brush)Application.Current.Resources["AccentFillColorDefaultBrush"]
                 : (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"];
-            RootGrid.BorderThickness = value ? new Thickness(2) : new Thickness(1);
+            RootBorder.BorderThickness = value ? new Thickness(2) : new Thickness(1);
         }
     }
 
@@ -53,16 +53,16 @@ public sealed partial class MonitorTile : UserControl
     {
         if (_monitor == null) return;
 
-        NameText.Text = string.IsNullOrEmpty(_monitor.FriendlyName)
+        var fullName = string.IsNullOrEmpty(_monitor.FriendlyName)
             ? $"Display {_monitorIndex + 1}"
             : _monitor.FriendlyName;
+        NameText.Text = fullName;
+        ToolTipService.SetToolTip(NameText, fullName);
 
         ResolutionText.Text = _monitor.ResolutionText;
 
         if (_monitor.Rotation != DisplayRotation.None)
         {
-            RotationText.Text = $"({(int)_monitor.Rotation}°)";
-            RotationText.Visibility = Visibility.Visible;
             RotationBadge.Visibility = Visibility.Visible;
             RotationIcon.RenderTransform = new RotateTransform
             {
@@ -73,12 +73,11 @@ public sealed partial class MonitorTile : UserControl
         }
         else
         {
-            RotationText.Visibility = Visibility.Collapsed;
             RotationBadge.Visibility = Visibility.Collapsed;
         }
 
         PrimaryBadge.Visibility = _monitor.IsPrimary ? Visibility.Visible : Visibility.Collapsed;
 
-        RootGrid.Opacity = _monitor.IsEnabled ? 1.0 : 0.4;
+        RootBorder.Opacity = _monitor.IsEnabled ? 1.0 : 0.4;
     }
 }

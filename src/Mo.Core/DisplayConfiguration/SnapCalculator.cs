@@ -114,6 +114,79 @@ public static class SnapCalculator
         }
     }
 
+    // True when `target` shares at least one pixel of an edge with any rect in `others`.
+    // Matches Windows behavior: a single-pixel corner touch counts as adjacent.
+    public static bool HasAdjacentEdge(DisplayTopology.MonitorRect target, IReadOnlyList<DisplayTopology.MonitorRect> others)
+    {
+        int tR = target.X + target.Width;
+        int tB = target.Y + target.Height;
+        foreach (var o in others)
+        {
+            int oR = o.X + o.Width;
+            int oB = o.Y + o.Height;
+
+            bool verticalEdgeShare =
+                (target.X == oR || tR == o.X) &&
+                target.Y < oB && tB > o.Y;
+            bool horizontalEdgeShare =
+                (target.Y == oB || tB == o.Y) &&
+                target.X < oR && tR > o.X;
+
+            if (verticalEdgeShare || horizontalEdgeShare) return true;
+        }
+        return false;
+    }
+
+    // If `target` has no shared edge with any rect in `others`, pull it to the closest
+    // adjacent-and-non-overlapping position. The sliding dimension is clamped so at least
+    // one pixel of overlap exists on the shared axis.
+    public static (int X, int Y) EnforceAdjacency(
+        DisplayTopology.MonitorRect target,
+        IReadOnlyList<DisplayTopology.MonitorRect> others)
+    {
+        if (others.Count == 0) return (target.X, target.Y);
+        if (HasAdjacentEdge(target, others)) return (target.X, target.Y);
+
+        int bestX = target.X;
+        int bestY = target.Y;
+        long bestDistSq = long.MaxValue;
+
+        foreach (var o in others)
+        {
+            foreach (var (cx, cy) in AdjacentCandidates(target, o))
+            {
+                var candidateRect = new DisplayTopology.MonitorRect(cx, cy, target.Width, target.Height);
+                if (WouldOverlap(candidateRect, others)) continue;
+
+                long dx = cx - target.X;
+                long dy = cy - target.Y;
+                long distSq = dx * dx + dy * dy;
+                if (distSq < bestDistSq)
+                {
+                    bestDistSq = distSq;
+                    bestX = cx;
+                    bestY = cy;
+                }
+            }
+        }
+        return (bestX, bestY);
+    }
+
+    private static IEnumerable<(int X, int Y)> AdjacentCandidates(DisplayTopology.MonitorRect target, DisplayTopology.MonitorRect other)
+    {
+        int oR = other.X + other.Width;
+        int oB = other.Y + other.Height;
+
+        // Clamp so at least one pixel of overlap exists on the shared axis.
+        int yForHoriz = Math.Clamp(target.Y, other.Y - target.Height + 1, oB - 1);
+        int xForVert = Math.Clamp(target.X, other.X - target.Width + 1, oR - 1);
+
+        yield return (oR, yForHoriz);                  // attach to other's right edge
+        yield return (other.X - target.Width, yForHoriz); // attach to other's left edge
+        yield return (xForVert, oB);                   // attach to other's bottom edge
+        yield return (xForVert, other.Y - target.Height); // attach to other's top edge
+    }
+
     public static bool WouldOverlap(DisplayTopology.MonitorRect target, IReadOnlyList<DisplayTopology.MonitorRect> others)
     {
         int targetRight = target.X + target.Width;

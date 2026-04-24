@@ -91,6 +91,84 @@ public class SnapCalculatorTests
     }
 
     [Fact]
+    public void HasAdjacentEdge_SharedEdge_True()
+    {
+        var a = Rect(0, 0);
+        var b = Rect(1920, 0);
+        Assert.True(SnapCalculator.HasAdjacentEdge(a, new[] { b }));
+    }
+
+    [Fact]
+    public void HasAdjacentEdge_Gap_False()
+    {
+        var a = Rect(0, 0);
+        var b = Rect(1950, 0); // 30px gap
+        Assert.False(SnapCalculator.HasAdjacentEdge(a, new[] { b }));
+    }
+
+    [Fact]
+    public void HasAdjacentEdge_CornerTouchOnly_False()
+    {
+        // Only a single corner point touches — no pixel-wide edge share.
+        var a = Rect(0, 0);
+        var b = Rect(1920, 1080);
+        Assert.False(SnapCalculator.HasAdjacentEdge(a, new[] { b }));
+    }
+
+    [Fact]
+    public void EnforceAdjacency_GapRight_PullsLeft()
+    {
+        var target = new DisplayTopology.MonitorRect(2500, 0, 1920, 1080);
+        var others = new List<DisplayTopology.MonitorRect> { Rect(0, 0) };
+
+        var (x, y) = SnapCalculator.EnforceAdjacency(target, others);
+
+        Assert.Equal(1920, x); // flush against anchor's right edge
+        Assert.Equal(0, y);
+    }
+
+    [Fact]
+    public void EnforceAdjacency_GapBelow_PullsUp()
+    {
+        var target = new DisplayTopology.MonitorRect(0, 2000, 1920, 1080);
+        var others = new List<DisplayTopology.MonitorRect> { Rect(0, 0) };
+
+        var (x, y) = SnapCalculator.EnforceAdjacency(target, others);
+
+        Assert.Equal(0, x);
+        Assert.Equal(1080, y);
+    }
+
+    [Fact]
+    public void EnforceAdjacency_AlreadyAdjacent_Unchanged()
+    {
+        var target = new DisplayTopology.MonitorRect(1920, 300, 1920, 1080);
+        var others = new List<DisplayTopology.MonitorRect> { Rect(0, 0) };
+
+        var (x, y) = SnapCalculator.EnforceAdjacency(target, others);
+
+        Assert.Equal(1920, x);
+        Assert.Equal(300, y);
+    }
+
+    [Fact]
+    public void EnforceAdjacency_ClampsSlidingDimension()
+    {
+        // Target above and to the right of anchor. Pulled left; Y is clamped so
+        // there's at least one pixel of vertical overlap with the anchor.
+        var anchor = Rect(0, 0, 1920, 1080);
+        var target = new DisplayTopology.MonitorRect(2500, -2000, 1920, 1080);
+        var others = new List<DisplayTopology.MonitorRect> { anchor };
+
+        var (x, y) = SnapCalculator.EnforceAdjacency(target, others);
+
+        // Must end up adjacent with at least one pixel of overlap.
+        var resultRect = new DisplayTopology.MonitorRect(x, y, target.Width, target.Height);
+        Assert.True(SnapCalculator.HasAdjacentEdge(resultRect, others));
+        Assert.False(SnapCalculator.WouldOverlap(resultRect, others));
+    }
+
+    [Fact]
     public void WouldOverlap_PortraitRotatedMonitor()
     {
         // Simulates a 90°-rotated monitor whose logical dimensions are 1080x1920.

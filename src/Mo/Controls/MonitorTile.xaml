@@ -7,74 +7,72 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <Grid
-        x:Name="RootGrid"
+    <!-- Border wrapper ensures the CornerRadius clips children (Grid does not). -->
+    <Border
+        x:Name="RootBorder"
         CornerRadius="6"
         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
         BorderThickness="1"
-        Padding="8"
         MinWidth="80"
         MinHeight="50">
+        <Grid x:Name="RootGrid" Padding="6">
 
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-        <!-- Monitor Name -->
-        <TextBlock
-            x:Name="NameText"
-            Style="{StaticResource CaptionTextBlockStyle}"
-            TextTrimming="CharacterEllipsis"
-            MaxLines="1" />
-
-        <!-- Monitor Number -->
-        <TextBlock
-            Grid.Row="1"
-            x:Name="NumberText"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
-            Style="{StaticResource TitleLargeTextBlockStyle}"
-            Opacity="0.15" />
-
-        <!-- Resolution + Info -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="4">
+            <!-- Monitor Name -->
             <TextBlock
+                x:Name="NameText"
+                Style="{StaticResource CaptionTextBlockStyle}"
+                TextTrimming="CharacterEllipsis"
+                MaxLines="1" />
+
+            <!-- Monitor Number -->
+            <TextBlock
+                Grid.Row="1"
+                x:Name="NumberText"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Style="{StaticResource TitleLargeTextBlockStyle}"
+                Opacity="0.15" />
+
+            <!-- Resolution (rotation shown via badge only to save horizontal space) -->
+            <TextBlock
+                Grid.Row="2"
                 x:Name="ResolutionText"
                 Style="{StaticResource CaptionTextBlockStyle}"
-                Opacity="0.5" />
-            <TextBlock
-                x:Name="RotationText"
-                Style="{StaticResource CaptionTextBlockStyle}"
-                Opacity="0.4"
-                Visibility="Collapsed" />
-        </StackPanel>
+                Opacity="0.5"
+                TextTrimming="CharacterEllipsis"
+                MaxLines="1" />
 
-        <!-- Rotation Badge -->
-        <Border
-            x:Name="RotationBadge"
-            Grid.Row="1"
-            HorizontalAlignment="Right"
-            VerticalAlignment="Bottom"
-            CornerRadius="4"
-            Padding="2"
-            Visibility="Collapsed">
-            <FontIcon x:Name="RotationIcon" Glyph="&#xE7AD;" FontSize="12" Opacity="0.4" />
-        </Border>
+            <!-- Rotation Badge -->
+            <Border
+                x:Name="RotationBadge"
+                Grid.Row="1"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Bottom"
+                CornerRadius="4"
+                Padding="2"
+                Visibility="Collapsed">
+                <FontIcon x:Name="RotationIcon" Glyph="&#xE7AD;" FontSize="12" Opacity="0.4" />
+            </Border>
 
-        <!-- Primary Badge -->
-        <Border
-            x:Name="PrimaryBadge"
-            Grid.Row="0"
-            HorizontalAlignment="Right"
-            VerticalAlignment="Top"
-            Background="{ThemeResource AccentFillColorDefaultBrush}"
-            CornerRadius="4"
-            Padding="4,1"
-            Visibility="Collapsed">
-            <TextBlock Text="P" FontSize="9" Foreground="White" />
-        </Border>
-    </Grid>
+            <!-- Primary Badge -->
+            <Border
+                x:Name="PrimaryBadge"
+                Grid.Row="0"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Background="{ThemeResource AccentFillColorDefaultBrush}"
+                CornerRadius="4"
+                Padding="4,1"
+                Visibility="Collapsed">
+                <TextBlock Text="P" FontSize="9" Foreground="White" />
+            </Border>
+        </Grid>
+    </Border>
 </UserControl>

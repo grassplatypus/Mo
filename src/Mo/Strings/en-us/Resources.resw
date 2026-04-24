@@ -66,8 +66,10 @@
   <data name="UnmatchedMonitorsDesc" xml:space="preserve"><value>What to do with monitors not listed in this profile</value></data>
   <data name="ImportCurrent" xml:space="preserve"><value>Import current</value></data>
   <data name="AlignHorizontal" xml:space="preserve"><value>Align horizontal</value></data>
-  <data name="AlignGrid" xml:space="preserve"><value>Arrange grid</value></data>
   <data name="SetPrimary" xml:space="preserve"><value>Set primary</value></data>
+  <data name="UnsavedChangesTitle" xml:space="preserve"><value>Unsaved changes</value></data>
+  <data name="UnsavedChangesContent" xml:space="preserve"><value>You have unsaved changes. Save before leaving?</value></data>
+  <data name="Discard" xml:space="preserve"><value>Discard</value></data>
   <data name="AvailableMonitors" xml:space="preserve"><value>Available Monitors</value></data>
   <data name="AvailableMonitorsDesc" xml:space="preserve"><value>Currently connected displays not in this profile. Click + to add.</value></data>
   <data name="RestoreOnStartup" xml:space="preserve"><value>Restore last profile on startup</value></data>

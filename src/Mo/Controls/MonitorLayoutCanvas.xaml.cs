@@ -41,7 +41,34 @@ public sealed partial class MonitorLayoutCanvas : UserControl
     public void SetMonitors(List<MonitorInfo> monitors)
     {
         _monitors = monitors;
+        NormalizeAdjacency();
         RebuildLayout();
+    }
+
+    // Snap any disconnected monitors (gap from the rest of the layout) to an adjacent
+    // position. No-op when everything is already touching. Runs greedily — each monitor
+    // is adjusted against the monitors already placed before it.
+    private void NormalizeAdjacency()
+    {
+        if (_monitors.Count <= 1) return;
+
+        var placed = new List<DisplayTopology.MonitorRect>
+        {
+            new(_monitors[0].PositionX, _monitors[0].PositionY, _monitors[0].Width, _monitors[0].Height),
+        };
+
+        for (int i = 1; i < _monitors.Count; i++)
+        {
+            var m = _monitors[i];
+            var rect = new DisplayTopology.MonitorRect(m.PositionX, m.PositionY, m.Width, m.Height);
+            var (nx, ny) = SnapCalculator.EnforceAdjacency(rect, placed);
+            if (nx != m.PositionX || ny != m.PositionY)
+            {
+                m.PositionX = nx;
+                m.PositionY = ny;
+            }
+            placed.Add(new DisplayTopology.MonitorRect(nx, ny, m.Width, m.Height));
+        }
     }
 
     public List<MonitorInfo> GetMonitors() => _monitors;
@@ -168,7 +195,12 @@ public sealed partial class MonitorLayoutCanvas : UserControl
 
             var others = OtherRects(m);
             var candidate = new DisplayTopology.MonitorRect(px, py, m.Width, m.Height);
-            var (finalX, finalY) = SnapCalculator.ResolveOverlap(candidate, others);
+            var (resolvedX, resolvedY) = SnapCalculator.ResolveOverlap(candidate, others);
+            // Enforce adjacency: monitors must share at least one pixel of an edge.
+            var adjacent = SnapCalculator.EnforceAdjacency(
+                new DisplayTopology.MonitorRect(resolvedX, resolvedY, m.Width, m.Height), others);
+            var finalX = adjacent.X;
+            var finalY = adjacent.Y;
 
             if (m.PositionX != finalX || m.PositionY != finalY)
             {

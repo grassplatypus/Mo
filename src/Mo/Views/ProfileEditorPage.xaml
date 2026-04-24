@@ -66,12 +66,6 @@
                             <TextBlock x:Name="AlignHorizontalLabel" />
                         </StackPanel>
                     </Button>
-                    <Button x:Name="AlignGridBtn" Click="AlignGrid_Click" ToolTipService.ToolTip="Arrange monitors in a grid">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <FontIcon Glyph="&#xE80A;" FontSize="14" />
-                            <TextBlock x:Name="AlignGridLabel" />
-                        </StackPanel>
-                    </Button>
                     <Button x:Name="SetPrimaryBtn" Click="SetPrimary_Click" IsEnabled="False" ToolTipService.ToolTip="Make selected monitor primary">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <FontIcon Glyph="&#xE735;" FontSize="14" />

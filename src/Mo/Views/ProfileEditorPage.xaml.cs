@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -21,6 +22,8 @@ public sealed partial class ProfileEditorPage : Page
     private List<(string id, string name)> _audioDevices = [];
     private List<MonitorColorCapabilities> _colorCaps = [];
     private bool _loading = true;
+    // JSON snapshot of the profile at load time. Compared on exit to detect unsaved edits.
+    private string _initialSnapshot = string.Empty;
 
     public ProfileEditorPage()
     {
@@ -102,6 +105,11 @@ public sealed partial class ProfileEditorPage : Page
             ScheduleTimePicker.Time = sched.Time.Value.ToTimeSpan();
 
         LoadScheduleDays(sched);
+
+        // Baseline for dirty-state detection. Adjacency normalization inside SetMonitors
+        // may have moved tiles — capture after that so the user isn't prompted to save
+        // repositions they didn't make.
+        _initialSnapshot = CaptureSnapshot();
     }
 
     private async Task LoadProfileDeferredAsync()
@@ -395,21 +403,79 @@ public sealed partial class ProfileEditorPage : Page
     private async void SaveButton_Click(object sender, RoutedEventArgs e)
     {
         if (_profile == null) return;
+        await SaveProfileAsync();
+        _navigationService.GoBack();
+    }
 
+    // Pulls live values from text boxes / time pickers into _profile. The drag canvas,
+    // toggles, and combos already mutate _profile on interaction, but plain TextBox edits
+    // don't raise property-changed handlers — sync them here before save/snapshot.
+    private void SyncProfileFromUi()
+    {
+        if (_profile == null) return;
         _profile.Name = ProfileNameBox.Text;
         _profile.Description = DescriptionBox.Text;
-        _profile.ModifiedAt = DateTime.UtcNow;
-
-        // Schedule sync
         if (_profile.Schedule != null)
         {
             _profile.Schedule.Days = GetSelectedDays();
             if (ScheduleTimePicker.Time != default)
                 _profile.Schedule.Time = TimeOnly.FromTimeSpan(ScheduleTimePicker.Time);
         }
+    }
 
+    private async Task SaveProfileAsync()
+    {
+        if (_profile == null) return;
+        SyncProfileFromUi();
+        _profile.ModifiedAt = DateTime.UtcNow;
         await _profileService.SaveProfileAsync(_profile);
-        _navigationService.GoBack();
+        _initialSnapshot = CaptureSnapshot();
+    }
+
+    private string CaptureSnapshot()
+    {
+        if (_profile == null) return string.Empty;
+        try
+        {
+            // Clone ModifiedAt out so it doesn't flip the dirty bit on every save.
+            var saved = _profile.ModifiedAt;
+            _profile.ModifiedAt = default;
+            var json = JsonSerializer.Serialize(_profile, MoJsonContext.Default.DisplayProfile);
+            _profile.ModifiedAt = saved;
+            return json;
+        }
+        catch { return string.Empty; }
+    }
+
+    private bool IsDirty()
+    {
+        if (_profile == null || string.IsNullOrEmpty(_initialSnapshot)) return false;
+        SyncProfileFromUi();
+        return CaptureSnapshot() != _initialSnapshot;
+    }
+
+    private async Task<bool> ConfirmExitAsync()
+    {
+        if (!IsDirty()) return true;
+
+        var dialog = new ContentDialog
+        {
+            Title = ResourceHelper.GetString("UnsavedChangesTitle"),
+            Content = ResourceHelper.GetString("UnsavedChangesContent"),
+            PrimaryButtonText = ResourceHelper.GetString("Save"),
+            SecondaryButtonText = ResourceHelper.GetString("Discard"),
+            CloseButtonText = ResourceHelper.GetString("Cancel"),
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = this.XamlRoot,
+        };
+
+        var result = await dialog.ShowAsync();
+        if (result == ContentDialogResult.Primary)
+        {
+            await SaveProfileAsync();
+            return true;
+        }
+        return result == ContentDialogResult.Secondary; // Discard → exit; Cancel → stay
     }
 
     private void RotationCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -461,8 +527,15 @@ public sealed partial class ProfileEditorPage : Page
         LayoutCanvas.SetMonitors(_profile!.Monitors);
     }
 
-    private void CancelButton_Click(object sender, RoutedEventArgs e) => _navigationService.GoBack();
-    private void BackButton_Click(object sender, RoutedEventArgs e) => _navigationService.GoBack();
+    private async void CancelButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (await ConfirmExitAsync()) _navigationService.GoBack();
+    }
+
+    private async void BackButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (await ConfirmExitAsync()) _navigationService.GoBack();
+    }
 
     // --- Layout toolbar + available monitors ---
 
@@ -611,31 +684,6 @@ public sealed partial class ProfileEditorPage : Page
         LayoutCanvas.SetMonitors(_profile.Monitors);
     }
 
-    private void AlignGrid_Click(object sender, RoutedEventArgs e)
-    {
-        if (_profile == null || _profile.Monitors.Count == 0) return;
-
-        int cols = (int)Math.Ceiling(Math.Sqrt(_profile.Monitors.Count));
-        int colX = 0, rowY = 0, colIdx = 0, rowHeight = 0;
-
-        foreach (var m in _profile.Monitors)
-        {
-            m.PositionX = colX;
-            m.PositionY = rowY;
-            colX += m.Width;
-            rowHeight = Math.Max(rowHeight, m.Height);
-            colIdx++;
-            if (colIdx >= cols)
-            {
-                colIdx = 0;
-                colX = 0;
-                rowY += rowHeight;
-                rowHeight = 0;
-            }
-        }
-        LayoutCanvas.SetMonitors(_profile.Monitors);
-    }
-
     private void SetPrimary_Click(object sender, RoutedEventArgs e)
     {
         if (_profile == null || _selectedMonitor == null) return;
@@ -674,7 +722,6 @@ public sealed partial class ProfileEditorPage : Page
         UnmatchedDesc.Text = ResourceHelper.GetString("UnmatchedMonitorsDesc");
         ImportCurrentLabel.Text = ResourceHelper.GetString("ImportCurrent");
         AlignHorizontalLabel.Text = ResourceHelper.GetString("AlignHorizontal");
-        AlignGridLabel.Text = ResourceHelper.GetString("AlignGrid");
         SetPrimaryLabel.Text = ResourceHelper.GetString("SetPrimary");
         AvailableMonitorsTitle.Text = ResourceHelper.GetString("AvailableMonitors");
         AvailableMonitorsDesc.Text = ResourceHelper.GetString("AvailableMonitorsDesc");

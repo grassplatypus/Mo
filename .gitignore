@@ -27,6 +27,8 @@ obj/
 *.pfx
 AppPackages/
 BundleArtifacts/
+msix-unsigned/
+msix-signed/
 
 ## Build
 [Dd]ebug/
