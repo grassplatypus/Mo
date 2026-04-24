@@ -18,6 +18,10 @@ public sealed class AppSettings
     public bool RestoreOnStartup { get; set; } = true;
     // Re-push DDC/CI brightness/contrast/RGB gain on startup (Windows doesn't persist these).
     public bool RestoreColorOnStartup { get; set; } = true;
+
+    // Flipped to true the first time the app detects an NVIDIA or AMD GPU and offers
+    // to switch the rotation backend. Prevents the prompt from nagging on every launch.
+    public bool GpuRotationMethodPromptShown { get; set; }
 }
 
 public enum RotationMethod

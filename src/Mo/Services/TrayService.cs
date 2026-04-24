@@ -45,7 +45,9 @@ public sealed class TrayService : ITrayService
             // Icon loading failed, tray will show default
         }
 
-        _trayIcon.LeftClickCommand = new SimpleCommand(ShowMainWindow);
+        // Only a double-click opens the window — matches Windows convention for
+        // secondary tray apps (OneDrive, Dropbox, etc.). Single-click does nothing.
+        _trayIcon.DoubleClickCommand = new SimpleCommand(ShowMainWindow);
         UpdateContextMenu();
         _trayIcon.ForceCreate();
     }

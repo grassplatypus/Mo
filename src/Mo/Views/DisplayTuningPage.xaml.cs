@@ -14,6 +14,7 @@ public sealed partial class DisplayTuningPage : Page
 {
     private readonly IDisplayService _displayService;
     private readonly IMonitorColorService _colorService;
+    private readonly AmdColorService _amdColorService;
     private readonly Microsoft.UI.Dispatching.DispatcherQueueTimer _applyTimer;
 
     private List<MonitorInfo> _monitors = [];
@@ -25,6 +26,7 @@ public sealed partial class DisplayTuningPage : Page
     {
         _displayService = App.Services.GetRequiredService<IDisplayService>();
         _colorService = App.Services.GetRequiredService<IMonitorColorService>();
+        _amdColorService = App.Services.GetRequiredService<AmdColorService>();
         InitializeComponent();
         ApplyLocalization();
 
@@ -102,6 +104,77 @@ public sealed partial class DisplayTuningPage : Page
         LoadDdcSection(monitor);
         LoadPresetSection();
         LoadHdrSection(monitor);
+        LoadAmdSection();
+    }
+
+    private void LoadAmdSection()
+    {
+        if (!_amdColorService.IsAvailable)
+        {
+            AmdCard.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        // Probe the first adapter/display pair. If ADL rejects the read we hide the card
+        // rather than showing dead sliders.
+        var sat = _amdColorService.GetColor(0, 0, AmdColorService.ColorKind.Saturation);
+        var hue = _amdColorService.GetColor(0, 0, AmdColorService.ColorKind.Hue);
+        if (sat == null && hue == null)
+        {
+            AmdCard.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        AmdCard.Visibility = Visibility.Visible;
+        _loading = true;
+
+        if (sat is { } s)
+        {
+            AmdSaturationSlider.Minimum = s.Min;
+            AmdSaturationSlider.Maximum = s.Max;
+            AmdSaturationSlider.StepFrequency = Math.Max(1, s.Step);
+            AmdSaturationSlider.Value = s.Current;
+            AmdSaturationValue.Text = s.Current.ToString();
+            AmdSaturationSlider.IsEnabled = true;
+        }
+        else
+        {
+            AmdSaturationSlider.IsEnabled = false;
+        }
+
+        if (hue is { } h)
+        {
+            AmdHueSlider.Minimum = h.Min;
+            AmdHueSlider.Maximum = h.Max;
+            AmdHueSlider.StepFrequency = Math.Max(1, h.Step);
+            AmdHueSlider.Value = h.Current;
+            AmdHueValue.Text = h.Current.ToString();
+            AmdHueSlider.IsEnabled = true;
+        }
+        else
+        {
+            AmdHueSlider.IsEnabled = false;
+        }
+
+        _loading = false;
+    }
+
+    private void AmdSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
+    {
+        if (_loading || sender is not Slider slider) return;
+        var kind = (slider.Tag as string) switch
+        {
+            "Saturation" => AmdColorService.ColorKind.Saturation,
+            "Hue" => AmdColorService.ColorKind.Hue,
+            _ => (AmdColorService.ColorKind?)null,
+        };
+        if (kind == null) return;
+
+        int value = (int)slider.Value;
+        if (ReferenceEquals(slider, AmdSaturationSlider)) AmdSaturationValue.Text = value.ToString();
+        else if (ReferenceEquals(slider, AmdHueSlider)) AmdHueValue.Text = value.ToString();
+
+        _amdColorService.SetColorFirstAvailable(kind.Value, value);
     }
 
     private void LoadDdcSection(MonitorInfo monitor)
@@ -291,5 +364,8 @@ public sealed partial class DisplayTuningPage : Page
         PresetDesc.Text = ResourceHelper.GetString("ColorPresetDesc");
         HdrLabel.Text = ResourceHelper.GetString("Hdr");
         HdrDesc.Text = ResourceHelper.GetString("HdrDesc");
+        AmdTitle.Text = ResourceHelper.GetString("AmdColorSection");
+        AmdSaturationLabel.Text = ResourceHelper.GetString("Saturation");
+        AmdHueLabel.Text = ResourceHelper.GetString("Hue");
     }
 }

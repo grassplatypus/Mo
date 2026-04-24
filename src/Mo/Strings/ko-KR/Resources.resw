@@ -70,6 +70,13 @@
   <data name="UnsavedChangesTitle" xml:space="preserve"><value>저장되지 않은 변경</value></data>
   <data name="UnsavedChangesContent" xml:space="preserve"><value>저장되지 않은 변경이 있습니다. 나가기 전에 저장하시겠습니까?</value></data>
   <data name="Discard" xml:space="preserve"><value>버리기</value></data>
+  <data name="GpuPromptTitle" xml:space="preserve"><value>드라이버 기반 회전으로 전환할까요?</value></data>
+  <data name="GpuPromptContent" xml:space="preserve"><value>{0} GPU가 감지되었습니다. {0} 드라이버로 회전을 적용하면 Windows 커서 좌표 버그를 피하고, 재부팅 후에도 설정이 유지됩니다. 설정 → 고급에서 언제든 변경할 수 있습니다.</value></data>
+  <data name="GpuPromptUseDriver" xml:space="preserve"><value>{0} 드라이버 사용</value></data>
+  <data name="GpuPromptKeepWindows" xml:space="preserve"><value>Windows 기본 유지</value></data>
+  <data name="Saturation" xml:space="preserve"><value>채도</value></data>
+  <data name="Hue" xml:space="preserve"><value>색조</value></data>
+  <data name="AmdColorSection" xml:space="preserve"><value>AMD 색상 조정</value></data>
   <data name="AvailableMonitors" xml:space="preserve"><value>추가 가능한 모니터</value></data>
   <data name="AvailableMonitorsDesc" xml:space="preserve"><value>연결되어 있지만 프로필에 없는 디스플레이. + 버튼으로 추가합니다.</value></data>
   <data name="RestoreOnStartup" xml:space="preserve"><value>시작 시 마지막 프로파일 복원</value></data>

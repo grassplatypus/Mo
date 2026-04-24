@@ -17,7 +17,26 @@ public partial class SettingsViewModel : ObservableObject
     public bool LaunchAtStartup
     {
         get => _settingsService.Settings.LaunchAtStartup;
-        set { if (_settingsService.Settings.LaunchAtStartup != value) { _settingsService.Settings.LaunchAtStartup = value; _ = _settingsService.SaveAsync(); OnPropertyChanged(); } }
+        set
+        {
+            if (_settingsService.Settings.LaunchAtStartup == value) return;
+            _settingsService.Settings.LaunchAtStartup = value;
+            _ = _settingsService.SaveAsync();
+            OnPropertyChanged();
+
+            // Persisting the preference alone did nothing — the previous code never
+            // told Windows to actually run Mo at logon. Register/unregister here.
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var startup = App.Services.GetRequiredService<IStartupService>();
+                    if (value) await startup.RegisterForStartupAsync();
+                    else await startup.UnregisterFromStartupAsync();
+                }
+                catch { }
+            });
+        }
     }
 
     public bool MinimizeToTrayOnClose

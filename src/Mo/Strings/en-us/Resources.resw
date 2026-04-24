@@ -70,6 +70,13 @@
   <data name="UnsavedChangesTitle" xml:space="preserve"><value>Unsaved changes</value></data>
   <data name="UnsavedChangesContent" xml:space="preserve"><value>You have unsaved changes. Save before leaving?</value></data>
   <data name="Discard" xml:space="preserve"><value>Discard</value></data>
+  <data name="GpuPromptTitle" xml:space="preserve"><value>Switch to driver-level rotation?</value></data>
+  <data name="GpuPromptContent" xml:space="preserve"><value>A {0} GPU was detected. Using the {0} driver to apply rotation avoids a Windows cursor-coordinate bug and keeps settings persistent after reboot. You can change this anytime under Settings → Advanced.</value></data>
+  <data name="GpuPromptUseDriver" xml:space="preserve"><value>Use {0} driver</value></data>
+  <data name="GpuPromptKeepWindows" xml:space="preserve"><value>Keep Windows default</value></data>
+  <data name="Saturation" xml:space="preserve"><value>Saturation</value></data>
+  <data name="Hue" xml:space="preserve"><value>Hue</value></data>
+  <data name="AmdColorSection" xml:space="preserve"><value>AMD color controls</value></data>
   <data name="AvailableMonitors" xml:space="preserve"><value>Available Monitors</value></data>
   <data name="AvailableMonitorsDesc" xml:space="preserve"><value>Currently connected displays not in this profile. Click + to add.</value></data>
   <data name="RestoreOnStartup" xml:space="preserve"><value>Restore last profile on startup</value></data>

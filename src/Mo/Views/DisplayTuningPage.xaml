@@ -140,6 +140,31 @@
                     </StackPanel>
                     <ToggleSwitch Grid.Column="1" x:Name="HdrToggle" Toggled="HdrToggle_Toggled" OnContent="" OffContent="" />
                 </Grid>
+
+                <!-- AMD (ADL2) color controls -->
+                <Grid x:Name="AmdCard" Padding="16" CornerRadius="8" Visibility="Collapsed"
+                      Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                    <StackPanel Spacing="10">
+                        <TextBlock x:Name="AmdTitle" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="80" /><ColumnDefinition Width="*" /><ColumnDefinition Width="48" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="AmdSaturationLabel" VerticalAlignment="Center" />
+                            <Slider Grid.Column="1" x:Name="AmdSaturationSlider" ValueChanged="AmdSlider_ValueChanged" Tag="Saturation" />
+                            <TextBlock Grid.Column="2" x:Name="AmdSaturationValue" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                        </Grid>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="80" /><ColumnDefinition Width="*" /><ColumnDefinition Width="48" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="AmdHueLabel" VerticalAlignment="Center" />
+                            <Slider Grid.Column="1" x:Name="AmdHueSlider" ValueChanged="AmdSlider_ValueChanged" Tag="Hue" />
+                            <TextBlock Grid.Column="2" x:Name="AmdHueValue" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                        </Grid>
+                    </StackPanel>
+                </Grid>
             </StackPanel>
         </ScrollViewer>
     </Grid>

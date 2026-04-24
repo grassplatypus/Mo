@@ -182,6 +182,7 @@ public partial class App : Application
         services.AddSingleton<IMonitorColorService, MonitorColorService>();
         services.AddSingleton<NvidiaRotationService>();
         services.AddSingleton<AmdRotationService>();
+        services.AddSingleton<AmdColorService>();
         services.AddSingleton<IntelRotationService>();
 
         services.AddTransient<ProfileListViewModel>();
@@ -210,6 +211,9 @@ public partial class App : Application
             // Restore last-applied profile after reboot (NVIDIA/CCD persistence is unreliable).
             _ = RestoreLastAppliedProfileAsync();
 
+            // First-launch: offer to switch rotation backend if a driver SDK is available.
+            _ = MaybeOfferDriverRotationAsync();
+
             SafeInit(() =>
             {
                 var hotkeyService = (HotkeyService)Services.GetRequiredService<IHotkeyService>();
@@ -230,6 +234,68 @@ public partial class App : Application
 
         // Auto-check for updates (after everything else, non-blocking)
         _ = CheckForUpdateOnStartupAsync();
+    }
+
+    // On first launch, if the user is on an NVIDIA or AMD GPU and still using the default
+    // Windows rotation path, offer to switch. Windows rotation triggers a known cursor-
+    // coordinate bug; driver-level rotation avoids it. Shown once — tracked via
+    // AppSettings.GpuRotationMethodPromptShown.
+    private static async Task MaybeOfferDriverRotationAsync()
+    {
+        try
+        {
+            var settings = Services.GetRequiredService<ISettingsService>();
+            if (settings.Settings.GpuRotationMethodPromptShown) return;
+            if (settings.Settings.RotationMethod != Models.RotationMethod.Windows) return;
+
+            // Give the shell a beat to settle so the dialog doesn't race MainWindow.
+            await Task.Delay(2500);
+
+            Models.RotationMethod? suggestion = null;
+            string? vendorName = null;
+
+            if (Services.GetRequiredService<NvidiaRotationService>().IsAvailable)
+            {
+                suggestion = Models.RotationMethod.NvidiaDriver;
+                vendorName = "NVIDIA";
+            }
+            else if (Services.GetRequiredService<AmdRotationService>().IsAvailable)
+            {
+                suggestion = Models.RotationMethod.AmdDriver;
+                vendorName = "AMD";
+            }
+
+            if (suggestion == null || vendorName == null)
+            {
+                // No supported driver detected — don't re-prompt later either; nothing to offer.
+                settings.Settings.GpuRotationMethodPromptShown = true;
+                await settings.SaveAsync();
+                return;
+            }
+
+            if (MainWindow?.Content?.XamlRoot == null) return;
+
+            var dialog = new ContentDialog
+            {
+                Title = ResourceHelper.GetString("GpuPromptTitle"),
+                Content = ResourceHelper.GetString("GpuPromptContent", vendorName),
+                PrimaryButtonText = ResourceHelper.GetString("GpuPromptUseDriver", vendorName),
+                CloseButtonText = ResourceHelper.GetString("GpuPromptKeepWindows"),
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = MainWindow.Content.XamlRoot,
+            };
+
+            var result = await dialog.ShowAsync();
+            if (result == ContentDialogResult.Primary)
+                settings.Settings.RotationMethod = suggestion.Value;
+
+            settings.Settings.GpuRotationMethodPromptShown = true;
+            await settings.SaveAsync();
+        }
+        catch (Exception ex)
+        {
+            LogException("MaybeOfferDriverRotationAsync", ex);
+        }
     }
 
     private static async Task RestoreLastAppliedProfileAsync()
