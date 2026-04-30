@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
@@ -24,6 +25,11 @@ public sealed partial class ProfileEditorPage : Page
     private bool _loading = true;
     // JSON snapshot of the profile at load time. Compared on exit to detect unsaved edits.
     private string _initialSnapshot = string.Empty;
+
+    // All currently-connected monitors. Each item exposes an InProfile flag so the
+    // template can show a "✓ added" check or a "+" affordance, and the row stays in
+    // place when toggled (no list churn).
+    public ObservableCollection<AvailableMonitorItem> AvailableMonitors { get; } = new();
 
     public ProfileEditorPage()
     {
@@ -512,6 +518,7 @@ public sealed partial class ProfileEditorPage : Page
         ColorSettingsPanel.Visibility = Visibility.Collapsed;
         LayoutCanvas.SetMonitors(_profile.Monitors);
         DescriptionBox.Text = $"{_profile.Monitors.Count} monitor(s)";
+        RefreshAvailableMonitors();
     }
 
     private void UnmatchedCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -541,79 +548,59 @@ public sealed partial class ProfileEditorPage : Page
 
     private void RefreshAvailableMonitors()
     {
-        if (_profile == null) return;
+        if (_profile == null)
+        {
+            AvailableMonitors.Clear();
+            return;
+        }
 
         List<MonitorInfo> current;
         try { current = _displayService.GetCurrentConfiguration(); }
         catch { current = []; }
 
-        var profileIds = _profile.Monitors
-            .Select(m => new MonitorMatcher.MonitorIdentity(
-                m.DevicePath, m.EdidManufacturerId, m.EdidProductCodeId, m.ConnectorInstance, m.FriendlyName))
-            .ToList();
-        var currentIds = current
-            .Select(m => new MonitorMatcher.MonitorIdentity(
-                m.DevicePath, m.EdidManufacturerId, m.EdidProductCodeId, m.ConnectorInstance, m.FriendlyName))
-            .ToList();
-
-        var match = MonitorMatcher.Match(profileIds, currentIds);
-        var available = match.UnmatchedCurrent
-            .Select(i => current[i])
-            .ToList();
-
-        AvailableMonitorsList.Items.Clear();
-        foreach (var monitor in available)
+        AvailableMonitors.Clear();
+        foreach (var monitor in current)
         {
-            AvailableMonitorsList.Items.Add(BuildAvailableRow(monitor));
+            bool inProfile = _profile.Monitors.Any(p => MatchesProfileMonitor(p, monitor));
+            AvailableMonitors.Add(new AvailableMonitorItem(monitor, inProfile));
         }
-
-        AvailableMonitorsPanel.Visibility = available.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private UIElement BuildAvailableRow(MonitorInfo monitor)
+    private static bool MatchesProfileMonitor(MonitorInfo profile, MonitorInfo current)
     {
-        var grid = new Grid { Padding = new Thickness(8) };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        grid.Background = (Brush)Application.Current.Resources["SubtleFillColorTransparentBrush"];
-        grid.CornerRadius = new CornerRadius(6);
-
-        var info = new StackPanel();
-        info.Children.Add(new TextBlock { Text = string.IsNullOrEmpty(monitor.FriendlyName) ? monitor.DevicePath : monitor.FriendlyName, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
-        info.Children.Add(new TextBlock
-        {
-            Text = $"{monitor.ResolutionText}  ·  {monitor.RefreshRateHz:F0} Hz",
-            Opacity = 0.6,
-            Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
-        });
-
-        var addBtn = new Button
-        {
-            Content = new FontIcon { Glyph = "\uE710", FontSize = 14 },
-            VerticalAlignment = VerticalAlignment.Center,
-            Tag = monitor,
-        };
-        addBtn.Click += AddMonitor_Click;
-
-        Grid.SetColumn(info, 0);
-        Grid.SetColumn(addBtn, 1);
-        grid.Children.Add(info);
-        grid.Children.Add(addBtn);
-        return grid;
+        if (!string.IsNullOrEmpty(profile.DevicePath) && profile.DevicePath == current.DevicePath) return true;
+        if (profile.EdidManufacturerId != 0 &&
+            profile.EdidManufacturerId == current.EdidManufacturerId &&
+            profile.EdidProductCodeId == current.EdidProductCodeId &&
+            profile.ConnectorInstance == current.ConnectorInstance) return true;
+        return false;
     }
 
-    private void AddMonitor_Click(object sender, RoutedEventArgs e)
+    private void AddOrFocusMonitor_Click(object sender, RoutedEventArgs e)
     {
-        if (_profile == null || sender is not Button btn || btn.Tag is not MonitorInfo source) return;
+        if (_profile == null || sender is not Button btn || btn.Tag is not AvailableMonitorItem item) return;
 
-        // Place to the right of the current layout.
-        int placeX = 0;
-        if (_profile.Monitors.Count > 0)
+        if (item.InProfile)
         {
-            placeX = _profile.Monitors.Max(m => m.PositionX + m.Width);
+            // Already in the profile — focus its tile rather than duplicating.
+            var existing = _profile.Monitors.FirstOrDefault(p => MatchesProfileMonitor(p, item.Monitor));
+            if (existing != null)
+            {
+                _selectedMonitor = existing;
+                _selectedMonitorIndex = _profile.Monitors.IndexOf(existing);
+                LayoutCanvas_MonitorSelected(this, existing);
+            }
+            return;
         }
 
-        var copy = new MonitorInfo
+        var source = item.Monitor;
+        // Place flush against the current layout's right edge so SnapCalculator's
+        // adjacency enforcement leaves it where the user expects.
+        int placeX = _profile.Monitors.Count > 0
+            ? _profile.Monitors.Max(m => m.PositionX + m.Width)
+            : 0;
+
+        _profile.Monitors.Add(new MonitorInfo
         {
             DevicePath = source.DevicePath,
             FriendlyName = source.FriendlyName,
@@ -634,11 +621,10 @@ public sealed partial class ProfileEditorPage : Page
             AdapterId = source.AdapterId,
             SourceId = source.SourceId,
             TargetId = source.TargetId,
-        };
-        _profile.Monitors.Add(copy);
+        });
         LayoutCanvas.SetMonitors(_profile.Monitors);
-        RefreshAvailableMonitors();
         DescriptionBox.Text = $"{_profile.Monitors.Count} monitor(s)";
+        RefreshAvailableMonitors();
     }
 
     private void ImportCurrent_Click(object sender, RoutedEventArgs e)
@@ -758,4 +744,25 @@ public sealed partial class ProfileEditorPage : Page
         DaySat.Content = ResourceHelper.GetString("Saturday");
         DaySun.Content = ResourceHelper.GetString("Sunday");
     }
+}
+
+// One row in the Available Monitors panel. The visibility helpers let the DataTemplate
+// switch between the "+" affordance and the "✓ already added" indicator without an
+// IValueConverter lookup.
+public sealed class AvailableMonitorItem
+{
+    public AvailableMonitorItem(MonitorInfo monitor, bool inProfile)
+    {
+        Monitor = monitor;
+        InProfile = inProfile;
+        Title = string.IsNullOrEmpty(monitor.FriendlyName) ? monitor.DevicePath : monitor.FriendlyName;
+        Subtitle = $"{monitor.ResolutionText}  ·  {monitor.RefreshRateHz:F0} Hz";
+    }
+
+    public MonitorInfo Monitor { get; }
+    public bool InProfile { get; }
+    public string Title { get; }
+    public string Subtitle { get; }
+    public Visibility AddIconVisibility => InProfile ? Visibility.Collapsed : Visibility.Visible;
+    public Visibility CheckIconVisibility => InProfile ? Visibility.Visible : Visibility.Collapsed;
 }

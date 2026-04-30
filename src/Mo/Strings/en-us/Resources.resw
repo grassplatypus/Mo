@@ -78,7 +78,7 @@
   <data name="Hue" xml:space="preserve"><value>Hue</value></data>
   <data name="AmdColorSection" xml:space="preserve"><value>AMD color controls</value></data>
   <data name="AvailableMonitors" xml:space="preserve"><value>Available Monitors</value></data>
-  <data name="AvailableMonitorsDesc" xml:space="preserve"><value>Currently connected displays not in this profile. Click + to add.</value></data>
+  <data name="AvailableMonitorsDesc" xml:space="preserve"><value>All connected displays. + adds the monitor to this profile; ✓ means it's already in the profile.</value></data>
   <data name="RestoreOnStartup" xml:space="preserve"><value>Restore last profile on startup</value></data>
   <data name="RestoreOnStartupDesc" xml:space="preserve"><value>Automatically re-apply the most recently used profile when the app launches.</value></data>
   <data name="RestoreColorOnStartup" xml:space="preserve"><value>Restore color settings on startup</value></data>
@@ -191,6 +191,9 @@ Press Delete or Backspace to clear. Escape to cancel.</value></data>
   <data name="CheckNowText.Text" xml:space="preserve"><value>Check now</value></data>
   <data name="CopyDebugText.Text" xml:space="preserve"><value>Copy debug info</value></data>
   <data name="ShowDebugText.Text" xml:space="preserve"><value>Show debug info</value></data>
+  <data name="LanguageCard.Header" xml:space="preserve"><value>Language</value></data>
+  <data name="LanguageCard.Description" xml:space="preserve"><value>Override the display language. Restart Mo to apply.</value></data>
+  <data name="LanguageAuto" xml:space="preserve"><value>Use Windows default</value></data>
 
   <!-- About -->
   <data name="AboutSection" xml:space="preserve"><value>About</value></data>

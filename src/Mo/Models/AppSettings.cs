@@ -22,6 +22,10 @@ public sealed class AppSettings
     // Flipped to true the first time the app detects an NVIDIA or AMD GPU and offers
     // to switch the rotation backend. Prevents the prompt from nagging on every launch.
     public bool GpuRotationMethodPromptShown { get; set; }
+
+    // BCP-47 language tag override. Empty = follow Windows display language. Non-empty
+    // values like "ko-KR" or "en-US" force the matching .resw bundle on next launch.
+    public string Language { get; set; } = string.Empty;
 }
 
 public enum RotationMethod

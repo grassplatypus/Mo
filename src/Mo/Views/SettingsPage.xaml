@@ -44,6 +44,14 @@
                           SelectedItem="{x:Bind ViewModel.Theme, Mode=TwoWay}" />
             </tk:SettingsCard>
 
+            <tk:SettingsCard x:Uid="LanguageCard">
+                <ComboBox MinWidth="200"
+                          ItemsSource="{x:Bind LanguageOptions, Mode=OneTime}"
+                          SelectedValue="{x:Bind ViewModel.Language, Mode=TwoWay}"
+                          SelectedValuePath="Tag"
+                          DisplayMemberPath="Display" />
+            </tk:SettingsCard>
+
             <!-- Profiles -->
             <tk:SettingsExpander x:Uid="ProfilesExpander" IsExpanded="True">
                 <tk:SettingsExpander.Items>

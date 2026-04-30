@@ -21,6 +21,12 @@ public sealed partial class SettingsPage : Page
     };
 
     public IReadOnlyList<RotationMethodOption> RotationOptions { get; }
+    public IReadOnlyList<LanguageOption> LanguageOptions { get; } = new[]
+    {
+        new LanguageOption(string.Empty, ResourceHelper.GetString("LanguageAuto")),
+        new LanguageOption("ko-KR", "한국어"),
+        new LanguageOption("en-US", "English"),
+    };
     public ObservableCollection<MonitorDisplayInfo> Monitors { get; } = new();
 
     private string _debugReport = string.Empty;
@@ -130,3 +136,4 @@ public sealed partial class SettingsPage : Page
 }
 
 public sealed record RotationMethodOption(RotationMethod Method, string DisplayName);
+public sealed record LanguageOption(string Tag, string Display);

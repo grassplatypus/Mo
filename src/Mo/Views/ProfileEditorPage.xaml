@@ -6,6 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:controls="using:Mo.Controls"
+    xmlns:local="using:Mo.Views"
     mc:Ignorable="d">
 
     <Page.Transitions>
@@ -81,20 +82,47 @@
                     IsEditable="True"
                     MonitorSelected="LayoutCanvas_MonitorSelected" />
 
-                <!-- Available Monitors (connected but not in profile) -->
-                <Grid x:Name="AvailableMonitorsPanel" Padding="16" CornerRadius="8" Visibility="Collapsed"
+                <!-- Connected monitors — always visible, badge shows whether each is
+                     already in the profile. Removing in editor flips it back to addable. -->
+                <Grid x:Name="AvailableMonitorsPanel" Padding="16" CornerRadius="8"
                       Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                       BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
                     <StackPanel Spacing="8">
                         <TextBlock x:Name="AvailableMonitorsTitle" Style="{StaticResource BodyStrongTextBlockStyle}" />
                         <TextBlock x:Name="AvailableMonitorsDesc" Opacity="0.6" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap" />
-                        <ItemsControl x:Name="AvailableMonitorsList">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Spacing="6" />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
+                        <ItemsRepeater x:Name="AvailableMonitorsList" ItemsSource="{x:Bind AvailableMonitors, Mode=OneWay}">
+                            <ItemsRepeater.Layout>
+                                <StackLayout Spacing="6" />
+                            </ItemsRepeater.Layout>
+                            <ItemsRepeater.ItemTemplate>
+                                <DataTemplate x:DataType="local:AvailableMonitorItem">
+                                    <Grid Padding="10,8" CornerRadius="6"
+                                          Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" />
+                                            <TextBlock Text="{x:Bind Subtitle}" Opacity="0.6"
+                                                       Style="{StaticResource CaptionTextBlockStyle}" />
+                                        </StackPanel>
+                                        <Button Grid.Column="1" VerticalAlignment="Center"
+                                                Click="AddOrFocusMonitor_Click"
+                                                Tag="{x:Bind}"
+                                                Style="{StaticResource SubtleButtonStyle}">
+                                            <Grid>
+                                                <FontIcon Glyph="&#xE710;" FontSize="14"
+                                                          Visibility="{x:Bind AddIconVisibility}" />
+                                                <FontIcon Glyph="&#xE73E;" FontSize="14"
+                                                          Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                                                          Visibility="{x:Bind CheckIconVisibility}" />
+                                            </Grid>
+                                        </Button>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsRepeater.ItemTemplate>
+                        </ItemsRepeater>
                     </StackPanel>
                 </Grid>
 

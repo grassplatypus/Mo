@@ -121,6 +121,15 @@ public partial class SettingsViewModel : ObservableObject
         set => Set(_settings.Settings.RotationMethod, value, v => _settings.Settings.RotationMethod = v);
     }
 
+    // Empty string means "follow Windows display language". Override takes effect on
+    // next launch — surface a hint near the combo in the page.
+    public string Language
+    {
+        get => _settings.Settings.Language ?? string.Empty;
+        set => Set(_settings.Settings.Language ?? string.Empty, value ?? string.Empty,
+            v => _settings.Settings.Language = v);
+    }
+
     private void Set<T>(T current, T next, Action<T> assign, Action<T>? sideEffect = null,
         [CallerMemberName] string? propertyName = null)
     {

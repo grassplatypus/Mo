@@ -37,6 +37,14 @@ public partial class App : Application
             var settings = Services.GetRequiredService<ISettingsService>();
             settings.LoadAsync().GetAwaiter().GetResult();
             startMinimized = settings.Settings.StartMinimized || IsStartupTaskActivation();
+
+            // Apply user language override BEFORE the first window is created so initial
+            // resource lookups (window title, x:Uid bindings) hit the right .resw.
+            if (!string.IsNullOrWhiteSpace(settings.Settings.Language))
+            {
+                try { Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = settings.Settings.Language; }
+                catch { }
+            }
         }
         catch { }
 

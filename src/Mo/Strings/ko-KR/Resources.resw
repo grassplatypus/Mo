@@ -78,7 +78,7 @@
   <data name="Hue" xml:space="preserve"><value>색조</value></data>
   <data name="AmdColorSection" xml:space="preserve"><value>AMD 색상 조정</value></data>
   <data name="AvailableMonitors" xml:space="preserve"><value>추가 가능한 모니터</value></data>
-  <data name="AvailableMonitorsDesc" xml:space="preserve"><value>연결되어 있지만 프로필에 없는 디스플레이. + 버튼으로 추가합니다.</value></data>
+  <data name="AvailableMonitorsDesc" xml:space="preserve"><value>연결된 모든 디스플레이. +를 누르면 이 프로필에 추가되고, ✓는 이미 프로필에 포함되어 있음을 의미합니다.</value></data>
   <data name="RestoreOnStartup" xml:space="preserve"><value>시작 시 마지막 프로파일 복원</value></data>
   <data name="RestoreOnStartupDesc" xml:space="preserve"><value>앱 시작 시 가장 최근에 적용한 프로파일을 자동으로 다시 적용합니다.</value></data>
   <data name="RestoreColorOnStartup" xml:space="preserve"><value>시작 시 색상 설정 복원</value></data>
@@ -191,6 +191,9 @@ Delete 또는 Backspace로 삭제. Escape로 취소.</value></data>
   <data name="CheckNowText.Text" xml:space="preserve"><value>지금 확인</value></data>
   <data name="CopyDebugText.Text" xml:space="preserve"><value>디버그 정보 복사</value></data>
   <data name="ShowDebugText.Text" xml:space="preserve"><value>디버그 정보 표시</value></data>
+  <data name="LanguageCard.Header" xml:space="preserve"><value>언어</value></data>
+  <data name="LanguageCard.Description" xml:space="preserve"><value>표시 언어를 덮어씁니다. 적용하려면 Mo를 다시 시작하세요.</value></data>
+  <data name="LanguageAuto" xml:space="preserve"><value>Windows 기본값 사용</value></data>
 
   <!-- About -->
   <data name="AboutSection" xml:space="preserve"><value>정보</value></data>
