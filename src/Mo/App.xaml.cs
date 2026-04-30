@@ -28,12 +28,38 @@ public partial class App : Application
         ConfigureServices(services);
         Services = services.BuildServiceProvider();
 
+        // Pre-load settings synchronously so StartMinimized / startup-task launches can
+        // honor "start in tray" before we ever activate the window. The full async init
+        // still runs below; LoadAsync is idempotent (`_loaded` guard) so this is free.
+        bool startMinimized = false;
+        try
+        {
+            var settings = Services.GetRequiredService<ISettingsService>();
+            settings.LoadAsync().GetAwaiter().GetResult();
+            startMinimized = settings.Settings.StartMinimized || IsStartupTaskActivation();
+        }
+        catch { }
+
         MainWindow = new MainWindow();
         MainWindow.Activate();
+        if (startMinimized)
+            MainWindow.HideWindow();
 
         MainWindow.DispatcherQueue.ShutdownStarting += (_, _) => DisposeServices();
 
         _ = InitializeAsync();
+    }
+
+    // True when Windows launched the app via the StartupTask contract (logon auto-run).
+    // Lets us start in tray on boot even if the user hasn't toggled StartMinimized.
+    private static bool IsStartupTaskActivation()
+    {
+        try
+        {
+            var aea = Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().GetActivatedEventArgs();
+            return aea?.Kind == Microsoft.Windows.AppLifecycle.ExtendedActivationKind.StartupTask;
+        }
+        catch { return false; }
     }
 
     // ── Global Exception Handlers ──
