@@ -92,17 +92,7 @@ public sealed partial class MonitorLayoutCanvas : UserControl
 
         EmptyText.Visibility = Visibility.Collapsed;
 
-        var rects = _monitors.Select(m =>
-            new DisplayTopology.MonitorRect(m.PositionX, m.PositionY, m.Width, m.Height)).ToList();
-
-        _bounds = DisplayTopology.ComputeBoundingBox(rects);
-        _canvasW = LayoutCanvas.ActualWidth > 0 ? LayoutCanvas.ActualWidth : ActualWidth;
-        _canvasH = LayoutCanvas.ActualHeight > 0 ? LayoutCanvas.ActualHeight : ActualHeight;
-
-        if (_canvasW <= 0 || _canvasH <= 0)
-            return;
-
-        _scale = DisplayTopology.ComputeScaleFactor(_bounds, _canvasW, _canvasH, 20);
+        if (!RecomputeLayoutMetrics()) return;
 
         for (int i = 0; i < _monitors.Count; i++)
         {
@@ -128,6 +118,42 @@ public sealed partial class MonitorLayoutCanvas : UserControl
 
             LayoutCanvas.Children.Add(tile);
             _tiles.Add(tile);
+        }
+    }
+
+    // Recomputes bounds + scale from the current _monitors snapshot. Returns false when
+    // the canvas has no usable size yet (initial measure pass).
+    private bool RecomputeLayoutMetrics()
+    {
+        var rects = _monitors.Select(m =>
+            new DisplayTopology.MonitorRect(m.PositionX, m.PositionY, m.Width, m.Height)).ToList();
+
+        _bounds = DisplayTopology.ComputeBoundingBox(rects);
+        _canvasW = LayoutCanvas.ActualWidth > 0 ? LayoutCanvas.ActualWidth : ActualWidth;
+        _canvasH = LayoutCanvas.ActualHeight > 0 ? LayoutCanvas.ActualHeight : ActualHeight;
+        if (_canvasW <= 0 || _canvasH <= 0) return false;
+
+        _scale = DisplayTopology.ComputeScaleFactor(_bounds, _canvasW, _canvasH, 20);
+        return true;
+    }
+
+    // Reuses existing tile instances and only updates their position + size on the canvas.
+    // Cheaper than RebuildLayout for arrow-key nudges that don't change monitor count.
+    private void RepositionTiles()
+    {
+        if (_tiles.Count != _monitors.Count) { RebuildLayout(); return; }
+        if (!RecomputeLayoutMetrics()) return;
+
+        for (int i = 0; i < _tiles.Count; i++)
+        {
+            var monitor = _monitors[i];
+            var tile = _tiles[i];
+            tile.Width = monitor.Width * _scale;
+            tile.Height = monitor.Height * _scale;
+            var (x, y) = DisplayTopology.TransformToCanvas(
+                monitor.PositionX, monitor.PositionY, _bounds, _scale, _canvasW, _canvasH);
+            Canvas.SetLeft(tile, x);
+            Canvas.SetTop(tile, y);
         }
     }
 
@@ -197,8 +223,7 @@ public sealed partial class MonitorLayoutCanvas : UserControl
         m.PositionY = adjacent.Y;
         MonitorPositionChanged?.Invoke(this, EventArgs.Empty);
 
-        RebuildLayout();
-        ReselectByMonitor(m);
+        RepositionTiles();
         DrawGuides(snap.Guides);
 
         e.Handled = true;

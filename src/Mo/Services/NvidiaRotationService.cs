@@ -14,6 +14,21 @@ public sealed class NvidiaRotationService
 {
     public bool IsAvailable { get; }
 
+    // Apply paths to the NVIDIA driver, preferring SaveToPersistence so settings survive
+    // reboot. Falls back to DriverReloadAllowed alone when the persistent flag is rejected
+    // by older drivers.
+    private static void SetDisplaysConfigPersistent(PathInfo[] paths)
+    {
+        try
+        {
+            PathInfo.SetDisplaysConfig(paths, DisplayConfigFlags.SaveToPersistence | DisplayConfigFlags.DriverReloadAllowed);
+        }
+        catch
+        {
+            PathInfo.SetDisplaysConfig(paths, DisplayConfigFlags.DriverReloadAllowed);
+        }
+    }
+
     public NvidiaRotationService()
     {
         try
@@ -115,14 +130,7 @@ public sealed class NvidiaRotationService
                 {
                     try
                     {
-                        try
-                        {
-                            PathInfo.SetDisplaysConfig(restoredPaths.ToArray(), DisplayConfigFlags.SaveToPersistence | DisplayConfigFlags.DriverReloadAllowed);
-                        }
-                        catch
-                        {
-                            PathInfo.SetDisplaysConfig(restoredPaths.ToArray(), DisplayConfigFlags.DriverReloadAllowed);
-                        }
+                        SetDisplaysConfigPersistent(restoredPaths.ToArray());
                         Thread.Sleep(1000);
                         currentPaths = PathInfo.GetDisplaysConfig();
                         Log($"After restore: {currentPaths.Length} paths");
@@ -139,14 +147,7 @@ public sealed class NvidiaRotationService
                     Log("Trying saved full config...");
                     try
                     {
-                        try
-                        {
-                            PathInfo.SetDisplaysConfig(_lastFullConfig, DisplayConfigFlags.SaveToPersistence | DisplayConfigFlags.DriverReloadAllowed);
-                        }
-                        catch
-                        {
-                            PathInfo.SetDisplaysConfig(_lastFullConfig, DisplayConfigFlags.DriverReloadAllowed);
-                        }
+                        SetDisplaysConfigPersistent(_lastFullConfig);
                         Thread.Sleep(1000);
                         currentPaths = PathInfo.GetDisplaysConfig();
                         Log($"After full config restore: {currentPaths.Length} paths");
@@ -266,17 +267,8 @@ public sealed class NvidiaRotationService
 
             try
             {
-                try
-                {
-                    PathInfo.SetDisplaysConfig(pathArray, DisplayConfigFlags.SaveToPersistence | DisplayConfigFlags.DriverReloadAllowed);
-                    Log("SetDisplaysConfig SUCCESS (persisted)");
-                }
-                catch (Exception exPersist)
-                {
-                    Log($"Persisted apply failed ({exPersist.GetType().Name}: {exPersist.Message}); retrying without SaveToPersistence");
-                    PathInfo.SetDisplaysConfig(pathArray, DisplayConfigFlags.DriverReloadAllowed);
-                    Log("SetDisplaysConfig SUCCESS (transient)");
-                }
+                SetDisplaysConfigPersistent(pathArray);
+                Log("SetDisplaysConfig SUCCESS");
             }
             catch (Exception ex)
             {
@@ -332,14 +324,7 @@ public sealed class NvidiaRotationService
             }
 
             if (!modified) return false;
-            try
-            {
-                PathInfo.SetDisplaysConfig(currentPaths, DisplayConfigFlags.SaveToPersistence | DisplayConfigFlags.DriverReloadAllowed);
-            }
-            catch
-            {
-                PathInfo.SetDisplaysConfig(currentPaths, DisplayConfigFlags.DriverReloadAllowed);
-            }
+            SetDisplaysConfigPersistent(currentPaths);
             return true;
         }
         catch { return false; }

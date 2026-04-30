@@ -161,19 +161,21 @@ public sealed partial class DisplayTuningPage : Page
     private void AmdSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
     {
         if (_loading || sender is not Slider slider) return;
-        var kind = (slider.Tag as string) switch
+
+        AmdColorService.ColorKind kind;
+        if (ReferenceEquals(slider, AmdSaturationSlider))
         {
-            "Saturation" => AmdColorService.ColorKind.Saturation,
-            "Hue" => AmdColorService.ColorKind.Hue,
-            _ => (AmdColorService.ColorKind?)null,
-        };
-        if (kind == null) return;
+            kind = AmdColorService.ColorKind.Saturation;
+            AmdSaturationValue.Text = ((int)slider.Value).ToString();
+        }
+        else if (ReferenceEquals(slider, AmdHueSlider))
+        {
+            kind = AmdColorService.ColorKind.Hue;
+            AmdHueValue.Text = ((int)slider.Value).ToString();
+        }
+        else return;
 
-        int value = (int)slider.Value;
-        if (ReferenceEquals(slider, AmdSaturationSlider)) AmdSaturationValue.Text = value.ToString();
-        else if (ReferenceEquals(slider, AmdHueSlider)) AmdHueValue.Text = value.ToString();
-
-        _amdColorService.SetColorFirstAvailable(kind.Value, value);
+        _amdColorService.SetColorFirstAvailable(kind, (int)slider.Value);
     }
 
     private void LoadDdcSection(MonitorInfo monitor)

@@ -152,7 +152,7 @@
                                 <ColumnDefinition Width="80" /><ColumnDefinition Width="*" /><ColumnDefinition Width="48" />
                             </Grid.ColumnDefinitions>
                             <TextBlock x:Name="AmdSaturationLabel" VerticalAlignment="Center" />
-                            <Slider Grid.Column="1" x:Name="AmdSaturationSlider" ValueChanged="AmdSlider_ValueChanged" Tag="Saturation" />
+                            <Slider Grid.Column="1" x:Name="AmdSaturationSlider" ValueChanged="AmdSlider_ValueChanged" />
                             <TextBlock Grid.Column="2" x:Name="AmdSaturationValue" HorizontalAlignment="Right" VerticalAlignment="Center" />
                         </Grid>
                         <Grid>
@@ -160,7 +160,7 @@
                                 <ColumnDefinition Width="80" /><ColumnDefinition Width="*" /><ColumnDefinition Width="48" />
                             </Grid.ColumnDefinitions>
                             <TextBlock x:Name="AmdHueLabel" VerticalAlignment="Center" />
-                            <Slider Grid.Column="1" x:Name="AmdHueSlider" ValueChanged="AmdSlider_ValueChanged" Tag="Hue" />
+                            <Slider Grid.Column="1" x:Name="AmdHueSlider" ValueChanged="AmdSlider_ValueChanged" />
                             <TextBlock Grid.Column="2" x:Name="AmdHueValue" HorizontalAlignment="Right" VerticalAlignment="Center" />
                         </Grid>
                     </StackPanel>

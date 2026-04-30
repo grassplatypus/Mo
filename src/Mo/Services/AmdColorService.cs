@@ -9,8 +9,13 @@ namespace Mo.Services;
 // Reference: AMD Display Library (ADL) SDK, specifically ADL2_Display_Color_Get/Set.
 //   type = 0 brightness, 1 contrast, 2 saturation, 3 hue, 4 temperature.
 // Sliders accept the range the adapter reports via ADL_Display_Color_Get(... min/max).
-public sealed class AmdColorService
+public sealed class AmdColorService : IDisposable
 {
+    // ADL2 context creation is ~50 ms — caching it makes slider drags responsive.
+    private IntPtr _ctx;
+    private readonly object _ctxLock = new();
+    private bool _disposed;
+
     public enum ColorKind
     {
         Brightness = 0,
@@ -51,84 +56,77 @@ public sealed class AmdColorService
     {
         try
         {
-            var ctx = IntPtr.Zero;
-            int result = ADL2_Main_Control_Create(ADL_Alloc, 1, out ctx);
-            if (result == 0 && ctx != IntPtr.Zero)
+            if (ADL2_Main_Control_Create(ADL_Alloc, 1, out _ctx) == 0 && _ctx != IntPtr.Zero)
             {
-                ADL2_Adapter_NumberOfAdapters_Get(ctx, out int numAdapters);
+                ADL2_Adapter_NumberOfAdapters_Get(_ctx, out int numAdapters);
                 IsAvailable = numAdapters > 0;
-                ADL2_Main_Control_Destroy(ctx);
             }
         }
         catch (DllNotFoundException) { IsAvailable = false; }
         catch { IsAvailable = false; }
     }
 
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        lock (_ctxLock)
+        {
+            if (_ctx != IntPtr.Zero)
+            {
+                try { ADL2_Main_Control_Destroy(_ctx); } catch { }
+                _ctx = IntPtr.Zero;
+            }
+        }
+    }
+
     public readonly record struct ColorRange(int Current, int Default, int Min, int Max, int Step);
 
     public ColorRange? GetColor(int adapterIndex, int displayIndex, ColorKind kind)
     {
-        if (!IsAvailable) return null;
-        var ctx = IntPtr.Zero;
+        if (!IsAvailable || _disposed) return null;
         try
         {
-            if (ADL2_Main_Control_Create(ADL_Alloc, 1, out ctx) != 0 || ctx == IntPtr.Zero)
-                return null;
-
-            if (ADL2_Display_Color_Get(ctx, adapterIndex, displayIndex, (int)kind,
-                out int current, out int def, out int min, out int max, out int step) != 0)
-                return null;
-
-            return new ColorRange(current, def, min, max, step);
+            lock (_ctxLock)
+            {
+                if (ADL2_Display_Color_Get(_ctx, adapterIndex, displayIndex, (int)kind,
+                    out int current, out int def, out int min, out int max, out int step) != 0)
+                    return null;
+                return new ColorRange(current, def, min, max, step);
+            }
         }
         catch { return null; }
-        finally
-        {
-            if (ctx != IntPtr.Zero) ADL2_Main_Control_Destroy(ctx);
-        }
     }
 
     public bool SetColor(int adapterIndex, int displayIndex, ColorKind kind, int value)
     {
-        if (!IsAvailable) return false;
-        var ctx = IntPtr.Zero;
+        if (!IsAvailable || _disposed) return false;
         try
         {
-            if (ADL2_Main_Control_Create(ADL_Alloc, 1, out ctx) != 0 || ctx == IntPtr.Zero)
-                return false;
-
-            return ADL2_Display_Color_Set(ctx, adapterIndex, displayIndex, (int)kind, value) == 0;
+            lock (_ctxLock)
+                return ADL2_Display_Color_Set(_ctx, adapterIndex, displayIndex, (int)kind, value) == 0;
         }
         catch { return false; }
-        finally
-        {
-            if (ctx != IntPtr.Zero) ADL2_Main_Control_Destroy(ctx);
-        }
     }
 
-    // Best-effort helper for UIs that don't know the adapter/display index layout —
-    // walks every adapter/display 0 pair and applies the first that accepts the value.
+    // Walks every adapter/display 0 pair and applies the first that accepts the value —
+    // for UIs that don't know the adapter/display index layout.
     public bool SetColorFirstAvailable(ColorKind kind, int value)
     {
-        if (!IsAvailable) return false;
-        var ctx = IntPtr.Zero;
+        if (!IsAvailable || _disposed) return false;
         try
         {
-            if (ADL2_Main_Control_Create(ADL_Alloc, 1, out ctx) != 0 || ctx == IntPtr.Zero)
-                return false;
-
-            ADL2_Adapter_NumberOfAdapters_Get(ctx, out int numAdapters);
-            for (int adapter = 0; adapter < numAdapters; adapter++)
+            lock (_ctxLock)
             {
-                if (ADL2_Display_Color_Set(ctx, adapter, 0, (int)kind, value) == 0)
-                    return true;
+                ADL2_Adapter_NumberOfAdapters_Get(_ctx, out int numAdapters);
+                for (int adapter = 0; adapter < numAdapters; adapter++)
+                {
+                    if (ADL2_Display_Color_Set(_ctx, adapter, 0, (int)kind, value) == 0)
+                        return true;
+                }
+                return false;
             }
-            return false;
         }
         catch { return false; }
-        finally
-        {
-            if (ctx != IntPtr.Zero) ADL2_Main_Control_Destroy(ctx);
-        }
     }
 }
