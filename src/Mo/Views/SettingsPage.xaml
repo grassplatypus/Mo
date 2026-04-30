@@ -5,17 +5,11 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:tk="using:CommunityToolkit.WinUI.Controls"
+    xmlns:helpers="using:Mo.Helpers"
+    xmlns:models="using:Mo.Models"
     mc:Ignorable="d"
     NavigationCacheMode="Required">
-
-    <Page.Resources>
-        <!-- Reusable card style for setting rows. -->
-        <Style x:Key="SettingRowStyle" TargetType="Grid">
-            <Setter Property="Padding" Value="16,12" />
-            <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
-            <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
-        </Style>
-    </Page.Resources>
 
     <Page.Transitions>
         <TransitionCollection>
@@ -24,167 +18,150 @@
     </Page.Transitions>
 
     <ScrollViewer Padding="24">
-        <StackPanel Spacing="24" MaxWidth="760" HorizontalAlignment="Left">
+        <StackPanel Spacing="4" MaxWidth="760" HorizontalAlignment="Stretch">
 
-            <TextBlock x:Name="TitleText" Style="{StaticResource TitleTextBlockStyle}" />
+            <TextBlock x:Name="TitleText" Style="{StaticResource TitleTextBlockStyle}" Margin="0,0,0,16" />
 
             <!-- General -->
-            <StackPanel Spacing="0">
-                <TextBlock x:Name="GeneralText" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,0,0,8" />
-
-                <Grid Style="{StaticResource SettingRowStyle}" CornerRadius="8,8,0,0" BorderThickness="1,1,1,0">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock x:Name="StartupLabel" />
-                        <TextBlock x:Name="StartupDesc" Opacity="0.55" Style="{StaticResource CaptionTextBlockStyle}" />
-                    </StackPanel>
-                    <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.LaunchAtStartup, Mode=TwoWay}" OnContent="" OffContent="" Margin="0,-4,0,-4" />
-                </Grid>
-
-                <Grid Style="{StaticResource SettingRowStyle}" BorderThickness="1,0,1,0">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock x:Name="TrayLabel" />
-                        <TextBlock x:Name="TrayDesc" Opacity="0.55" Style="{StaticResource CaptionTextBlockStyle}" />
-                    </StackPanel>
-                    <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.MinimizeToTrayOnClose, Mode=TwoWay}" OnContent="" OffContent="" Margin="0,-4,0,-4" />
-                </Grid>
-
-                <Grid Style="{StaticResource SettingRowStyle}" CornerRadius="0,0,8,8" BorderThickness="1">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock x:Name="MinimizedLabel" />
-                        <TextBlock x:Name="MinimizedDesc" Opacity="0.55" Style="{StaticResource CaptionTextBlockStyle}" />
-                    </StackPanel>
-                    <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.StartMinimized, Mode=TwoWay}" OnContent="" OffContent="" Margin="0,-4,0,-4" />
-                </Grid>
-            </StackPanel>
+            <tk:SettingsExpander x:Uid="GeneralExpander" IsExpanded="True">
+                <tk:SettingsExpander.Items>
+                    <tk:SettingsCard x:Uid="LaunchAtStartupCard">
+                        <ToggleSwitch IsOn="{x:Bind ViewModel.LaunchAtStartup, Mode=TwoWay}" OnContent="" OffContent="" />
+                    </tk:SettingsCard>
+                    <tk:SettingsCard x:Uid="MinimizeToTrayCard">
+                        <ToggleSwitch IsOn="{x:Bind ViewModel.MinimizeToTrayOnClose, Mode=TwoWay}" OnContent="" OffContent="" />
+                    </tk:SettingsCard>
+                    <tk:SettingsCard x:Uid="StartMinimizedCard">
+                        <ToggleSwitch IsOn="{x:Bind ViewModel.StartMinimized, Mode=TwoWay}" OnContent="" OffContent="" />
+                    </tk:SettingsCard>
+                </tk:SettingsExpander.Items>
+            </tk:SettingsExpander>
 
             <!-- Appearance -->
-            <StackPanel Spacing="0">
-                <TextBlock x:Name="AppearanceText" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,0,0,8" />
-                <Grid Style="{StaticResource SettingRowStyle}" CornerRadius="8" BorderThickness="1">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock x:Name="ThemeLabel" />
-                        <TextBlock x:Name="ThemeDesc" Opacity="0.55" Style="{StaticResource CaptionTextBlockStyle}" />
-                    </StackPanel>
-                    <ComboBox Grid.Column="1" x:Name="ThemeCombo" MinWidth="140" VerticalAlignment="Center" SelectionChanged="ThemeCombo_SelectionChanged" />
-                </Grid>
-            </StackPanel>
+            <tk:SettingsCard x:Uid="ThemeCard">
+                <ComboBox MinWidth="160"
+                          ItemsSource="{x:Bind ThemeOptions, Mode=OneTime}"
+                          SelectedItem="{x:Bind ViewModel.Theme, Mode=TwoWay}" />
+            </tk:SettingsCard>
 
             <!-- Profiles -->
-            <StackPanel Spacing="0">
-                <TextBlock x:Name="ProfilesText" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,0,0,8" />
-
-                <Grid Style="{StaticResource SettingRowStyle}" CornerRadius="8,8,0,0" BorderThickness="1,1,1,0">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock x:Name="AutoSwitchLabel" />
-                        <TextBlock x:Name="AutoSwitchDesc" Opacity="0.55" Style="{StaticResource CaptionTextBlockStyle}" />
-                    </StackPanel>
-                    <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.AutoSwitchEnabled, Mode=TwoWay}" OnContent="" OffContent="" Margin="0,-4,0,-4" />
-                </Grid>
-
-                <Grid Style="{StaticResource SettingRowStyle}" BorderThickness="1,0,1,0">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock x:Name="HotkeysLabel" />
-                        <TextBlock x:Name="HotkeysDesc" Opacity="0.55" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap" />
-                    </StackPanel>
-                    <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.HotkeysEnabled, Mode=TwoWay}" OnContent="" OffContent="" Margin="0,-4,0,-4" />
-                </Grid>
-
-                <Grid Style="{StaticResource SettingRowStyle}" BorderThickness="1,0,1,0">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock x:Name="RestoreLabel" />
-                        <TextBlock x:Name="RestoreDesc" Opacity="0.55" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap" />
-                    </StackPanel>
-                    <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.RestoreOnStartup, Mode=TwoWay}" OnContent="" OffContent="" Margin="0,-4,0,-4" />
-                </Grid>
-
-                <Grid Style="{StaticResource SettingRowStyle}" CornerRadius="0,0,8,8" BorderThickness="1">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock x:Name="RestoreColorLabel" />
-                        <TextBlock x:Name="RestoreColorDesc" Opacity="0.55" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap" />
-                    </StackPanel>
-                    <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.RestoreColorOnStartup, Mode=TwoWay}" OnContent="" OffContent="" Margin="0,-4,0,-4" />
-                </Grid>
-            </StackPanel>
+            <tk:SettingsExpander x:Uid="ProfilesExpander" IsExpanded="True">
+                <tk:SettingsExpander.Items>
+                    <tk:SettingsCard x:Uid="AutoSwitchCard">
+                        <ToggleSwitch IsOn="{x:Bind ViewModel.AutoSwitchEnabled, Mode=TwoWay}" OnContent="" OffContent="" />
+                    </tk:SettingsCard>
+                    <tk:SettingsCard x:Uid="HotkeysCard">
+                        <ToggleSwitch IsOn="{x:Bind ViewModel.HotkeysEnabled, Mode=TwoWay}" OnContent="" OffContent="" />
+                    </tk:SettingsCard>
+                    <tk:SettingsCard x:Uid="RestoreOnStartupCard">
+                        <ToggleSwitch IsOn="{x:Bind ViewModel.RestoreOnStartup, Mode=TwoWay}" OnContent="" OffContent="" />
+                    </tk:SettingsCard>
+                    <tk:SettingsCard x:Uid="RestoreColorCard">
+                        <ToggleSwitch IsOn="{x:Bind ViewModel.RestoreColorOnStartup, Mode=TwoWay}" OnContent="" OffContent="" />
+                    </tk:SettingsCard>
+                </tk:SettingsExpander.Items>
+            </tk:SettingsExpander>
 
             <!-- Updates -->
-            <StackPanel Spacing="0">
-                <TextBlock x:Name="UpdatesText" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,0,0,8" />
-                <Grid Style="{StaticResource SettingRowStyle}" CornerRadius="8" BorderThickness="1">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock x:Name="UpdateLabel" />
-                        <TextBlock x:Name="UpdateDesc" Opacity="0.55" Style="{StaticResource CaptionTextBlockStyle}" />
-                        <TextBlock x:Name="UpdateStatusText" Opacity="0.6" Style="{StaticResource CaptionTextBlockStyle}" Visibility="Collapsed" Foreground="{ThemeResource SystemFillColorSuccessBrush}" />
-                    </StackPanel>
-                    <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.CheckForUpdates, Mode=TwoWay}" OnContent="" OffContent="" Margin="0,-4,8,-4" />
-                    <Button Grid.Column="2" x:Name="CheckNowButton" Click="CheckNowButton_Click" VerticalAlignment="Center" />
-                </Grid>
-            </StackPanel>
+            <tk:SettingsCard x:Uid="UpdateCheckCard">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock x:Name="UpdateStatusText"
+                               VerticalAlignment="Center"
+                               Opacity="0.7"
+                               Style="{StaticResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                               Visibility="Collapsed" />
+                    <ToggleSwitch IsOn="{x:Bind ViewModel.CheckForUpdates, Mode=TwoWay}" OnContent="" OffContent="" />
+                    <Button x:Name="CheckNowButton" Click="CheckNowButton_Click" VerticalAlignment="Center">
+                        <TextBlock x:Uid="CheckNowText" />
+                    </Button>
+                </StackPanel>
+            </tk:SettingsCard>
 
             <!-- Advanced -->
-            <Expander HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" x:Name="AdvancedExpander">
-                <Expander.Header>
-                    <TextBlock x:Name="AdvancedText" Style="{StaticResource BodyStrongTextBlockStyle}" />
-                </Expander.Header>
-                <StackPanel Spacing="8" Padding="0,8">
-                    <Grid Style="{StaticResource SettingRowStyle}" CornerRadius="8" BorderThickness="1">
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                        <StackPanel VerticalAlignment="Center">
-                            <TextBlock x:Name="RotationMethodLabel" />
-                            <TextBlock x:Name="RotationMethodDesc" Opacity="0.55" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap" />
+            <tk:SettingsExpander x:Uid="AdvancedExpander">
+                <tk:SettingsExpander.Items>
+                    <tk:SettingsCard x:Uid="RotationMethodCard">
+                        <ComboBox x:Name="RotationMethodCombo"
+                                  MinWidth="200"
+                                  ItemsSource="{x:Bind RotationOptions, Mode=OneTime}"
+                                  SelectedValue="{x:Bind ViewModel.RotationMethod, Mode=TwoWay}"
+                                  SelectedValuePath="Method"
+                                  DisplayMemberPath="DisplayName" />
+                    </tk:SettingsCard>
+                </tk:SettingsExpander.Items>
+            </tk:SettingsExpander>
+
+            <!-- About / system info -->
+            <tk:SettingsExpander x:Uid="AboutExpander">
+                <tk:SettingsExpander.HeaderIcon>
+                    <FontIcon Glyph="&#xE946;" />
+                </tk:SettingsExpander.HeaderIcon>
+                <tk:SettingsExpander.Items>
+                    <tk:SettingsCard ContentAlignment="Vertical">
+                        <StackPanel Spacing="12" Padding="0,8">
+                            <StackPanel>
+                                <TextBlock x:Name="AboutName" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                                <TextBlock x:Name="AboutVersion" Opacity="0.6" Style="{StaticResource CaptionTextBlockStyle}" />
+                                <TextBlock x:Name="AboutDesc" Opacity="0.6" TextWrapping="Wrap" Margin="0,4,0,0" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="2">
+                                <TextBlock x:Name="SysOsText" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7" />
+                                <TextBlock x:Name="SysCpuText" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7" />
+                                <TextBlock x:Name="SysRamText" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7" />
+                                <TextBlock x:Name="SysGpuText" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7" />
+                            </StackPanel>
+
+                            <ItemsRepeater x:Name="MonitorsRepeater" ItemsSource="{x:Bind Monitors, Mode=OneWay}">
+                                <ItemsRepeater.Layout>
+                                    <StackLayout Spacing="6" />
+                                </ItemsRepeater.Layout>
+                                <ItemsRepeater.ItemTemplate>
+                                    <DataTemplate x:DataType="helpers:MonitorDisplayInfo">
+                                        <Border Padding="12,10"
+                                                CornerRadius="6"
+                                                Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                                            <StackPanel Spacing="2">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <TextBlock Text="{x:Bind Name}" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                                                    <Border Background="{ThemeResource AccentFillColorDefaultBrush}"
+                                                            CornerRadius="4"
+                                                            Padding="6,1"
+                                                            VerticalAlignment="Center"
+                                                            Visibility="{x:Bind PrimaryBadgeVisibility}">
+                                                        <TextBlock Text="P" FontSize="10" Foreground="White" />
+                                                    </Border>
+                                                </StackPanel>
+                                                <TextBlock Text="{x:Bind ManufacturerModel}"
+                                                           Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7" />
+                                                <TextBlock Text="{x:Bind ResolutionLine}"
+                                                           Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7" />
+                                                <TextBlock Text="{x:Bind PositionLine}"
+                                                           Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7" />
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsRepeater.ItemTemplate>
+                            </ItemsRepeater>
+
+                            <TextBox x:Name="SystemInfoBox"
+                                     IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+                                     FontFamily="Consolas" FontSize="11" MaxHeight="300"
+                                     BorderThickness="0" Background="Transparent"
+                                     Visibility="Collapsed" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button x:Name="CopySystemInfoBtn" Click="CopySystemInfo_Click">
+                                    <TextBlock x:Uid="CopyDebugText" />
+                                </Button>
+                                <Button x:Name="ShowDebugBtn" Click="ShowDebugInfo_Click">
+                                    <TextBlock x:Uid="ShowDebugText" />
+                                </Button>
+                            </StackPanel>
                         </StackPanel>
-                        <ComboBox Grid.Column="1" x:Name="RotationMethodCombo" MinWidth="160" MaxWidth="240" VerticalAlignment="Center" SelectionChanged="RotationMethodCombo_SelectionChanged" />
-                    </Grid>
-                </StackPanel>
-            </Expander>
-
-            <!-- About & system info -->
-            <Expander HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
-                <Expander.Header>
-                    <StackPanel>
-                        <TextBlock x:Name="AboutName" Style="{StaticResource BodyStrongTextBlockStyle}" />
-                        <TextBlock x:Name="AboutVersion" Opacity="0.6" Style="{StaticResource CaptionTextBlockStyle}" />
-                    </StackPanel>
-                </Expander.Header>
-                <StackPanel Spacing="12" Padding="0,8">
-                    <TextBlock x:Name="AboutDesc" Opacity="0.6" TextWrapping="Wrap" />
-
-                    <StackPanel Spacing="2">
-                        <TextBlock x:Name="SysOsText" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7" />
-                        <TextBlock x:Name="SysCpuText" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7" />
-                        <TextBlock x:Name="SysRamText" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7" />
-                        <TextBlock x:Name="SysGpuText" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7" />
-                    </StackPanel>
-
-                    <TextBlock x:Name="MonitorSectionTitle" Style="{StaticResource BodyStrongTextBlockStyle}" />
-                    <StackPanel x:Name="MonitorCardsPanel" Spacing="6" />
-
-                    <TextBlock x:Name="DebugInfoDesc" Opacity="0.55" TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}" />
-                    <TextBox
-                        x:Name="SystemInfoBox"
-                        IsReadOnly="True"
-                        AcceptsReturn="True"
-                        TextWrapping="Wrap"
-                        FontFamily="Consolas"
-                        FontSize="11"
-                        MaxHeight="300"
-                        BorderThickness="0"
-                        Background="Transparent"
-                        Visibility="Collapsed" />
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <Button x:Name="CopySystemInfoBtn" Click="CopySystemInfo_Click" />
-                        <Button x:Name="ShowDebugBtn" Click="ShowDebugInfo_Click" />
-                    </StackPanel>
-                </StackPanel>
-            </Expander>
+                    </tk:SettingsCard>
+                </tk:SettingsExpander.Items>
+            </tk:SettingsExpander>
 
         </StackPanel>
     </ScrollViewer>

@@ -209,6 +209,7 @@ public partial class App : Application
         services.AddSingleton<NvidiaRotationService>();
         services.AddSingleton<AmdRotationService>();
         services.AddSingleton<AmdColorService>();
+        services.AddSingleton<ISystemInfoService, SystemInfoService>();
         services.AddSingleton<IntelRotationService>();
 
         services.AddTransient<ProfileListViewModel>();

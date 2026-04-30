@@ -161,6 +161,37 @@ Press Delete or Backspace to clear. Escape to cancel.</value></data>
   <data name="MultiUser" xml:space="preserve"><value>Per-user profiles</value></data>
   <data name="MultiUserDesc" xml:space="preserve"><value>Keep separate profiles for each Windows user</value></data>
 
+  <!-- SettingsCard x:Uid bindings — *.Header and *.Description map to control props. -->
+  <data name="LaunchAtStartupCard.Header" xml:space="preserve"><value>Launch at startup</value></data>
+  <data name="LaunchAtStartupCard.Description" xml:space="preserve"><value>Start Mo when you sign in to Windows.</value></data>
+  <data name="MinimizeToTrayCard.Header" xml:space="preserve"><value>Minimize to tray on close</value></data>
+  <data name="MinimizeToTrayCard.Description" xml:space="preserve"><value>Keep Mo running in the system tray.</value></data>
+  <data name="StartMinimizedCard.Header" xml:space="preserve"><value>Start minimized</value></data>
+  <data name="StartMinimizedCard.Description" xml:space="preserve"><value>Start in the system tray instead of showing the window.</value></data>
+  <data name="ThemeCard.Header" xml:space="preserve"><value>Theme</value></data>
+  <data name="ThemeCard.Description" xml:space="preserve"><value>Choose your preferred appearance.</value></data>
+  <data name="AutoSwitchCard.Header" xml:space="preserve"><value>Auto-switch profiles</value></data>
+  <data name="AutoSwitchCard.Description" xml:space="preserve"><value>Automatically apply profiles when monitor configuration changes.</value></data>
+  <data name="HotkeysCard.Header" xml:space="preserve"><value>Global hotkeys</value></data>
+  <data name="HotkeysCard.Description" xml:space="preserve"><value>Trigger profiles with system-wide shortcuts.</value></data>
+  <data name="RestoreOnStartupCard.Header" xml:space="preserve"><value>Restore last profile on startup</value></data>
+  <data name="RestoreOnStartupCard.Description" xml:space="preserve"><value>Re-apply the most recently used profile when Mo launches.</value></data>
+  <data name="RestoreColorCard.Header" xml:space="preserve"><value>Restore color settings on startup</value></data>
+  <data name="RestoreColorCard.Description" xml:space="preserve"><value>Windows doesn't persist DDC/CI brightness or contrast across reboots — re-push them on launch.</value></data>
+  <data name="UpdateCheckCard.Header" xml:space="preserve"><value>Check for updates</value></data>
+  <data name="UpdateCheckCard.Description" xml:space="preserve"><value>Notify me when a new version is available.</value></data>
+  <data name="RotationMethodCard.Header" xml:space="preserve"><value>Rotation method</value></data>
+  <data name="RotationMethodCard.Description" xml:space="preserve"><value>Use the GPU vendor's driver to apply rotation. Avoids the Windows cursor coordinate bug after rotating.</value></data>
+  <data name="GeneralExpander.Header" xml:space="preserve"><value>General</value></data>
+  <data name="AppearanceExpander.Header" xml:space="preserve"><value>Appearance</value></data>
+  <data name="ProfilesExpander.Header" xml:space="preserve"><value>Profiles</value></data>
+  <data name="UpdatesExpander.Header" xml:space="preserve"><value>Updates</value></data>
+  <data name="AdvancedExpander.Header" xml:space="preserve"><value>Advanced</value></data>
+  <data name="AboutExpander.Header" xml:space="preserve"><value>About &amp; system info</value></data>
+  <data name="CheckNowText.Text" xml:space="preserve"><value>Check now</value></data>
+  <data name="CopyDebugText.Text" xml:space="preserve"><value>Copy debug info</value></data>
+  <data name="ShowDebugText.Text" xml:space="preserve"><value>Show debug info</value></data>
+
   <!-- About -->
   <data name="AboutSection" xml:space="preserve"><value>About</value></data>
   <data name="AboutName" xml:space="preserve"><value>Mo — Monitor Profile Manager</value></data>

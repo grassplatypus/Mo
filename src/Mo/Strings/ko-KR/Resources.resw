@@ -161,6 +161,37 @@ Delete 또는 Backspace로 삭제. Escape로 취소.</value></data>
   <data name="MultiUser" xml:space="preserve"><value>사용자별 프로필</value></data>
   <data name="MultiUserDesc" xml:space="preserve"><value>각 Windows 사용자별로 별도 프로필 유지</value></data>
 
+  <!-- SettingsCard x:Uid 바인딩 — *.Header / *.Description 이 컨트롤 속성으로 매핑됨. -->
+  <data name="LaunchAtStartupCard.Header" xml:space="preserve"><value>시작 시 실행</value></data>
+  <data name="LaunchAtStartupCard.Description" xml:space="preserve"><value>Windows에 로그인할 때 Mo를 자동으로 시작합니다.</value></data>
+  <data name="MinimizeToTrayCard.Header" xml:space="preserve"><value>닫을 때 트레이로 최소화</value></data>
+  <data name="MinimizeToTrayCard.Description" xml:space="preserve"><value>창을 닫아도 Mo를 시스템 트레이에서 계속 실행합니다.</value></data>
+  <data name="StartMinimizedCard.Header" xml:space="preserve"><value>최소화 상태로 시작</value></data>
+  <data name="StartMinimizedCard.Description" xml:space="preserve"><value>창을 표시하지 않고 시스템 트레이에서 시작합니다.</value></data>
+  <data name="ThemeCard.Header" xml:space="preserve"><value>테마</value></data>
+  <data name="ThemeCard.Description" xml:space="preserve"><value>선호하는 모양을 선택합니다.</value></data>
+  <data name="AutoSwitchCard.Header" xml:space="preserve"><value>자동 프로필 전환</value></data>
+  <data name="AutoSwitchCard.Description" xml:space="preserve"><value>모니터 구성 변경 시 자동으로 적절한 프로필을 적용합니다.</value></data>
+  <data name="HotkeysCard.Header" xml:space="preserve"><value>전역 단축키</value></data>
+  <data name="HotkeysCard.Description" xml:space="preserve"><value>시스템 전역 단축키로 프로필을 적용합니다.</value></data>
+  <data name="RestoreOnStartupCard.Header" xml:space="preserve"><value>시작 시 마지막 프로필 복원</value></data>
+  <data name="RestoreOnStartupCard.Description" xml:space="preserve"><value>Mo가 시작될 때 가장 최근에 적용한 프로필을 자동으로 다시 적용합니다.</value></data>
+  <data name="RestoreColorCard.Header" xml:space="preserve"><value>시작 시 색상 설정 복원</value></data>
+  <data name="RestoreColorCard.Description" xml:space="preserve"><value>Windows는 DDC/CI 밝기·대비를 재부팅 후 보존하지 않으므로, 시작 시 다시 보냅니다.</value></data>
+  <data name="UpdateCheckCard.Header" xml:space="preserve"><value>업데이트 확인</value></data>
+  <data name="UpdateCheckCard.Description" xml:space="preserve"><value>새 버전이 있을 때 알려줍니다.</value></data>
+  <data name="RotationMethodCard.Header" xml:space="preserve"><value>회전 방식</value></data>
+  <data name="RotationMethodCard.Description" xml:space="preserve"><value>GPU 제조사 드라이버로 화면 회전을 적용합니다. 회전 후 Windows 커서 좌표 버그를 방지합니다.</value></data>
+  <data name="GeneralExpander.Header" xml:space="preserve"><value>일반</value></data>
+  <data name="AppearanceExpander.Header" xml:space="preserve"><value>모양</value></data>
+  <data name="ProfilesExpander.Header" xml:space="preserve"><value>프로필</value></data>
+  <data name="UpdatesExpander.Header" xml:space="preserve"><value>업데이트</value></data>
+  <data name="AdvancedExpander.Header" xml:space="preserve"><value>고급</value></data>
+  <data name="AboutExpander.Header" xml:space="preserve"><value>정보 및 시스템 정보</value></data>
+  <data name="CheckNowText.Text" xml:space="preserve"><value>지금 확인</value></data>
+  <data name="CopyDebugText.Text" xml:space="preserve"><value>디버그 정보 복사</value></data>
+  <data name="ShowDebugText.Text" xml:space="preserve"><value>디버그 정보 표시</value></data>
+
   <!-- About -->
   <data name="AboutSection" xml:space="preserve"><value>정보</value></data>
   <data name="AboutName" xml:space="preserve"><value>Mo — 모니터 프로필 관리자</value></data>

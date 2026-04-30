@@ -440,4 +440,13 @@ public sealed class MonitorDisplayInfo
     public string Position { get; set; } = string.Empty;
     public bool IsPrimary { get; set; }
     public bool IsEnabled { get; set; }
+
+    // Display-friendly composites consumed directly by SettingsPage's ItemsRepeater.
+    public string ManufacturerModel => $"{Manufacturer}  ·  {Model}";
+    public string ResolutionLine => Rotation == DisplayRotation.None
+        ? $"{Resolution}  ·  {RefreshRate:F1} Hz"
+        : $"{Resolution}  ·  {RefreshRate:F1} Hz  ·  {(int)Rotation}°";
+    public string PositionLine => $"Position: {Position}";
+    public Microsoft.UI.Xaml.Visibility PrimaryBadgeVisibility =>
+        IsPrimary ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
 }

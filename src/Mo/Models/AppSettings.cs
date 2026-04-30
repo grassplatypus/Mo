@@ -32,6 +32,13 @@ public enum RotationMethod
     IntelDriver,
 }
 
+public enum AppTheme
+{
+    System,
+    Light,
+    Dark,
+}
+
 public sealed class WindowPlacement
 {
     public int X { get; set; }

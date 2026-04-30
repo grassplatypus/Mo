@@ -1,130 +1,140 @@
+using System.Runtime.CompilerServices;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.DependencyInjection;
+using Mo.Models;
 using Mo.Services;
 
 namespace Mo.ViewModels;
 
+// Two-way bindings to AppSettings with three concerns rolled into one helper:
+//   1. value comparison so we don't spam SaveAsync,
+//   2. PropertyChanged notifications,
+//   3. side-effects that must happen exactly when a user-facing toggle flips
+//      (registering at logon, starting AutoSwitch, registering hotkeys, …).
 public partial class SettingsViewModel : ObservableObject
 {
-    private readonly ISettingsService _settingsService;
+    private readonly ISettingsService _settings;
 
-    public SettingsViewModel(ISettingsService settingsService)
+    public SettingsViewModel(ISettingsService settings)
     {
-        _settingsService = settingsService;
-        _ = _settingsService.LoadAsync();
+        _settings = settings;
+        _ = _settings.LoadAsync();
     }
 
     public bool LaunchAtStartup
     {
-        get => _settingsService.Settings.LaunchAtStartup;
-        set
+        get => _settings.Settings.LaunchAtStartup;
+        set => Set(_settings.Settings.LaunchAtStartup, value, v => _settings.Settings.LaunchAtStartup = v, v =>
         {
-            if (_settingsService.Settings.LaunchAtStartup == value) return;
-            _settingsService.Settings.LaunchAtStartup = value;
-            _ = _settingsService.SaveAsync();
-            OnPropertyChanged();
-
-            // Persisting the preference alone did nothing — the previous code never
-            // told Windows to actually run Mo at logon. Register/unregister here.
+            // Toggle alone never registered the StartupTask / Run-key entry; do it here.
             _ = Task.Run(async () =>
             {
                 try
                 {
                     var startup = App.Services.GetRequiredService<IStartupService>();
-                    if (value) await startup.RegisterForStartupAsync();
+                    if (v) await startup.RegisterForStartupAsync();
                     else await startup.UnregisterFromStartupAsync();
                 }
                 catch { }
             });
-        }
+        });
     }
 
     public bool MinimizeToTrayOnClose
     {
-        get => _settingsService.Settings.MinimizeToTrayOnClose;
-        set { if (_settingsService.Settings.MinimizeToTrayOnClose != value) { _settingsService.Settings.MinimizeToTrayOnClose = value; _ = _settingsService.SaveAsync(); OnPropertyChanged(); } }
+        get => _settings.Settings.MinimizeToTrayOnClose;
+        set => Set(_settings.Settings.MinimizeToTrayOnClose, value, v => _settings.Settings.MinimizeToTrayOnClose = v);
     }
 
     public bool StartMinimized
     {
-        get => _settingsService.Settings.StartMinimized;
-        set { if (_settingsService.Settings.StartMinimized != value) { _settingsService.Settings.StartMinimized = value; _ = _settingsService.SaveAsync(); OnPropertyChanged(); } }
+        get => _settings.Settings.StartMinimized;
+        set => Set(_settings.Settings.StartMinimized, value, v => _settings.Settings.StartMinimized = v);
     }
 
-    public string Theme
+    public AppTheme Theme
     {
-        get => _settingsService.Settings.Theme;
-        set { if (_settingsService.Settings.Theme != value) { _settingsService.Settings.Theme = value; _ = _settingsService.SaveAsync(); OnPropertyChanged(); } }
+        get => ParseTheme(_settings.Settings.Theme);
+        set => Set(ParseTheme(_settings.Settings.Theme), value,
+            v => _settings.Settings.Theme = v.ToString(),
+            v => App.MainWindow?.ApplyTheme(v.ToString()));
     }
 
     public bool AutoSwitchEnabled
     {
-        get => _settingsService.Settings.AutoSwitchEnabled;
-        set
+        get => _settings.Settings.AutoSwitchEnabled;
+        set => Set(_settings.Settings.AutoSwitchEnabled, value, v => _settings.Settings.AutoSwitchEnabled = v, v =>
         {
-            if (_settingsService.Settings.AutoSwitchEnabled != value)
+            try
             {
-                _settingsService.Settings.AutoSwitchEnabled = value;
-                _ = _settingsService.SaveAsync();
-                OnPropertyChanged();
-
-                // Start/stop the auto-switch service
-                try
-                {
-                    var autoSwitch = App.Services.GetRequiredService<IAutoSwitchService>();
-                    if (value) autoSwitch.Start(); else autoSwitch.Stop();
-                }
-                catch { }
+                var autoSwitch = App.Services.GetRequiredService<IAutoSwitchService>();
+                if (v) autoSwitch.Start(); else autoSwitch.Stop();
             }
-        }
+            catch { }
+        });
     }
 
     public bool CheckForUpdates
     {
-        get => _settingsService.Settings.CheckForUpdates;
-        set { if (_settingsService.Settings.CheckForUpdates != value) { _settingsService.Settings.CheckForUpdates = value; _ = _settingsService.SaveAsync(); OnPropertyChanged(); } }
+        get => _settings.Settings.CheckForUpdates;
+        set => Set(_settings.Settings.CheckForUpdates, value, v => _settings.Settings.CheckForUpdates = v);
     }
 
     public bool RestoreOnStartup
     {
-        get => _settingsService.Settings.RestoreOnStartup;
-        set { if (_settingsService.Settings.RestoreOnStartup != value) { _settingsService.Settings.RestoreOnStartup = value; _ = _settingsService.SaveAsync(); OnPropertyChanged(); } }
+        get => _settings.Settings.RestoreOnStartup;
+        set => Set(_settings.Settings.RestoreOnStartup, value, v => _settings.Settings.RestoreOnStartup = v);
     }
 
     public bool RestoreColorOnStartup
     {
-        get => _settingsService.Settings.RestoreColorOnStartup;
-        set { if (_settingsService.Settings.RestoreColorOnStartup != value) { _settingsService.Settings.RestoreColorOnStartup = value; _ = _settingsService.SaveAsync(); OnPropertyChanged(); } }
+        get => _settings.Settings.RestoreColorOnStartup;
+        set => Set(_settings.Settings.RestoreColorOnStartup, value, v => _settings.Settings.RestoreColorOnStartup = v);
     }
 
     public bool HotkeysEnabled
     {
-        get => _settingsService.Settings.HotkeysEnabled;
-        set
+        get => _settings.Settings.HotkeysEnabled;
+        set => Set(_settings.Settings.HotkeysEnabled, value, v => _settings.Settings.HotkeysEnabled = v, v =>
         {
-            if (_settingsService.Settings.HotkeysEnabled != value)
+            try
             {
-                _settingsService.Settings.HotkeysEnabled = value;
-                _ = _settingsService.SaveAsync();
-                OnPropertyChanged();
-
-                // Register/unregister the global hotkey subscriptions accordingly.
-                try
+                var hotkeys = App.Services.GetRequiredService<IHotkeyService>();
+                var profiles = App.Services.GetRequiredService<IProfileService>();
+                if (v)
                 {
-                    var hotkeys = App.Services.GetRequiredService<IHotkeyService>();
-                    var profiles = App.Services.GetRequiredService<IProfileService>();
-                    if (value)
-                    {
-                        foreach (var p in profiles.Profiles)
-                            if (p.Hotkey != null) hotkeys.RegisterProfileHotkey(p.Id, p.Hotkey);
-                    }
-                    else
-                    {
-                        hotkeys.UnregisterAll();
-                    }
+                    foreach (var p in profiles.Profiles)
+                        if (p.Hotkey != null) hotkeys.RegisterProfileHotkey(p.Id, p.Hotkey);
                 }
-                catch { }
+                else
+                {
+                    hotkeys.UnregisterAll();
+                }
             }
-        }
+            catch { }
+        });
     }
+
+    public RotationMethod RotationMethod
+    {
+        get => _settings.Settings.RotationMethod;
+        set => Set(_settings.Settings.RotationMethod, value, v => _settings.Settings.RotationMethod = v);
+    }
+
+    private void Set<T>(T current, T next, Action<T> assign, Action<T>? sideEffect = null,
+        [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(current, next)) return;
+        assign(next);
+        _ = _settings.SaveAsync();
+        OnPropertyChanged(propertyName);
+        sideEffect?.Invoke(next);
+    }
+
+    private static AppTheme ParseTheme(string s) => s switch
+    {
+        "Light" => AppTheme.Light,
+        "Dark" => AppTheme.Dark,
+        _ => AppTheme.System,
+    };
 }
