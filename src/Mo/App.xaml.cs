@@ -20,6 +20,8 @@ public partial class App : Application
         InitializeComponent();
         UnhandledException += App_UnhandledException;
         TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+            LogException("AppDomain.UnhandledException", e.ExceptionObject as Exception);
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
@@ -39,19 +41,45 @@ public partial class App : Application
             startMinimized = settings.Settings.StartMinimized || IsStartupTaskActivation();
 
             // Apply user language override BEFORE the first window is created so initial
-            // resource lookups (window title, x:Uid bindings) hit the right .resw.
-            if (!string.IsNullOrWhiteSpace(settings.Settings.Language))
+            // resource lookups (window title, x:Uid bindings) hit the right .resw. When
+            // the user hasn't picked an override, fall back to the first preferred system
+            // language so Korean Windows shows Korean UI even when our DefaultLanguage is
+            // en-US (without this, the WinAppSDK ResourceLoader sometimes refuses to
+            // resolve ko-KR resources for unpackaged or sideloaded MSIX builds).
+            var lang = settings.Settings.Language;
+            if (string.IsNullOrWhiteSpace(lang))
             {
-                try { Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = settings.Settings.Language; }
+                try
+                {
+                    var preferred = Windows.System.UserProfile.GlobalizationPreferences.Languages;
+                    if (preferred?.Count > 0) lang = preferred[0];
+                }
+                catch { }
+            }
+            if (!string.IsNullOrWhiteSpace(lang))
+            {
+                try { Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = lang; }
                 catch { }
             }
         }
-        catch { }
+        catch (Exception ex) { LogException("OnLaunched.PreInit", ex); }
 
         MainWindow = new MainWindow();
-        MainWindow.Activate();
         if (startMinimized)
+        {
+            // Hide the OS window FIRST (AppWindow.Hide is valid pre-Activate). We
+            // still must Activate so the dispatcher / message loop wires up properly
+            // — without it, HideWindow re-show by the tray later silently fails.
             MainWindow.HideWindow();
+            MainWindow.Activate();
+            // Activate forces a brief WS_VISIBLE flip; re-hide immediately after the
+            // first paint to swallow the flash.
+            MainWindow.HideWindow();
+        }
+        else
+        {
+            MainWindow.Activate();
+        }
 
         MainWindow.DispatcherQueue.ShutdownStarting += (_, _) => DisposeServices();
 
@@ -221,7 +249,11 @@ public partial class App : Application
         services.AddSingleton<IntelRotationService>();
 
         services.AddTransient<ProfileListViewModel>();
-        services.AddTransient<SettingsViewModel>();
+        // Singleton: SettingsViewModel mirrors AppSettings, so a single instance lets
+        // every consumer (Settings page, prompts, hotkey editor) see PropertyChanged
+        // when settings mutate from any source. Transient instances would each cache
+        // a stale view of values the user changed elsewhere.
+        services.AddSingleton<SettingsViewModel>();
     }
 
     // ── Initialization ──
@@ -249,18 +281,12 @@ public partial class App : Application
             // First-launch: offer to switch rotation backend if a driver SDK is available.
             _ = MaybeOfferDriverRotationAsync();
 
-            SafeInit(() =>
-            {
-                var hotkeyService = (HotkeyService)Services.GetRequiredService<IHotkeyService>();
-                hotkeyService.SetWindowHandle(WindowHelper.GetHwnd(MainWindow));
-                foreach (var profile in profileService.Profiles)
-                {
-                    if (profile.Hotkey != null)
-                        hotkeyService.RegisterProfileHotkey(profile.Id, profile.Hotkey);
-                }
-                hotkeyService.HotkeyTriggered += async (_, profileId) =>
-                    await profileService.ApplyProfileAsync(profileId);
-            });
+            SafeInit(() => RegisterAllHotkeys());
+
+            // Re-register hotkeys whenever the profile list changes so the 0–9 slot
+            // bindings track the current profile order.
+            profileService.Profiles.CollectionChanged += (_, _) =>
+                MainWindow?.DispatcherQueue?.TryEnqueue(() => SafeInit(RegisterAllHotkeys));
         }
         catch (Exception ex)
         {
@@ -322,10 +348,17 @@ public partial class App : Application
 
             var result = await dialog.ShowAsync();
             if (result == ContentDialogResult.Primary)
-                settings.Settings.RotationMethod = suggestion.Value;
+            {
+                // Route through the VM so any open Settings page binding sees
+                // PropertyChanged and refreshes. The VM's setter writes to
+                // settings.Settings AND awaits SaveAsync.
+                var vm = Services.GetRequiredService<ViewModels.SettingsViewModel>();
+                vm.RotationMethod = suggestion.Value;
+            }
 
             settings.Settings.GpuRotationMethodPromptShown = true;
-            await settings.SaveAsync();
+            try { await settings.SaveAsync(); }
+            catch (Exception saveEx) { LogException("MaybeOfferDriverRotationAsync.Save", saveEx); }
         }
         catch (Exception ex)
         {
@@ -418,6 +451,95 @@ public partial class App : Application
         {
             await Windows.System.Launcher.LaunchUriAsync(new Uri(url));
         }
+    }
+
+    // Registers every hotkey from settings + profiles. Idempotent — safe to call again
+    // after a profile is created/deleted or the user edits hotkey settings.
+    public static void RegisterAllHotkeys()
+    {
+        var hotkeys = Services.GetRequiredService<IHotkeyService>();
+        var profiles = Services.GetRequiredService<IProfileService>();
+        var settings = Services.GetRequiredService<ISettingsService>();
+
+        hotkeys.SetWindowHandle(WindowHelper.GetHwnd(MainWindow));
+        hotkeys.UnregisterAll();
+        if (!settings.Settings.HotkeysEnabled) return;
+
+        foreach (var profile in profiles.Profiles)
+            if (profile.Hotkey != null)
+                hotkeys.RegisterProfileHotkey(profile.Id, profile.Hotkey);
+
+        if (settings.Settings.NextProfileHotkey is { } nb)
+            hotkeys.RegisterNextProfile(nb);
+        if (settings.Settings.PrevProfileHotkey is { } pb)
+            hotkeys.RegisterPrevProfile(pb);
+
+        // Profile-slot hotkeys: <modifier> + 0..9 → apply Profiles[0..9].
+        if (settings.Settings.ProfileSlotModifier is { } mod)
+        {
+            for (int i = 0; i < Math.Min(10, profiles.Profiles.Count); i++)
+            {
+                var key = i == 0 ? Windows.System.VirtualKey.Number0
+                                 : (Windows.System.VirtualKey)((int)Windows.System.VirtualKey.Number0 + i);
+                hotkeys.RegisterProfileSlot(i, new Models.HotkeyBinding
+                {
+                    Key = key,
+                    Ctrl = mod.Ctrl,
+                    Alt = mod.Alt,
+                    Shift = mod.Shift,
+                    Win = mod.Win,
+                });
+            }
+        }
+
+        // Single subscription point — clear & re-add so we never accumulate handlers.
+        if (hotkeys is HotkeyService hs)
+        {
+            hs.HotkeyTriggered -= OnHotkeyTriggered;
+            hs.HotkeyTriggered += OnHotkeyTriggered;
+        }
+    }
+
+    private static async void OnHotkeyTriggered(object? sender, HotkeyTriggeredArgs e)
+    {
+        try
+        {
+            var profiles = Services.GetRequiredService<IProfileService>();
+            switch (e.Action)
+            {
+                case HotkeyService.HotkeyAction.Profile when e.Payload is { } id:
+                    await profiles.ApplyProfileAsync(id);
+                    break;
+                case HotkeyService.HotkeyAction.ProfileSlot when int.TryParse(e.Payload, out int slot)
+                                                              && slot < profiles.Profiles.Count:
+                    await profiles.ApplyProfileAsync(profiles.Profiles[slot].Id);
+                    break;
+                case HotkeyService.HotkeyAction.NextProfile:
+                    await CycleProfileAsync(+1);
+                    break;
+                case HotkeyService.HotkeyAction.PrevProfile:
+                    await CycleProfileAsync(-1);
+                    break;
+            }
+        }
+        catch (Exception ex) { LogException("Hotkey", ex); }
+    }
+
+    private static async Task CycleProfileAsync(int delta)
+    {
+        var profiles = Services.GetRequiredService<IProfileService>();
+        var settings = Services.GetRequiredService<ISettingsService>();
+        if (profiles.Profiles.Count == 0) return;
+
+        int currentIdx = -1;
+        var lastId = settings.Settings.LastAppliedProfileId;
+        if (!string.IsNullOrEmpty(lastId))
+        {
+            for (int i = 0; i < profiles.Profiles.Count; i++)
+                if (profiles.Profiles[i].Id == lastId) { currentIdx = i; break; }
+        }
+        int nextIdx = (currentIdx + delta + profiles.Profiles.Count) % profiles.Profiles.Count;
+        await profiles.ApplyProfileAsync(profiles.Profiles[nextIdx].Id);
     }
 
     private static void SafeInit(Action action)

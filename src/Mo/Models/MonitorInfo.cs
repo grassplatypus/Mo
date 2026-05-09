@@ -32,6 +32,14 @@ public sealed class MonitorInfo
     public uint SourceId { get; set; }
     public uint TargetId { get; set; }
 
+    // GDI device name e.g. "\\.\DISPLAY1". Used to bridge CCD identity (DevicePath)
+    // with HMONITOR-based APIs (DDC/CI), since EnumDisplayMonitors orders results
+    // differently than QueryDisplayConfig and matching by index alone is unreliable.
+    // Runtime-only — the GDI display number is reassigned freely across reboots,
+    // so persisting it would do more harm than good.
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string GdiDeviceName { get; set; } = string.Empty;
+
     public double RefreshRateHz => RefreshRateDenominator == 0 ? 0 : (double)RefreshRateNumerator / RefreshRateDenominator;
     public string ResolutionText => $"{Width} x {Height}";
 }

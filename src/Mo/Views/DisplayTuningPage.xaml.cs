@@ -17,9 +17,13 @@ public sealed partial class DisplayTuningPage : Page
     private readonly AmdColorService _amdColorService;
 
     private List<MonitorInfo> _monitors = [];
-    private List<MonitorColorCapabilities> _caps = [];
+    // Capabilities aligned 1:1 with _monitors (device-name lookup, not EnumDisplayMonitors order).
+    private List<MonitorColorCapabilities?> _caps = [];
     private int _selected = -1;
     private bool _loading;
+    // True after the user touches an R/G/B slider — used to auto-switch the monitor's
+    // color preset to "User" so RGB writes aren't silently rejected.
+    private bool _rgbDirty;
 
     // Ensures only one DDC/CI write is in flight at a time. A value change during the
     // write flips _pending; the worker picks it up immediately after the current apply
@@ -41,12 +45,24 @@ public sealed partial class DisplayTuningPage : Page
     {
         _loading = true;
         List<MonitorInfo> monitors;
-        List<MonitorColorCapabilities> caps;
         try { monitors = _displayService.GetCurrentConfiguration(); }
         catch { monitors = []; }
 
-        try { caps = await Task.Run(_colorService.DetectCapabilities); }
-        catch { caps = []; }
+        // Resolve caps per monitor by GDI device name, so the index used by the
+        // monitor list always lines up with the cap result regardless of how
+        // EnumDisplayMonitors orders its handles.
+        var caps = await Task.Run(() =>
+        {
+            var list = new List<MonitorColorCapabilities?>(monitors.Count);
+            foreach (var m in monitors)
+            {
+                MonitorColorCapabilities? c = null;
+                try { c = _colorService.DetectCapabilitiesByDeviceName(m.GdiDeviceName); }
+                catch { }
+                list.Add(c);
+            }
+            return list;
+        });
 
         _monitors = monitors;
         _caps = caps;
@@ -180,7 +196,8 @@ public sealed partial class DisplayTuningPage : Page
 
     private void LoadDdcSection(MonitorInfo monitor)
     {
-        var caps = _selected < _caps.Count ? _caps[_selected] : null;
+        _rgbDirty = false;
+        var caps = _selected >= 0 && _selected < _caps.Count ? _caps[_selected] : null;
         bool any = caps?.SupportsAny == true;
         DdcEmptyText.Visibility = any ? Visibility.Collapsed : Visibility.Visible;
 
@@ -211,11 +228,8 @@ public sealed partial class DisplayTuningPage : Page
 
     private MonitorColorSettings? TryCapture(int index)
     {
-        try
-        {
-            var all = _colorService.CaptureAllMonitors();
-            return index >= 0 && index < all.Count ? all[index] : null;
-        }
+        if (index < 0 || index >= _monitors.Count) return null;
+        try { return _colorService.CaptureByDeviceName(_monitors[index].GdiDeviceName); }
         catch { return null; }
     }
 
@@ -227,7 +241,8 @@ public sealed partial class DisplayTuningPage : Page
             return;
         }
 
-        var probe = _colorService.GetVcpFeature(_selected, MonitorConfigApi.VCP_SELECT_COLOR_PRESET);
+        var monitor = _monitors[_selected];
+        var probe = _colorService.GetVcpFeatureByDeviceName(monitor.GdiDeviceName, MonitorConfigApi.VCP_SELECT_COLOR_PRESET);
         if (probe == null)
         {
             PresetCard.Visibility = Visibility.Collapsed;
@@ -286,6 +301,37 @@ public sealed partial class DisplayTuningPage : Page
     private void Slider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
     {
         if (_loading || _selected < 0) return;
+
+        // Most monitors lock RGB Drive when a non-User color preset is selected.
+        // Switch to "User" (VCP 0x14 = 0x0B) on the first RGB touch so subsequent
+        // SetRedGain/etc. calls actually take effect.
+        if (!_rgbDirty && (sender == RedSlider || sender == GreenSlider || sender == BlueSlider))
+        {
+            _rgbDirty = true;
+            try
+            {
+                if (_selected < _monitors.Count)
+                {
+                    _colorService.SetVcpFeatureByDeviceName(
+                        _monitors[_selected].GdiDeviceName,
+                        MonitorConfigApi.VCP_SELECT_COLOR_PRESET, 0x0B);
+                }
+            }
+            catch { }
+            // Reflect the auto-switch in the preset combo if it's currently shown.
+            try
+            {
+                _loading = true;
+                for (int i = 0; i < PresetCombo.Items.Count; i++)
+                {
+                    if (PresetCombo.Items[i] is ComboBoxItem item && item.Tag is uint code && code == 0x0B)
+                    { PresetCombo.SelectedIndex = i; break; }
+                }
+                _loading = false;
+            }
+            catch { _loading = false; }
+        }
+
         UpdateValueLabels();
         _pending = true;
         KickApplyWorker();
@@ -310,9 +356,9 @@ public sealed partial class DisplayTuningPage : Page
                     var tcs = new TaskCompletionSource<MonitorColorSettings?>();
                     DispatcherQueue.TryEnqueue(() => tcs.SetResult(BuildPendingSettings(index)));
                     snapshot = (await tcs.Task) ?? new MonitorColorSettings();
-                    if (!snapshot.HasValues || index < 0) continue;
+                    if (!snapshot.HasValues || index < 0 || index >= _monitors.Count) continue;
 
-                    try { _colorService.ApplyToMonitor(index, snapshot); }
+                    try { _colorService.ApplyToMonitorByDeviceName(_monitors[index].GdiDeviceName, snapshot); }
                     catch { }
                 }
             }
@@ -330,6 +376,7 @@ public sealed partial class DisplayTuningPage : Page
     {
         if (index < 0 || index >= _caps.Count) return null;
         var caps = _caps[index];
+        if (caps == null) return null;
         var s = new MonitorColorSettings();
         if (caps.SupportsBrightness || caps.SupportsWmiBrightness) s.Brightness = (int)BrightnessSlider.Value;
         if (caps.SupportsContrast) s.Contrast = (int)ContrastSlider.Value;
@@ -351,10 +398,12 @@ public sealed partial class DisplayTuningPage : Page
 
     private void PresetCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_loading || _selected < 0) return;
+        if (_loading || _selected < 0 || _selected >= _monitors.Count) return;
         if (PresetCombo.SelectedItem is ComboBoxItem item && item.Tag is uint code)
         {
-            _colorService.SetVcpFeature(_selected, MonitorConfigApi.VCP_SELECT_COLOR_PRESET, code);
+            _colorService.SetVcpFeatureByDeviceName(
+                _monitors[_selected].GdiDeviceName,
+                MonitorConfigApi.VCP_SELECT_COLOR_PRESET, code);
         }
     }
 

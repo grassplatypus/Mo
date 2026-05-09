@@ -56,12 +56,22 @@ public sealed partial class MainWindow : Window
 
     public void HideWindow()
     {
-        var hwnd = WindowHelper.GetHwnd(this);
-        ShowWindow(hwnd, 0); // SW_HIDE
+        // AppWindow.Hide() works before the first Activate() call (Win32 ShowWindow does
+        // not), so use it as the primary hide path. ShowWindow remains as a belt-and-
+        // suspenders fallback for environments where AppWindow.Hide is a no-op (e.g.
+        // some Win10 builds).
+        try { AppWindow?.Hide(); } catch { }
+        try
+        {
+            var hwnd = WindowHelper.GetHwnd(this);
+            if (hwnd != 0) ShowWindow(hwnd, 0); // SW_HIDE
+        }
+        catch { }
     }
 
     public void ShowAndActivate()
     {
+        try { AppWindow?.Show(); } catch { }
         var hwnd = WindowHelper.GetHwnd(this);
         ShowWindow(hwnd, 9); // SW_RESTORE
         SetForegroundWindow(hwnd);

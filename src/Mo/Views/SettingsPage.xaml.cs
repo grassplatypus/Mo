@@ -37,7 +37,55 @@ public sealed partial class SettingsPage : Page
         RotationOptions = BuildRotationOptions();
         InitializeComponent();
         ApplyOneOffStrings();
+        RefreshHotkeyLabels();
+        ViewModel.PropertyChanged += (_, _) => RefreshHotkeyLabels();
         Loaded += async (_, _) => await LoadSystemInfoAsync();
+    }
+
+    private void RefreshHotkeyLabels()
+    {
+        NextHotkeyText.Text = ViewModel.NextProfileHotkey?.ToString() ?? ResourceHelper.GetString("HotkeyNone");
+        PrevHotkeyText.Text = ViewModel.PrevProfileHotkey?.ToString() ?? ResourceHelper.GetString("HotkeyNone");
+        var mod = ViewModel.ProfileSlotModifier;
+        SlotHotkeyText.Text = mod == null
+            ? ResourceHelper.GetString("HotkeyNone")
+            : ResourceHelper.GetString("ProfileSlotPattern", FormatModifier(mod));
+    }
+
+    private static string FormatModifier(Mo.Models.HotkeyBinding b)
+    {
+        var parts = new List<string>();
+        if (b.Ctrl) parts.Add("Ctrl");
+        if (b.Alt) parts.Add("Alt");
+        if (b.Shift) parts.Add("Shift");
+        if (b.Win) parts.Add("Win");
+        return parts.Count == 0 ? "—" : string.Join(" + ", parts);
+    }
+
+    private async void NextHotkeyBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var r = await HotkeyCaptureDialog.ShowAsync(this.XamlRoot, ViewModel.NextProfileHotkey);
+        if (r != null) ViewModel.NextProfileHotkey = r.Binding;
+    }
+
+    private async void PrevHotkeyBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var r = await HotkeyCaptureDialog.ShowAsync(this.XamlRoot, ViewModel.PrevProfileHotkey);
+        if (r != null) ViewModel.PrevProfileHotkey = r.Binding;
+    }
+
+    private async void SlotHotkeyBtn_Click(object sender, RoutedEventArgs e)
+    {
+        // Capture only modifier — bind it to a dummy key so the dialog can finalize.
+        var r = await HotkeyCaptureDialog.ShowAsync(this.XamlRoot, ViewModel.ProfileSlotModifier);
+        if (r == null) return;
+        if (r.Binding == null) { ViewModel.ProfileSlotModifier = null; return; }
+        // Strip the Key — only the modifier portion is meaningful for slot bindings.
+        ViewModel.ProfileSlotModifier = new Mo.Models.HotkeyBinding
+        {
+            Ctrl = r.Binding.Ctrl, Alt = r.Binding.Alt,
+            Shift = r.Binding.Shift, Win = r.Binding.Win,
+        };
     }
 
     // Keeps the user from selecting a driver backend that isn't actually present.

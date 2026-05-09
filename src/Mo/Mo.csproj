@@ -17,6 +17,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>preview</LangVersion>
     <DefaultLanguage>en-US</DefaultLanguage>
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
     <Version>$(MoVersion)</Version>
     <AssemblyVersion>$(MoVersionFull)</AssemblyVersion>
     <FileVersion>$(MoVersionFull)</FileVersion>
@@ -59,6 +60,7 @@
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.1721" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260317003" />
     <PackageReference Include="NvAPIWrapper.Net" Version="0.8.1.101" />
+    <PackageReference Include="System.Diagnostics.EventLog" Version="10.0.5" />
     <PackageReference Include="System.Drawing.Common" Version="10.0.5" />
     <PackageReference Include="System.Management" Version="10.0.5" />
     <PackageReference Include="System.Security.Permissions" Version="8.0.0" />

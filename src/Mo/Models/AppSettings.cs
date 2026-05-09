@@ -26,6 +26,15 @@ public sealed class AppSettings
     // BCP-47 language tag override. Empty = follow Windows display language. Non-empty
     // values like "ko-KR" or "en-US" force the matching .resw bundle on next launch.
     public string Language { get; set; } = string.Empty;
+
+    // Global hotkey to cycle to the next profile in list order.
+    public HotkeyBinding? NextProfileHotkey { get; set; }
+    // Global hotkey to cycle to the previous profile in list order.
+    public HotkeyBinding? PrevProfileHotkey { get; set; }
+    // Modifier combination prepended to digit keys 0–9 to apply profile slots 0–9.
+    // Stored without a Key so we can compose at registration time. Null = slots disabled.
+    public HotkeyBinding? ProfileSlotModifier { get; set; }
+        = new() { Ctrl = true, Alt = true };
 }
 
 public enum RotationMethod

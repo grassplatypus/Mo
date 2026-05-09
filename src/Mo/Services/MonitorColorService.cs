@@ -11,8 +11,22 @@ namespace Mo.Services;
 // Windows reports a display-settings change — at which point we rebuild the cache.
 public sealed class MonitorColorService : IMonitorColorService
 {
+    [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private static extern bool GetMonitorInfoW(nint hMonitor, ref MONITORINFOEX info);
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private struct MONITORINFOEX
+    {
+        public uint cbSize;
+        public RECT rcMonitor;
+        public RECT rcWork;
+        public uint dwFlags;
+        [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.ByValTStr, SizeConst = 32)]
+        public string szDevice;
+    }
+
     private readonly object _cacheLock = new();
-    private List<(PHYSICAL_MONITOR[] physicalMonitors, nint hMonitor)>? _cachedHandles;
+    private List<(PHYSICAL_MONITOR[] physicalMonitors, nint hMonitor, string gdiDeviceName)>? _cachedHandles;
     private bool _disposed;
 
     public MonitorColorService()
@@ -30,7 +44,7 @@ public sealed class MonitorColorService : IMonitorColorService
 
     private void OnDisplaySettingsChanged(object? sender, EventArgs e) => DestroyCache();
 
-    private List<(PHYSICAL_MONITOR[] physicalMonitors, nint hMonitor)> GetHandles()
+    private List<(PHYSICAL_MONITOR[] physicalMonitors, nint hMonitor, string gdiDeviceName)> GetHandles()
     {
         lock (_cacheLock)
         {
@@ -45,7 +59,7 @@ public sealed class MonitorColorService : IMonitorColorService
         lock (_cacheLock)
         {
             if (_cachedHandles == null) return;
-            foreach (var (monitors, _) in _cachedHandles)
+            foreach (var (monitors, _, _) in _cachedHandles)
             {
                 try { DestroyPhysicalMonitors((uint)monitors.Length, monitors); } catch { }
             }
@@ -57,7 +71,7 @@ public sealed class MonitorColorService : IMonitorColorService
     {
         var result = new List<MonitorColorCapabilities>();
 
-        foreach (var (physicalMonitors, _) in GetHandles())
+        foreach (var (physicalMonitors, _, _) in GetHandles())
         {
             foreach (var pm in physicalMonitors)
                 result.Add(ProbeCapabilities(pm.hPhysicalMonitor));
@@ -76,7 +90,7 @@ public sealed class MonitorColorService : IMonitorColorService
     {
         var results = new List<MonitorColorSettings>();
 
-        foreach (var (physicalMonitors, _) in GetHandles())
+        foreach (var (physicalMonitors, _, _) in GetHandles())
         {
             foreach (var pm in physicalMonitors)
                 results.Add(ReadSettings(pm.hPhysicalMonitor));
@@ -96,7 +110,7 @@ public sealed class MonitorColorService : IMonitorColorService
     public void ApplyToMonitor(int monitorIndex, MonitorColorSettings settings)
     {
         int idx = 0;
-        foreach (var (physicalMonitors, _) in GetHandles())
+        foreach (var (physicalMonitors, _, _) in GetHandles())
         {
             foreach (var pm in physicalMonitors)
             {
@@ -115,7 +129,7 @@ public sealed class MonitorColorService : IMonitorColorService
     public void ApplyAll(List<(int index, MonitorColorSettings settings)> entries)
     {
         int idx = 0;
-        foreach (var (physicalMonitors, _) in GetHandles())
+        foreach (var (physicalMonitors, _, _) in GetHandles())
         {
             foreach (var pm in physicalMonitors)
             {
@@ -134,7 +148,7 @@ public sealed class MonitorColorService : IMonitorColorService
     public (uint current, uint max)? GetVcpFeature(int monitorIndex, byte vcpCode)
     {
         int idx = 0;
-        foreach (var (physicalMonitors, _) in GetHandles())
+        foreach (var (physicalMonitors, _, _) in GetHandles())
         {
             foreach (var pm in physicalMonitors)
             {
@@ -157,7 +171,7 @@ public sealed class MonitorColorService : IMonitorColorService
     public bool SetVcpFeature(int monitorIndex, byte vcpCode, uint value)
     {
         int idx = 0;
-        foreach (var (physicalMonitors, _) in GetHandles())
+        foreach (var (physicalMonitors, _, _) in GetHandles())
         {
             foreach (var pm in physicalMonitors)
             {
@@ -339,9 +353,9 @@ public sealed class MonitorColorService : IMonitorColorService
 
     // ── Monitor Handle Enumeration ──
 
-    private static List<(PHYSICAL_MONITOR[] physicalMonitors, nint hMonitor)> GetPhysicalMonitorHandles()
+    private static List<(PHYSICAL_MONITOR[] physicalMonitors, nint hMonitor, string gdiDeviceName)> GetPhysicalMonitorHandles()
     {
-        var result = new List<(PHYSICAL_MONITOR[], nint)>();
+        var result = new List<(PHYSICAL_MONITOR[], nint, string)>();
 
         EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, (nint hMonitor, nint _, ref RECT __, nint ___) =>
         {
@@ -351,7 +365,12 @@ public sealed class MonitorColorService : IMonitorColorService
                 {
                     var monitors = new PHYSICAL_MONITOR[count];
                     if (GetPhysicalMonitorsFromHMONITOR(hMonitor, count, monitors))
-                        result.Add((monitors, hMonitor));
+                    {
+                        var info = new MONITORINFOEX();
+                        info.cbSize = (uint)System.Runtime.InteropServices.Marshal.SizeOf<MONITORINFOEX>();
+                        string name = GetMonitorInfoW(hMonitor, ref info) ? info.szDevice ?? string.Empty : string.Empty;
+                        result.Add((monitors, hMonitor, name));
+                    }
                 }
             }
             catch { }
@@ -359,5 +378,73 @@ public sealed class MonitorColorService : IMonitorColorService
         }, IntPtr.Zero);
 
         return result;
+    }
+
+    // ── Device-name lookup (preferred) ──
+
+    public bool ApplyToMonitorByDeviceName(string gdiDeviceName, MonitorColorSettings settings)
+    {
+        var handle = FindHandle(gdiDeviceName);
+        if (handle == null) return false;
+        bool applied = WriteSettings(handle.Value, settings);
+        if (!applied && settings.Brightness.HasValue) SetWmiBrightness(settings.Brightness.Value);
+        return applied;
+    }
+
+    public MonitorColorCapabilities? DetectCapabilitiesByDeviceName(string gdiDeviceName)
+    {
+        var handle = FindHandle(gdiDeviceName);
+        if (handle == null) return null;
+        var caps = ProbeCapabilities(handle.Value);
+        // WMI fallback only meaningful for the laptop internal panel; identify it
+        // crudely as DISPLAY1 with no DDC/CI brightness.
+        if (!caps.SupportsBrightness && gdiDeviceName.EndsWith("DISPLAY1", StringComparison.OrdinalIgnoreCase))
+            caps.SupportsWmiBrightness = DetectWmiBrightness();
+        return caps;
+    }
+
+    public MonitorColorSettings? CaptureByDeviceName(string gdiDeviceName)
+    {
+        var handle = FindHandle(gdiDeviceName);
+        if (handle == null) return null;
+        var s = ReadSettings(handle.Value);
+        if (!s.Brightness.HasValue && gdiDeviceName.EndsWith("DISPLAY1", StringComparison.OrdinalIgnoreCase))
+        {
+            var w = GetWmiBrightness();
+            if (w.HasValue) s.Brightness = w.Value;
+        }
+        return s;
+    }
+
+    public bool SetVcpFeatureByDeviceName(string gdiDeviceName, byte vcpCode, uint value)
+    {
+        var handle = FindHandle(gdiDeviceName);
+        if (handle == null) return false;
+        try { return SetVCPFeature(handle.Value, vcpCode, value); }
+        catch { return false; }
+    }
+
+    public (uint current, uint max)? GetVcpFeatureByDeviceName(string gdiDeviceName, byte vcpCode)
+    {
+        var handle = FindHandle(gdiDeviceName);
+        if (handle == null) return null;
+        try
+        {
+            if (GetVCPFeatureAndVCPFeatureReply(handle.Value, vcpCode, IntPtr.Zero, out uint cur, out uint max))
+                return (cur, max);
+        }
+        catch { }
+        return null;
+    }
+
+    private nint? FindHandle(string gdiDeviceName)
+    {
+        if (string.IsNullOrEmpty(gdiDeviceName)) return null;
+        foreach (var (monitors, _, name) in GetHandles())
+        {
+            if (string.Equals(name, gdiDeviceName, StringComparison.OrdinalIgnoreCase) && monitors.Length > 0)
+                return monitors[0].hPhysicalMonitor;
+        }
+        return null;
     }
 }

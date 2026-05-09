@@ -307,4 +307,19 @@ Press Delete or Backspace to clear. Escape to cancel.</value></data>
   <data name="Copied" xml:space="preserve"><value>Copied!</value></data>
   <data name="ContinueRunning" xml:space="preserve"><value>Continue</value></data>
   <data name="ExitApp" xml:space="preserve"><value>Exit Mo</value></data>
+
+  <!-- Hotkey UI -->
+  <data name="NextProfileHotkeyCard.Header" xml:space="preserve"><value>Next profile</value></data>
+  <data name="NextProfileHotkeyCard.Description" xml:space="preserve"><value>Cycle to the next saved profile.</value></data>
+  <data name="PrevProfileHotkeyCard.Header" xml:space="preserve"><value>Previous profile</value></data>
+  <data name="PrevProfileHotkeyCard.Description" xml:space="preserve"><value>Cycle to the previous saved profile.</value></data>
+  <data name="ProfileSlotHotkeyCard.Header" xml:space="preserve"><value>Profile slots 0–9</value></data>
+  <data name="ProfileSlotHotkeyCard.Description" xml:space="preserve"><value>Modifier + 0–9 applies the profile in that slot (in list order).</value></data>
+  <data name="HotkeyChangeBtn.Text" xml:space="preserve"><value>Change…</value></data>
+  <data name="HotkeyCaptureTitle" xml:space="preserve"><value>Press a hotkey</value></data>
+  <data name="HotkeyCaptureHint" xml:space="preserve"><value>Hold any modifier (Ctrl, Alt, Shift, Win) and press a key. Use Clear to remove the binding.</value></data>
+  <data name="HotkeyClear" xml:space="preserve"><value>Clear</value></data>
+  <data name="HotkeyNone" xml:space="preserve"><value>(not set)</value></data>
+  <data name="ProfileSlotPattern" xml:space="preserve"><value>{0} + 0…9</value></data>
+  <data name="MonitorOff" xml:space="preserve"><value>off</value></data>
 </root>

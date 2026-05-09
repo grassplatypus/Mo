@@ -14,6 +14,12 @@ public sealed class TrayService : ITrayService
     public TrayService(IProfileService profileService)
     {
         _profileService = profileService;
+        // Refresh menu when profiles are added / renamed / removed so right-click
+        // never shows a stale list.
+        _profileService.Profiles.CollectionChanged += (_, _) =>
+        {
+            try { App.MainWindow?.DispatcherQueue?.TryEnqueue(UpdateContextMenu); } catch { }
+        };
     }
 
     public void Initialize()
@@ -21,7 +27,9 @@ public sealed class TrayService : ITrayService
         _trayIcon = new TaskbarIcon
         {
             ToolTipText = ResourceHelper.GetString("TrayTooltip"),
-            ContextMenuMode = ContextMenuMode.SecondWindow,
+            // PopupMenu is the most compatible mode — SecondWindow can fail on some
+            // session/elevated combinations, leaving right-click silently broken.
+            ContextMenuMode = ContextMenuMode.PopupMenu,
         };
 
         // Load tray icon from file

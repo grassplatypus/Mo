@@ -6,6 +6,14 @@ namespace Mo.Services;
 public interface IDisplayService
 {
     List<MonitorInfo> GetCurrentConfiguration();
+
+    /// <summary>
+    /// Enumerates every monitor the GPU currently has a physical connection to,
+    /// including ones detected but inactive (cable plugged in but Windows has the
+    /// path turned off). Each item carries a `IsEnabled` flag set to false for the
+    /// inactive ones so callers can render them differently.
+    /// </summary>
+    List<MonitorInfo> GetAllConnectedMonitors();
     DisplayApplyResult ApplyProfile(DisplayProfile profile);
     ProfileCompatibility CheckCompatibility(DisplayProfile profile);
 

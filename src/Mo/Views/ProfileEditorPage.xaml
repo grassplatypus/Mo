@@ -97,7 +97,10 @@
                             <ItemsRepeater.ItemTemplate>
                                 <DataTemplate x:DataType="local:AvailableMonitorItem">
                                     <Grid Padding="10,8" CornerRadius="6"
-                                          Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                                          Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                          Opacity="{x:Bind RowOpacity}"
+                                          DoubleTapped="AvailableRow_DoubleTapped"
+                                          Tag="{x:Bind}">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />

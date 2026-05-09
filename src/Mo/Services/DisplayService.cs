@@ -96,7 +96,83 @@ public sealed class DisplayService : IDisplayService
                 monitor.ConnectorInstance = deviceName.connectorInstance;
             }
 
+            // GDI device name (\\.\DISPLAY1) — needed to map CCD targets to HMONITOR
+            // handles for DDC/CI calls, which order monitors differently.
+            var sourceName = new DISPLAYCONFIG_SOURCE_DEVICE_NAME();
+            sourceName.header.type = DISPLAYCONFIG_DEVICE_INFO_TYPE.DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
+            sourceName.header.size = (uint)Marshal.SizeOf<DISPLAYCONFIG_SOURCE_DEVICE_NAME>();
+            sourceName.header.adapterId = path.sourceInfo.adapterId;
+            sourceName.header.id = path.sourceInfo.id;
+            if (NativeDisplayApi.DisplayConfigGetDeviceInfo(ref sourceName) == NativeDisplayApi.ERROR_SUCCESS)
+                monitor.GdiDeviceName = sourceName.viewGdiDeviceName ?? string.Empty;
+
             monitors.Add(monitor);
+        }
+
+        return monitors;
+    }
+
+    public List<MonitorInfo> GetAllConnectedMonitors()
+    {
+        // QDC_ALL_PATHS includes inactive paths (cable connected but display turned
+        // off in Windows). De-duplicate by target id since a single physical
+        // monitor can be reported through multiple paths.
+        var monitors = new List<MonitorInfo>();
+        var seen = new HashSet<uint>();
+
+        if (NativeDisplayApi.GetDisplayConfigBufferSizes(QDC_FLAGS.QDC_ALL_PATHS, out uint pc, out uint mc) != NativeDisplayApi.ERROR_SUCCESS)
+            return monitors;
+
+        var paths = new DISPLAYCONFIG_PATH_INFO[pc];
+        var modes = new DISPLAYCONFIG_MODE_INFO[mc];
+        if (NativeDisplayApi.QueryDisplayConfig(QDC_FLAGS.QDC_ALL_PATHS, ref pc, paths, ref mc, modes, IntPtr.Zero)
+            != NativeDisplayApi.ERROR_SUCCESS) return monitors;
+
+        for (int i = 0; i < pc; i++)
+        {
+            ref var path = ref paths[i];
+            if (!seen.Add(path.targetInfo.id)) continue;
+
+            var dn = new DISPLAYCONFIG_TARGET_DEVICE_NAME();
+            dn.header.type = DISPLAYCONFIG_DEVICE_INFO_TYPE.DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME;
+            dn.header.size = (uint)Marshal.SizeOf<DISPLAYCONFIG_TARGET_DEVICE_NAME>();
+            dn.header.adapterId = path.targetInfo.adapterId;
+            dn.header.id = path.targetInfo.id;
+            string friendly = string.Empty, devicePath = string.Empty;
+            ushort mfr = 0, prod = 0; uint connector = 0;
+            if (NativeDisplayApi.DisplayConfigGetDeviceInfo(ref dn) == NativeDisplayApi.ERROR_SUCCESS)
+            {
+                friendly = dn.monitorFriendlyDeviceName ?? string.Empty;
+                devicePath = dn.monitorDevicePath ?? string.Empty;
+                mfr = dn.edidManufactureId;
+                prod = dn.edidProductCodeId;
+                connector = dn.connectorInstance;
+            }
+
+            // Skip "phantom" entries with no monitor on the other end.
+            if (string.IsNullOrEmpty(devicePath) && string.IsNullOrEmpty(friendly)) continue;
+
+            // Active iff the path's flag bit 0 (DISPLAYCONFIG_PATH_ACTIVE) is set.
+            bool isActive = (path.flags & 0x1) != 0;
+
+            monitors.Add(new MonitorInfo
+            {
+                AdapterId = path.targetInfo.adapterId.ToInt64(),
+                SourceId = path.sourceInfo.id,
+                TargetId = path.targetInfo.id,
+                FriendlyName = friendly,
+                DevicePath = devicePath,
+                EdidManufacturerId = mfr,
+                EdidProductCodeId = prod,
+                ConnectorInstance = connector,
+                IsEnabled = isActive,
+                Width = isActive && path.sourceInfo.modeInfoIdx < mc
+                    ? (int)modes[path.sourceInfo.modeInfoIdx].sourceMode.width : 1920,
+                Height = isActive && path.sourceInfo.modeInfoIdx < mc
+                    ? (int)modes[path.sourceInfo.modeInfoIdx].sourceMode.height : 1080,
+                RefreshRateNumerator = path.targetInfo.refreshRate.Numerator,
+                RefreshRateDenominator = path.targetInfo.refreshRate.Denominator,
+            });
         }
 
         return monitors;

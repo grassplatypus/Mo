@@ -307,4 +307,19 @@ Delete 또는 Backspace로 삭제. Escape로 취소.</value></data>
   <data name="Copied" xml:space="preserve"><value>복사됨!</value></data>
   <data name="ContinueRunning" xml:space="preserve"><value>계속 실행</value></data>
   <data name="ExitApp" xml:space="preserve"><value>Mo 종료</value></data>
+
+  <!-- 단축키 UI -->
+  <data name="NextProfileHotkeyCard.Header" xml:space="preserve"><value>다음 프로필</value></data>
+  <data name="NextProfileHotkeyCard.Description" xml:space="preserve"><value>저장된 다음 프로필로 전환합니다.</value></data>
+  <data name="PrevProfileHotkeyCard.Header" xml:space="preserve"><value>이전 프로필</value></data>
+  <data name="PrevProfileHotkeyCard.Description" xml:space="preserve"><value>저장된 이전 프로필로 전환합니다.</value></data>
+  <data name="ProfileSlotHotkeyCard.Header" xml:space="preserve"><value>프로필 슬롯 0–9</value></data>
+  <data name="ProfileSlotHotkeyCard.Description" xml:space="preserve"><value>수식키 + 0–9 키로 목록 순서대로 프로필을 적용합니다.</value></data>
+  <data name="HotkeyChangeBtn.Text" xml:space="preserve"><value>변경…</value></data>
+  <data name="HotkeyCaptureTitle" xml:space="preserve"><value>단축키 입력</value></data>
+  <data name="HotkeyCaptureHint" xml:space="preserve"><value>수식키(Ctrl, Alt, Shift, Win)를 누른 채 키를 입력하세요. 지우기로 단축키를 제거할 수 있습니다.</value></data>
+  <data name="HotkeyClear" xml:space="preserve"><value>지우기</value></data>
+  <data name="HotkeyNone" xml:space="preserve"><value>(설정 안 됨)</value></data>
+  <data name="ProfileSlotPattern" xml:space="preserve"><value>{0} + 0–9</value></data>
+  <data name="MonitorOff" xml:space="preserve"><value>꺼짐</value></data>
 </root>

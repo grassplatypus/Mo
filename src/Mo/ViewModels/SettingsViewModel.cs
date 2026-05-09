@@ -95,24 +95,34 @@ public partial class SettingsViewModel : ObservableObject
     public bool HotkeysEnabled
     {
         get => _settings.Settings.HotkeysEnabled;
-        set => Set(_settings.Settings.HotkeysEnabled, value, v => _settings.Settings.HotkeysEnabled = v, v =>
-        {
-            try
-            {
-                var hotkeys = App.Services.GetRequiredService<IHotkeyService>();
-                var profiles = App.Services.GetRequiredService<IProfileService>();
-                if (v)
-                {
-                    foreach (var p in profiles.Profiles)
-                        if (p.Hotkey != null) hotkeys.RegisterProfileHotkey(p.Id, p.Hotkey);
-                }
-                else
-                {
-                    hotkeys.UnregisterAll();
-                }
-            }
-            catch { }
-        });
+        set => Set(_settings.Settings.HotkeysEnabled, value, v => _settings.Settings.HotkeysEnabled = v,
+            _ => SafeRegisterAllHotkeys());
+    }
+
+    public HotkeyBinding? NextProfileHotkey
+    {
+        get => _settings.Settings.NextProfileHotkey;
+        set => Set(_settings.Settings.NextProfileHotkey, value,
+            v => _settings.Settings.NextProfileHotkey = v, _ => SafeRegisterAllHotkeys());
+    }
+
+    public HotkeyBinding? PrevProfileHotkey
+    {
+        get => _settings.Settings.PrevProfileHotkey;
+        set => Set(_settings.Settings.PrevProfileHotkey, value,
+            v => _settings.Settings.PrevProfileHotkey = v, _ => SafeRegisterAllHotkeys());
+    }
+
+    public HotkeyBinding? ProfileSlotModifier
+    {
+        get => _settings.Settings.ProfileSlotModifier;
+        set => Set(_settings.Settings.ProfileSlotModifier, value,
+            v => _settings.Settings.ProfileSlotModifier = v, _ => SafeRegisterAllHotkeys());
+    }
+
+    private static void SafeRegisterAllHotkeys()
+    {
+        try { App.RegisterAllHotkeys(); } catch { }
     }
 
     public RotationMethod RotationMethod

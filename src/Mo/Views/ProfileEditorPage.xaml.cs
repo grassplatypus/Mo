@@ -554,12 +554,19 @@ public sealed partial class ProfileEditorPage : Page
             return;
         }
 
-        List<MonitorInfo> current;
-        try { current = _displayService.GetCurrentConfiguration(); }
-        catch { current = []; }
+        // Pull every connected monitor (active + inactive) so a display that's
+        // currently off still shows up in the inventory and can be dragged into
+        // the layout. Falls back to active-only enumeration on failure.
+        List<MonitorInfo> connected;
+        try { connected = _displayService.GetAllConnectedMonitors(); }
+        catch
+        {
+            try { connected = _displayService.GetCurrentConfiguration(); }
+            catch { connected = []; }
+        }
 
         AvailableMonitors.Clear();
-        foreach (var monitor in current)
+        foreach (var monitor in connected)
         {
             bool inProfile = _profile.Monitors.Any(p => MatchesProfileMonitor(p, monitor));
             AvailableMonitors.Add(new AvailableMonitorItem(monitor, inProfile));
@@ -576,9 +583,24 @@ public sealed partial class ProfileEditorPage : Page
         return false;
     }
 
+    // Double-clicking a row in the inventory adds (or focuses) the monitor — same as
+    // clicking the small + button. Mirrors classic shell affordances and is more
+    // discoverable than the single icon button.
+    private void AvailableRow_DoubleTapped(object sender, Microsoft.UI.Xaml.Input.DoubleTappedRoutedEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.Tag is AvailableMonitorItem item)
+            AddOrFocusMonitorCore(item);
+    }
+
     private void AddOrFocusMonitor_Click(object sender, RoutedEventArgs e)
     {
-        if (_profile == null || sender is not Button btn || btn.Tag is not AvailableMonitorItem item) return;
+        if (sender is not Button btn || btn.Tag is not AvailableMonitorItem item) return;
+        AddOrFocusMonitorCore(item);
+    }
+
+    private void AddOrFocusMonitorCore(AvailableMonitorItem item)
+    {
+        if (_profile == null) return;
 
         if (item.InProfile)
         {
@@ -756,13 +778,17 @@ public sealed class AvailableMonitorItem
         Monitor = monitor;
         InProfile = inProfile;
         Title = string.IsNullOrEmpty(monitor.FriendlyName) ? monitor.DevicePath : monitor.FriendlyName;
-        Subtitle = $"{monitor.ResolutionText}  ·  {monitor.RefreshRateHz:F0} Hz";
+        // Annotate inactive monitors so the user knows the inventory entry is a
+        // currently-off display (cable plugged in but Windows path disabled).
+        var status = monitor.IsEnabled ? string.Empty : $"  ·  {ResourceHelper.GetString("MonitorOff")}";
+        Subtitle = $"{monitor.ResolutionText}  ·  {monitor.RefreshRateHz:F0} Hz{status}";
     }
 
     public MonitorInfo Monitor { get; }
     public bool InProfile { get; }
     public string Title { get; }
     public string Subtitle { get; }
+    public double RowOpacity => Monitor.IsEnabled ? 1.0 : 0.55;
     public Visibility AddIconVisibility => InProfile ? Visibility.Collapsed : Visibility.Visible;
     public Visibility CheckIconVisibility => InProfile ? Visibility.Visible : Visibility.Collapsed;
 }
