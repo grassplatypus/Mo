@@ -96,7 +96,6 @@ public static class Program
 
     private static string GetLocalFolder()
     {
-    {
         try { return Windows.Storage.ApplicationData.Current.LocalFolder.Path; }
         catch
         {
@@ -145,3 +144,4 @@ public static class Program
         }
         catch { }
     }
+}
