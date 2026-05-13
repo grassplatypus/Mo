@@ -45,11 +45,12 @@
             </tk:SettingsCard>
 
             <tk:SettingsCard x:Uid="LanguageCard">
-                <ComboBox MinWidth="200"
+                <ComboBox x:Name="LanguageCombo"
+                          MinWidth="200"
                           ItemsSource="{x:Bind LanguageOptions, Mode=OneTime}"
-                          SelectedValue="{x:Bind ViewModel.Language, Mode=TwoWay}"
-                          SelectedValuePath="Tag"
-                          DisplayMemberPath="Display" />
+                          DisplayMemberPath="Display"
+                          Loaded="LanguageCombo_Loaded"
+                          SelectionChanged="LanguageCombo_SelectionChanged" />
             </tk:SettingsCard>
 
             <!-- Profiles -->
@@ -117,9 +118,9 @@
                         <ComboBox x:Name="RotationMethodCombo"
                                   MinWidth="200"
                                   ItemsSource="{x:Bind RotationOptions, Mode=OneTime}"
-                                  SelectedValue="{x:Bind ViewModel.RotationMethod, Mode=TwoWay}"
-                                  SelectedValuePath="Method"
-                                  DisplayMemberPath="DisplayName" />
+                                  DisplayMemberPath="DisplayName"
+                                  Loaded="RotationMethodCombo_Loaded"
+                                  SelectionChanged="RotationMethodCombo_SelectionChanged" />
                     </tk:SettingsCard>
                 </tk:SettingsExpander.Items>
             </tk:SettingsExpander>

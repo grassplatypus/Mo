@@ -42,6 +42,60 @@ public sealed partial class SettingsPage : Page
         Loaded += async (_, _) => await LoadSystemInfoAsync();
     }
 
+    // ── ComboBox initial-selection wiring ──
+    //
+    // The previous x:Bind SelectedValue/SelectedValuePath approach is brittle in WinUI 3:
+    // when SelectedValue is evaluated before SelectedValuePath finishes binding, the
+    // initial lookup falls through to null. The combo renders blank AND the TwoWay
+    // listener pushes that null back into the source — fine for `string Language`,
+    // but a `RotationMethod` enum unbox of null throws NullReferenceException through
+    // CastHelpers.Unbox (this killed 0.20.1 first-launches for NVIDIA/AMD users).
+    //
+    // Wiring the selection manually in Loaded + writing back on SelectionChanged side-
+    // steps the entire binding race: by Loaded, both ItemsSource and the items are
+    // fully realized, so SelectedItem assignment is safe.
+
+    private bool _syncingLanguageCombo;
+    private bool _syncingRotationCombo;
+
+    private void LanguageCombo_Loaded(object sender, RoutedEventArgs e)
+    {
+        _syncingLanguageCombo = true;
+        try
+        {
+            LanguageCombo.SelectedItem =
+                LanguageOptions.FirstOrDefault(o => o.Tag == ViewModel.Language)
+                ?? LanguageOptions.FirstOrDefault(o => o.Tag == string.Empty);
+        }
+        finally { _syncingLanguageCombo = false; }
+    }
+
+    private void LanguageCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_syncingLanguageCombo) return;
+        if (LanguageCombo.SelectedItem is LanguageOption opt)
+            ViewModel.Language = opt.Tag;
+    }
+
+    private void RotationMethodCombo_Loaded(object sender, RoutedEventArgs e)
+    {
+        _syncingRotationCombo = true;
+        try
+        {
+            RotationMethodCombo.SelectedItem =
+                RotationOptions.FirstOrDefault(o => o.Method == ViewModel.RotationMethod)
+                ?? RotationOptions.FirstOrDefault(o => o.Method == RotationMethod.Windows);
+        }
+        finally { _syncingRotationCombo = false; }
+    }
+
+    private void RotationMethodCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_syncingRotationCombo) return;
+        if (RotationMethodCombo.SelectedItem is RotationMethodOption opt)
+            ViewModel.RotationMethod = opt.Method;
+    }
+
     private void RefreshHotkeyLabels()
     {
         NextHotkeyText.Text = ViewModel.NextProfileHotkey?.ToString() ?? ResourceHelper.GetString("HotkeyNone");

@@ -83,6 +83,16 @@ public partial class App : Application
 
         MainWindow.DispatcherQueue.ShutdownStarting += (_, _) => DisposeServices();
 
+        // Secondary launches are redirected here by Program.Main's single-instance guard.
+        // Bring the existing window forward instead of letting the redirect end silently —
+        // otherwise the user clicks the Start-menu shortcut and nothing visible happens.
+        try
+        {
+            Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().Activated += (_, _) =>
+                MainWindow?.DispatcherQueue?.TryEnqueue(() => MainWindow?.ShowAndActivate());
+        }
+        catch (Exception ex) { LogException("OnLaunched.RegisterActivated", ex); }
+
         _ = InitializeAsync();
     }
 
@@ -309,6 +319,14 @@ public partial class App : Application
             if (settings.Settings.GpuRotationMethodPromptShown) return;
             if (settings.Settings.RotationMethod != Models.RotationMethod.Windows) return;
 
+            // Mark "shown" BEFORE doing anything risky. If the dialog flow or the
+            // RotationMethod write below throws, we must still never re-prompt — the
+            // 0.20.1 bug where the SettingsPage Selector binding NREed left this
+            // flag false and trapped users in an infinite crash loop on every launch.
+            settings.Settings.GpuRotationMethodPromptShown = true;
+            try { await settings.SaveAsync(); }
+            catch (Exception saveEx) { LogException("MaybeOfferDriverRotationAsync.MarkShown", saveEx); }
+
             // Give the shell a beat to settle so the dialog doesn't race MainWindow.
             await Task.Delay(2500);
 
@@ -326,13 +344,8 @@ public partial class App : Application
                 vendorName = "AMD";
             }
 
-            if (suggestion == null || vendorName == null)
-            {
-                // No supported driver detected — don't re-prompt later either; nothing to offer.
-                settings.Settings.GpuRotationMethodPromptShown = true;
-                await settings.SaveAsync();
-                return;
-            }
+            // No supported driver detected — nothing to offer.
+            if (suggestion == null || vendorName == null) return;
 
             if (MainWindow?.Content?.XamlRoot == null) return;
 
@@ -349,16 +362,14 @@ public partial class App : Application
             var result = await dialog.ShowAsync();
             if (result == ContentDialogResult.Primary)
             {
-                // Route through the VM so any open Settings page binding sees
-                // PropertyChanged and refreshes. The VM's setter writes to
-                // settings.Settings AND awaits SaveAsync.
-                var vm = Services.GetRequiredService<ViewModels.SettingsViewModel>();
-                vm.RotationMethod = suggestion.Value;
+                // Write directly to the settings store — going through the VM setter
+                // raises PropertyChanged into a possibly-cached SettingsPage whose
+                // SelectedValue/SelectedValuePath ComboBox binding throws NRE during
+                // the TwoWay readback (CastHelpers.Unbox on a null Selector value).
+                settings.Settings.RotationMethod = suggestion.Value;
+                try { await settings.SaveAsync(); }
+                catch (Exception saveEx) { LogException("MaybeOfferDriverRotationAsync.SaveRotation", saveEx); }
             }
-
-            settings.Settings.GpuRotationMethodPromptShown = true;
-            try { await settings.SaveAsync(); }
-            catch (Exception saveEx) { LogException("MaybeOfferDriverRotationAsync.Save", saveEx); }
         }
         catch (Exception ex)
         {

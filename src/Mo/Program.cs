@@ -28,6 +28,19 @@ public static class Program
             QuarantineCorruptUserData();
 
             global::WinRT.ComWrappersSupport.InitializeComWrappers();
+
+            // Single-instance redirect. Without this every Start-menu / shell:AppsFolder
+            // activation spawns a new Mo.exe; the first survives invisibly (start-minimized
+            // + tray icon collision) and the user sees nothing happen. Must run BEFORE
+            // Application.Start so secondary instances never spin up the dispatcher.
+            var primary = Microsoft.Windows.AppLifecycle.AppInstance.FindOrRegisterForKey("Mo.SingleInstance");
+            if (!primary.IsCurrent)
+            {
+                var activated = Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().GetActivatedEventArgs();
+                primary.RedirectActivationToAsync(activated).AsTask().GetAwaiter().GetResult();
+                return 0;
+            }
+
             Application.Start(p =>
             {
                 var ctx = new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread());
