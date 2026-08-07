@@ -136,8 +136,24 @@ public sealed class HotkeyService : IHotkeyService
 
         int id = _nextId++;
         if (RegisterHotKey(_hwnd, id, mods, (uint)binding.Key))
+        {
             _registered[id] = new HotkeyEntry(action, binding, payload);
+            return;
+        }
+
+        // RegisterHotKey fails when another process already owns the combination —
+        // Ctrl+Alt+1..9 in particular collides with a lot of software. Previously the
+        // entry was just dropped: the shortcut stayed visible on the profile card and
+        // in Settings, and simply never fired, with nothing to explain why.
+        Conflicts.Add(new HotkeyConflict(action, binding, payload));
+        Helpers.BootLog.Write("hotkey.conflict", $"{action} {binding} payload={payload ?? "-"}");
     }
+
+    /// <summary>
+    /// Bindings the OS refused since the last <see cref="UnregisterAll"/>, because
+    /// another application already owns them.
+    /// </summary>
+    public List<HotkeyConflict> Conflicts { get; } = [];
 
     public void UnregisterAll()
     {
@@ -146,6 +162,11 @@ public sealed class HotkeyService : IHotkeyService
             try { UnregisterHotKey(_hwnd, id); } catch { }
         }
         _registered.Clear();
+        Conflicts.Clear();
+
+        // Ids are only meaningful while registered, and RegisterAllHotkeys runs on
+        // every profile-list change — letting the counter climb forever was pointless.
+        _nextId = 0xA001;
     }
 
     public void Dispose()
@@ -158,3 +179,6 @@ public sealed class HotkeyService : IHotkeyService
 }
 
 public sealed record HotkeyTriggeredArgs(HotkeyService.HotkeyAction Action, string? Payload);
+
+/// <summary>A binding Windows refused because another process already owns it.</summary>
+public sealed record HotkeyConflict(HotkeyService.HotkeyAction Action, HotkeyBinding Binding, string? Payload);

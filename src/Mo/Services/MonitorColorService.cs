@@ -44,15 +44,39 @@ public sealed class MonitorColorService : IMonitorColorService
 
     private void OnDisplaySettingsChanged(object? sender, EventArgs e) => DestroyCache();
 
-    private List<(PHYSICAL_MONITOR[] physicalMonitors, nint hMonitor, string gdiDeviceName)> GetHandles()
+    /// <summary>
+    /// Runs <paramref name="body"/> against the cached physical-monitor handles while
+    /// holding the cache lock.
+    /// </summary>
+    /// <remarks>
+    /// Every DDC/CI call must go through here. The previous shape returned raw handles
+    /// and let callers use them after the lock was released, which is a use-after-free:
+    /// <c>SystemEvents.DisplaySettingsChanged</c> is raised on a system thread and calls
+    /// <see cref="DestroyCache"/>, so a concurrent <c>DestroyPhysicalMonitors</c> could
+    /// free a handle mid-transaction. That race is not theoretical here — applying a
+    /// profile changes the display configuration (raising the event) and then
+    /// immediately pushes colour settings down the very handles being freed.
+    ///
+    /// Holding the lock across a DDC/CI round trip costs ~50 ms, but these calls were
+    /// already serialized in practice, and DestroyCache now simply waits its turn.
+    /// Never call WMI from inside <paramref name="body"/> — see SetWmiBrightness.
+    /// </remarks>
+    private T WithHandles<T>(Func<List<(PHYSICAL_MONITOR[] physicalMonitors, nint hMonitor, string gdiDeviceName)>, T> body)
     {
         lock (_cacheLock)
         {
-            if (_cachedHandles != null) return _cachedHandles;
-            _cachedHandles = GetPhysicalMonitorHandles();
-            return _cachedHandles;
+            // After Dispose the cache must stay empty; rebuilding it here would open
+            // handles that nothing is left to free.
+            if (_disposed) return body([]);
+
+            _cachedHandles ??= GetPhysicalMonitorHandles();
+            return body(_cachedHandles);
         }
     }
+
+    /// <summary>Enumerates every physical monitor handle in EnumDisplayMonitors order.</summary>
+    private T WithEachHandle<T>(Func<IEnumerable<nint>, T> body) =>
+        WithHandles(entries => body(entries.SelectMany(e => e.physicalMonitors).Select(pm => pm.hPhysicalMonitor)));
 
     private void DestroyCache()
     {
@@ -69,32 +93,19 @@ public sealed class MonitorColorService : IMonitorColorService
 
     public List<MonitorColorCapabilities> DetectCapabilities()
     {
-        var result = new List<MonitorColorCapabilities>();
+        var result = WithEachHandle(handles => handles.Select(ProbeCapabilities).ToList());
 
-        foreach (var (physicalMonitors, _, _) in GetHandles())
-        {
-            foreach (var pm in physicalMonitors)
-                result.Add(ProbeCapabilities(pm.hPhysicalMonitor));
-        }
-
-        // If no DDC/CI brightness found, check WMI for laptop display (first monitor)
+        // WMI is queried outside the handle lock — it is slow and unrelated to DDC/CI,
+        // and holding the lock across it would stall every other colour operation.
         if (result.Count > 0 && !result[0].SupportsBrightness)
-        {
             result[0].SupportsWmiBrightness = DetectWmiBrightness();
-        }
 
         return result;
     }
 
     public List<MonitorColorSettings> CaptureAllMonitors()
     {
-        var results = new List<MonitorColorSettings>();
-
-        foreach (var (physicalMonitors, _, _) in GetHandles())
-        {
-            foreach (var pm in physicalMonitors)
-                results.Add(ReadSettings(pm.hPhysicalMonitor));
-        }
+        var results = WithEachHandle(handles => handles.Select(ReadSettings).ToList());
 
         // WMI fallback for first monitor if DDC/CI brightness not available
         if (results.Count > 0 && !results[0].Brightness.HasValue)
@@ -109,82 +120,60 @@ public sealed class MonitorColorService : IMonitorColorService
 
     public void ApplyToMonitor(int monitorIndex, MonitorColorSettings settings)
     {
-        int idx = 0;
-        foreach (var (physicalMonitors, _, _) in GetHandles())
+        bool? applied = WithEachHandle(handles =>
         {
-            foreach (var pm in physicalMonitors)
-            {
-                if (idx == monitorIndex)
-                {
-                    bool applied = WriteSettings(pm.hPhysicalMonitor, settings);
-                    if (!applied && settings.Brightness.HasValue && idx == 0)
-                        SetWmiBrightness(settings.Brightness.Value);
-                    return;
-                }
-                idx++;
-            }
-        }
+            var handle = handles.Skip(monitorIndex).Select(h => (nint?)h).FirstOrDefault();
+            return handle == null ? (bool?)null : WriteSettings(handle.Value, settings);
+        });
+
+        if (applied == false && settings.Brightness.HasValue && monitorIndex == 0)
+            SetWmiBrightness(settings.Brightness.Value);
     }
 
     public void ApplyAll(List<(int index, MonitorColorSettings settings)> entries)
     {
-        int idx = 0;
-        foreach (var (physicalMonitors, _, _) in GetHandles())
+        // Collect which entries fell back so the WMI writes happen after the lock.
+        var needsWmi = WithEachHandle(handles =>
         {
-            foreach (var pm in physicalMonitors)
+            var fallbacks = new List<MonitorColorSettings>();
+            int idx = 0;
+            foreach (var handle in handles)
             {
                 var match = entries.FirstOrDefault(e => e.index == idx);
-                if (match.settings != null)
-                {
-                    bool ddcWorked = WriteSettings(pm.hPhysicalMonitor, match.settings);
-                    if (!ddcWorked && match.settings.Brightness.HasValue && idx == 0)
-                        SetWmiBrightness(match.settings.Brightness.Value);
-                }
+                if (match.settings != null && !WriteSettings(handle, match.settings) && idx == 0)
+                    fallbacks.Add(match.settings);
                 idx++;
             }
-        }
+            return fallbacks;
+        });
+
+        foreach (var settings in needsWmi)
+            if (settings.Brightness.HasValue)
+                SetWmiBrightness(settings.Brightness.Value);
     }
 
-    public (uint current, uint max)? GetVcpFeature(int monitorIndex, byte vcpCode)
-    {
-        int idx = 0;
-        foreach (var (physicalMonitors, _, _) in GetHandles())
+    public (uint current, uint max)? GetVcpFeature(int monitorIndex, byte vcpCode) =>
+        WithEachHandle(handles =>
         {
-            foreach (var pm in physicalMonitors)
+            var handle = handles.Skip(monitorIndex).Select(h => (nint?)h).FirstOrDefault();
+            if (handle == null) return null;
+            try
             {
-                if (idx == monitorIndex)
-                {
-                    try
-                    {
-                        if (GetVCPFeatureAndVCPFeatureReply(pm.hPhysicalMonitor, vcpCode, IntPtr.Zero, out uint cur, out uint max))
-                            return (cur, max);
-                    }
-                    catch { }
-                    return null;
-                }
-                idx++;
+                if (GetVCPFeatureAndVCPFeatureReply(handle.Value, vcpCode, IntPtr.Zero, out uint cur, out uint max))
+                    return ((uint current, uint max)?)(cur, max);
             }
-        }
-        return null;
-    }
+            catch { }
+            return null;
+        });
 
-    public bool SetVcpFeature(int monitorIndex, byte vcpCode, uint value)
-    {
-        int idx = 0;
-        foreach (var (physicalMonitors, _, _) in GetHandles())
+    public bool SetVcpFeature(int monitorIndex, byte vcpCode, uint value) =>
+        WithEachHandle(handles =>
         {
-            foreach (var pm in physicalMonitors)
-            {
-                if (idx == monitorIndex)
-                {
-                    try { return SetVCPFeature(pm.hPhysicalMonitor, vcpCode, value); }
-                    catch { return false; }
-                }
-                idx++;
-            }
-        }
-        return false;
-    }
+            var handle = handles.Skip(monitorIndex).Select(h => (nint?)h).FirstOrDefault();
+            if (handle == null) return false;
+            try { return SetVCPFeature(handle.Value, vcpCode, value); }
+            catch { return false; }
+        });
 
     // ── Capability Detection ──
 
@@ -384,30 +373,32 @@ public sealed class MonitorColorService : IMonitorColorService
 
     public bool ApplyToMonitorByDeviceName(string gdiDeviceName, MonitorColorSettings settings)
     {
-        var handle = FindHandle(gdiDeviceName);
-        if (handle == null) return false;
-        bool applied = WriteSettings(handle.Value, settings);
-        if (!applied && settings.Brightness.HasValue) SetWmiBrightness(settings.Brightness.Value);
-        return applied;
+        bool? applied = WithHandleFor(gdiDeviceName, h => WriteSettings(h, settings));
+
+        if (applied == false && settings.Brightness.HasValue)
+            SetWmiBrightness(settings.Brightness.Value);
+
+        return applied == true;
     }
 
     public MonitorColorCapabilities? DetectCapabilitiesByDeviceName(string gdiDeviceName)
     {
-        var handle = FindHandle(gdiDeviceName);
-        if (handle == null) return null;
-        var caps = ProbeCapabilities(handle.Value);
+        var caps = WithHandleFor(gdiDeviceName, ProbeCapabilities);
+        if (caps == null) return null;
+
         // WMI fallback only meaningful for the laptop internal panel; identify it
         // crudely as DISPLAY1 with no DDC/CI brightness.
         if (!caps.SupportsBrightness && gdiDeviceName.EndsWith("DISPLAY1", StringComparison.OrdinalIgnoreCase))
             caps.SupportsWmiBrightness = DetectWmiBrightness();
+
         return caps;
     }
 
     public MonitorColorSettings? CaptureByDeviceName(string gdiDeviceName)
     {
-        var handle = FindHandle(gdiDeviceName);
-        if (handle == null) return null;
-        var s = ReadSettings(handle.Value);
+        var s = WithHandleFor(gdiDeviceName, ReadSettings);
+        if (s == null) return null;
+
         if (!s.Brightness.HasValue && gdiDeviceName.EndsWith("DISPLAY1", StringComparison.OrdinalIgnoreCase))
         {
             var w = GetWmiBrightness();
@@ -416,35 +407,41 @@ public sealed class MonitorColorService : IMonitorColorService
         return s;
     }
 
-    public bool SetVcpFeatureByDeviceName(string gdiDeviceName, byte vcpCode, uint value)
-    {
-        var handle = FindHandle(gdiDeviceName);
-        if (handle == null) return false;
-        try { return SetVCPFeature(handle.Value, vcpCode, value); }
-        catch { return false; }
-    }
-
-    public (uint current, uint max)? GetVcpFeatureByDeviceName(string gdiDeviceName, byte vcpCode)
-    {
-        var handle = FindHandle(gdiDeviceName);
-        if (handle == null) return null;
-        try
+    public bool SetVcpFeatureByDeviceName(string gdiDeviceName, byte vcpCode, uint value) =>
+        WithHandleFor(gdiDeviceName, h =>
         {
-            if (GetVCPFeatureAndVCPFeatureReply(handle.Value, vcpCode, IntPtr.Zero, out uint cur, out uint max))
-                return (cur, max);
-        }
-        catch { }
-        return null;
-    }
+            try { return SetVCPFeature(h, vcpCode, value); }
+            catch { return false; }
+        }) == true;
 
-    private nint? FindHandle(string gdiDeviceName)
-    {
-        if (string.IsNullOrEmpty(gdiDeviceName)) return null;
-        foreach (var (monitors, _, name) in GetHandles())
+    public (uint current, uint max)? GetVcpFeatureByDeviceName(string gdiDeviceName, byte vcpCode) =>
+        WithHandleFor<(uint current, uint max)?>(gdiDeviceName, h =>
         {
-            if (string.Equals(name, gdiDeviceName, StringComparison.OrdinalIgnoreCase) && monitors.Length > 0)
-                return monitors[0].hPhysicalMonitor;
-        }
-        return null;
+            try
+            {
+                if (GetVCPFeatureAndVCPFeatureReply(h, vcpCode, IntPtr.Zero, out uint cur, out uint max))
+                    return (cur, max);
+            }
+            catch { }
+            return null;
+        });
+
+    /// <summary>
+    /// Runs <paramref name="body"/> against the handle for a GDI device name, under the
+    /// cache lock. Returns default when the monitor is not present.
+    /// </summary>
+    private TResult? WithHandleFor<TResult>(string gdiDeviceName, Func<nint, TResult> body)
+    {
+        if (string.IsNullOrEmpty(gdiDeviceName)) return default;
+
+        return WithHandles(entries =>
+        {
+            foreach (var (monitors, _, name) in entries)
+            {
+                if (string.Equals(name, gdiDeviceName, StringComparison.OrdinalIgnoreCase) && monitors.Length > 0)
+                    return body(monitors[0].hPhysicalMonitor);
+            }
+            return default;
+        });
     }
 }

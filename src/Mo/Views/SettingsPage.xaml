@@ -95,6 +95,18 @@
                         </tk:SettingsCard.HeaderIcon>
                         <ToggleSwitch IsOn="{x:Bind ViewModel.HotkeysEnabled, Mode=TwoWay}" OnContent="" OffContent="" />
                     </tk:SettingsCard>
+
+                    <!-- Only present when Windows refused a binding. A shortcut that
+                         silently never fires is indistinguishable from a broken app. -->
+                    <tk:SettingsCard x:Name="HotkeyConflictCard" Visibility="Collapsed" ContentAlignment="Vertical">
+                        <tk:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xE7BA;" Foreground="{ThemeResource SystemFillColorCautionBrush}" />
+                        </tk:SettingsCard.HeaderIcon>
+                        <InfoBar x:Name="HotkeyConflictBar"
+                                 Severity="Warning"
+                                 IsOpen="True"
+                                 IsClosable="False" />
+                    </tk:SettingsCard>
                     <tk:SettingsCard x:Uid="NextProfileHotkeyCard">
                         <tk:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE893;" />
@@ -201,6 +213,18 @@
                 </tk:SettingsExpander.Items>
             </tk:SettingsExpander>
 
+            <!-- Uninstall cleanup. Neither the ZIP build (no installer) nor an
+                 unpackaged run alongside MSIX removes %LOCALAPPDATA%\Mo or the
+                 auto-start entry, so deleting the app folder used to leave both behind. -->
+            <tk:SettingsCard x:Uid="RemoveDataCard">
+                <tk:SettingsCard.HeaderIcon>
+                    <FontIcon Glyph="&#xE74D;" />
+                </tk:SettingsCard.HeaderIcon>
+                <Button x:Name="RemoveDataBtn" Click="RemoveData_Click">
+                    <TextBlock x:Uid="RemoveDataButton" />
+                </Button>
+            </tk:SettingsCard>
+
             <!-- About / system info -->
             <tk:SettingsExpander x:Uid="AboutExpander">
                 <tk:SettingsExpander.HeaderIcon>
@@ -265,6 +289,9 @@
                                 </Button>
                                 <Button x:Name="ShowDebugBtn" Click="ShowDebugInfo_Click">
                                     <TextBlock x:Uid="ShowDebugText" />
+                                </Button>
+                                <Button x:Name="OpenLogFolderBtn" Click="OpenLogFolder_Click">
+                                    <TextBlock x:Uid="OpenLogFolderText" />
                                 </Button>
                             </StackPanel>
                         </StackPanel>

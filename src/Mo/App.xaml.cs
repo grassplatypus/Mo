@@ -312,7 +312,11 @@ public partial class App : Application
         services.AddSingleton<ISystemInfoService, SystemInfoService>();
         services.AddSingleton<IntelRotationService>();
 
-        services.AddTransient<ProfileListViewModel>();
+        // Singleton, not transient: this VM subscribes to IProfileService.ProfileApplied
+        // (a singleton event) and never unsubscribes, so every extra instance would leak
+        // and every one of them would react to each apply. It also mirrors the single
+        // shared profile collection, so there is nothing per-view to keep separate.
+        services.AddSingleton<ProfileListViewModel>();
         // Singleton: SettingsViewModel mirrors AppSettings, so a single instance lets
         // every consumer (Settings page, prompts, hotkey editor) see PropertyChanged
         // when settings mutate from any source. Transient instances would each cache
@@ -612,8 +616,20 @@ public partial class App : Application
         {
             hs.HotkeyTriggered -= OnHotkeyTriggered;
             hs.HotkeyTriggered += OnHotkeyTriggered;
+
+            HotkeyConflicts = [.. hs.Conflicts];
+            HotkeyConflictsChanged?.Invoke(null, EventArgs.Empty);
         }
     }
+
+    /// <summary>
+    /// Bindings Windows refused at the last registration pass because another program
+    /// already owns them. Surfaced in Settings so a shortcut that silently does nothing
+    /// has a visible explanation.
+    /// </summary>
+    public static IReadOnlyList<HotkeyConflict> HotkeyConflicts { get; private set; } = [];
+
+    public static event EventHandler? HotkeyConflictsChanged;
 
     private static async void OnHotkeyTriggered(object? sender, HotkeyTriggeredArgs e)
     {

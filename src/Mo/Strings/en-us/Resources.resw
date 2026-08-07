@@ -198,6 +198,17 @@ Press Delete or Backspace to clear. Escape to cancel.</value></data>
   <data name="TooltipAddMonitor" xml:space="preserve"><value>Add {0} to this profile</value></data>
   <data name="TooltipMonitorInProfile" xml:space="preserve"><value>{0} is already in this profile — select it in the layout</value></data>
   <data name="MoreActions" xml:space="preserve"><value>More actions</value></data>
+  <data name="HotkeyConflictTitle" xml:space="preserve"><value>Some shortcuts are unavailable</value></data>
+  <data name="HotkeyConflictMessage" xml:space="preserve"><value>Windows gave these to another program, so they will not trigger Mo: {0}. Pick a different combination.</value></data>
+  <data name="RemoveDataCard.Header" xml:space="preserve"><value>Remove Mo's data</value></data>
+  <data name="RemoveDataCard.Description" xml:space="preserve"><value>Deletes saved profiles, settings and logs, and removes the auto-start entry. Do this before deleting the app folder — uninstalling does not clean these up.</value></data>
+  <data name="RemoveDataButton" xml:space="preserve"><value>Remove data</value></data>
+  <data name="RemoveDataTitle" xml:space="preserve"><value>Remove Mo's data</value></data>
+  <data name="RemoveDataConfirm" xml:space="preserve"><value>This permanently deletes the following. Saved profiles cannot be recovered.</value></data>
+  <data name="RemoveDataNothing" xml:space="preserve"><value>There is nothing to remove — no saved data or auto-start entry was found.</value></data>
+  <data name="RemoveDataDone" xml:space="preserve"><value>Removed. Mo will close now.</value></data>
+  <data name="RemoveDataPartial" xml:space="preserve"><value>Some items could not be removed. Close Mo and delete them manually.</value></data>
+  <data name="OpenLogFolderText" xml:space="preserve"><value>Open logs</value></data>
   <data name="RestoreOnStartupCard.Header" xml:space="preserve"><value>Restore last profile on startup</value></data>
   <data name="RestoreOnStartupCard.Description" xml:space="preserve"><value>Re-apply the most recently used profile when Mo launches.</value></data>
   <data name="RestoreColorCard.Header" xml:space="preserve"><value>Restore color settings on startup</value></data>

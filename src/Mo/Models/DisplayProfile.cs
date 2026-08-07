@@ -37,17 +37,23 @@ public sealed class DisplayProfile : ObservableObject
 
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
 
+    // The setters coalesce null away. These properties are non-nullable to the rest of
+    // the app, but System.Text.Json will happily assign null from `"name": null` in a
+    // hand-edited or third-party profile file — and Program.QuarantineCorruptUserData
+    // only catches files that fail to *parse*, not ones that parse to nulls. Without
+    // this, importing such a file NREs while rendering the card.
+
     public string Name
     {
         get => _name;
-        set => SetProperty(ref _name, value);
+        set => SetProperty(ref _name, value ?? string.Empty);
     }
 
     /// <summary>The user's own note. Never written by the app; see LegacyDescription.</summary>
     public string Description
     {
         get => _description;
-        set => SetProperty(ref _description, value);
+        set => SetProperty(ref _description, value ?? string.Empty);
     }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -69,7 +75,9 @@ public sealed class DisplayProfile : ObservableObject
         get => _monitors;
         set
         {
-            if (SetProperty(ref _monitors, value))
+            // A null here would take down every consumer: MonitorCount, the layout
+            // thumbnail, the editor and CheckCompatibility all dereference it.
+            if (SetProperty(ref _monitors, value ?? []))
                 OnPropertyChanged(nameof(MonitorCount));
         }
     }

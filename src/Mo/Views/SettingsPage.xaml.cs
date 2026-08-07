@@ -45,8 +45,45 @@ public sealed partial class SettingsPage : Page
         InitializeComponent();
         ApplyOneOffStrings();
         RefreshHotkeyLabels();
-        ViewModel.PropertyChanged += (_, _) => RefreshHotkeyLabels();
+        // SettingsViewModel is a singleton that outlives any page, so both handlers are
+        // detached on Unload rather than left to accumulate.
+        ViewModel.PropertyChanged += OnViewModelPropertyChanged;
+        App.HotkeyConflictsChanged += OnHotkeyConflictsChanged;
+        Unloaded += (_, _) =>
+        {
+            ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+            App.HotkeyConflictsChanged -= OnHotkeyConflictsChanged;
+        };
+
         Loaded += async (_, _) => await LoadSystemInfoAsync();
+        RefreshHotkeyConflicts();
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        => RefreshHotkeyLabels();
+
+    private void OnHotkeyConflictsChanged(object? sender, EventArgs e) =>
+        DispatcherQueue.TryEnqueue(RefreshHotkeyConflicts);
+
+    /// <summary>
+    /// Lists any shortcut Windows refused. RegisterHotKey fails when another process
+    /// already owns the combination — Ctrl+Alt+digit collides often — and the binding
+    /// otherwise stays visible in the UI while doing nothing at all.
+    /// </summary>
+    private void RefreshHotkeyConflicts()
+    {
+        var conflicts = App.HotkeyConflicts;
+        if (conflicts.Count == 0)
+        {
+            HotkeyConflictCard.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        HotkeyConflictBar.Title = ResourceHelper.GetString("HotkeyConflictTitle");
+        HotkeyConflictBar.Message = ResourceHelper.GetString(
+            "HotkeyConflictMessage",
+            string.Join(", ", conflicts.Select(c => c.Binding.ToString()).Distinct()));
+        HotkeyConflictCard.Visibility = Visibility.Visible;
     }
 
     // ── ComboBox initial-selection wiring ──
@@ -261,6 +298,71 @@ public sealed partial class SettingsPage : Page
         SystemInfoBox.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
         if (ShowDebugBtn.Content is TextBlock t)
             t.Text = ResourceHelper.GetString(show ? "HideDebugInfo" : "ShowDebugInfo");
+    }
+
+    private async void OpenLogFolder_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var dir = Path.Combine(AppDataCleanup.UnpackagedDataDirectory(), "logs");
+            Directory.CreateDirectory(dir);
+            await Windows.System.Launcher.LaunchFolderPathAsync(dir);
+        }
+        catch { }
+    }
+
+    /// <summary>
+    /// Deletes Mo's user data and auto-start entry, then closes the app — the state it
+    /// would be in after a proper uninstall.
+    /// </summary>
+    private async void RemoveData_Click(object sender, RoutedEventArgs e)
+    {
+        var items = AppDataCleanup.Preview();
+
+        var body = items.Count == 0
+            ? ResourceHelper.GetString("RemoveDataNothing")
+            : ResourceHelper.GetString("RemoveDataConfirm") + "\n\n" + string.Join("\n", items);
+
+        var confirm = new ContentDialog
+        {
+            Title = ResourceHelper.GetString("RemoveDataTitle"),
+            Content = new TextBlock { Text = body, TextWrapping = TextWrapping.Wrap },
+            PrimaryButtonText = ResourceHelper.GetString("RemoveDataButton"),
+            CloseButtonText = ResourceHelper.GetString("Cancel"),
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = XamlRoot,
+        };
+
+        if (items.Count == 0)
+        {
+            confirm.PrimaryButtonText = null;
+            confirm.CloseButtonText = ResourceHelper.GetString("OK");
+            await confirm.ShowAsync();
+            return;
+        }
+
+        if (await confirm.ShowAsync() != ContentDialogResult.Primary) return;
+
+        var result = AppDataCleanup.Run();
+
+        // Exit rather than carry on: the settings and profiles this session holds in
+        // memory would otherwise be written straight back out on the next save.
+        var done = new ContentDialog
+        {
+            Title = ResourceHelper.GetString("RemoveDataTitle"),
+            Content = new TextBlock
+            {
+                Text = result.Failed.Count == 0
+                    ? ResourceHelper.GetString("RemoveDataDone")
+                    : ResourceHelper.GetString("RemoveDataPartial") + "\n\n" + string.Join("\n", result.Failed),
+                TextWrapping = TextWrapping.Wrap,
+            },
+            CloseButtonText = ResourceHelper.GetString("ExitApp"),
+            XamlRoot = XamlRoot,
+        };
+        await done.ShowAsync();
+
+        App.MainWindow?.ForceClose();
     }
 }
 

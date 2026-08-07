@@ -4,10 +4,16 @@ using Microsoft.UI.Xaml;
 
 namespace Mo;
 
-// Explicit Main so we can wrap process startup in try/catch and surface failures to
-// Windows Event Viewer + a crash log file. The XAML-generated Main runs after
+// Explicit Main so we can wrap process startup in try/catch and surface failures to a
+// crash log file plus a message box. The XAML-generated Main runs after
 // XamlCheckProcessRequirements / WinRT init, by which point a corrupted PRI or
 // settings file would have already killed the process with no diagnostic trail.
+//
+// Diagnostics deliberately stay inside %LOCALAPPDATA%\Mo\logs. Earlier builds also
+// wrote to the Windows event log, which creates a source under
+// HKLM\SYSTEM\CurrentControlSet\Services\EventLog\Application\Mo — machine-wide state
+// that needs admin to create, needs admin to remove, and survives uninstalling the app.
+// BootLog covers the same ground without leaving anything behind.
 //
 // Activated by <DefineConstants>DISABLE_XAML_GENERATED_MAIN</DefineConstants> in
 // the .csproj; without that define WinUI3 source-generates its own Main and refuses
@@ -17,6 +23,12 @@ public static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        // Headless cleanup for uninstallers and scripts. Handled before anything else
+        // touches the data directory, and before the single-instance guard, so it works
+        // even while another copy is running.
+        if (args.Any(a => string.Equals(a, "--cleanup", StringComparison.OrdinalIgnoreCase)))
+            return RunCleanup(args);
+
         Helpers.BootLog.BeginSession(typeof(Program).Assembly.GetName().Version?.ToString() ?? "?");
 
         try
@@ -73,6 +85,31 @@ public static class Program
             WriteFatal(ex);
             return -1;
         }
+    }
+
+    /// <summary>
+    /// Deletes Mo's user data and auto-start entry, then exits. Add <c>--quiet</c> to
+    /// suppress the summary dialog when running from an uninstaller.
+    /// </summary>
+    private static int RunCleanup(string[] args)
+    {
+        bool quiet = args.Any(a => string.Equals(a, "--quiet", StringComparison.OrdinalIgnoreCase));
+        var result = Services.AppDataCleanup.Run();
+
+        if (quiet) return result.Failed.Count == 0 ? 0 : 1;
+
+        const uint MB_OK = 0x0, MB_ICONINFORMATION = 0x40, MB_SETFOREGROUND = 0x10000;
+        var summary = result.Removed.Count == 0
+            ? "삭제할 Mo 데이터가 없습니다."
+            : "다음 항목을 삭제했습니다:\n\n" + string.Join("\n", result.Removed);
+
+        if (result.Failed.Count > 0)
+            summary += "\n\n삭제하지 못한 항목:\n" + string.Join("\n", result.Failed);
+
+        try { MessageBoxW(0, summary, "Mo", MB_OK | MB_ICONINFORMATION | MB_SETFOREGROUND); }
+        catch { }
+
+        return result.Failed.Count == 0 ? 0 : 1;
     }
 
     // ── Single-instance redirect ──
@@ -215,7 +252,7 @@ public static class Program
         foreach (var p in others)
         {
             try { p.Kill(entireProcessTree: true); p.WaitForExit(3000); }
-            catch (Exception ex) { WriteEventLog($"Could not end wedged Mo process {p.Id}: {ex.Message}", EventLogEntryType.Warning); }
+            catch (Exception ex) { Helpers.BootLog.WriteError($"recover.kill.{p.Id}", ex); }
             finally { p.Dispose(); }
         }
         return true;
@@ -270,7 +307,7 @@ public static class Program
         catch (Exception ex)
         {
             // Quarantine itself failing is non-fatal — log but proceed.
-            WriteEventLog($"User-data quarantine failed: {ex}", EventLogEntryType.Warning);
+            Helpers.BootLog.WriteError("quarantine", ex);
         }
     }
 
@@ -279,7 +316,7 @@ public static class Program
         var quarantinePath = path + ".corrupt-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss");
         try { File.Move(path, quarantinePath); }
         catch { try { File.Delete(path); } catch { } }
-        WriteEventLog($"Quarantined corrupt file: {path} -> {quarantinePath}", EventLogEntryType.Warning);
+        Helpers.BootLog.Write("quarantine.file", $"{path} -> {quarantinePath}");
     }
 
     private static string GetLocalFolder()
@@ -296,7 +333,6 @@ public static class Program
     private static void WriteFatal(Exception ex)
     {
         var msg = $"Mo failed to start.\n\n{ex}\n\nOS: {Environment.OSVersion}\nCLR: {Environment.Version}\nTime: {DateTime.Now:O}";
-        WriteEventLog(msg, EventLogEntryType.Error);
         var logPath = WriteCrashFile(msg);
 
         // A startup failure with log-file-only reporting is indistinguishable from
@@ -312,27 +348,6 @@ public static class Program
                 "Mo", MB_OK | MB_ICONERROR | MB_SETFOREGROUND);
         }
         catch { }
-    }
-
-    private static void WriteEventLog(string message, EventLogEntryType type)
-    {
-        try
-        {
-            // EventLog.WriteEntry auto-creates the source on first call when running
-            // elevated; on standard user accounts it falls back to the Application
-            // log under the generic ".NET Runtime" source — still visible.
-            const string source = "Mo";
-            try
-            {
-                if (!EventLog.SourceExists(source))
-                    EventLog.CreateEventSource(source, "Application");
-            }
-            catch { /* Source registration needs admin once; ignore if denied. */ }
-
-            EventLog.WriteEntry(EventLog.SourceExists(source) ? source : ".NET Runtime",
-                message, type);
-        }
-        catch { /* Best-effort; never throw from logger. */ }
     }
 
     private static string? WriteCrashFile(string message)
