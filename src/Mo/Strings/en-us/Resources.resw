@@ -214,6 +214,9 @@ Press Delete or Backspace to clear. Escape to cancel.</value></data>
   <data name="ReorderHint" xml:space="preserve"><value>Drag cards to reorder. The number is the keyboard slot.</value></data>
   <data name="MoveUp" xml:space="preserve"><value>Move up</value></data>
   <data name="MoveDown" xml:space="preserve"><value>Move down</value></data>
+  <data name="Duplicate" xml:space="preserve"><value>Duplicate</value></data>
+  <data name="DuplicateNameFormat" xml:space="preserve"><value>{0} copy</value></data>
+  <data name="ProfileUnavailable" xml:space="preserve"><value>Some monitors in this profile are not connected right now.</value></data>
   <data name="RestoreOnStartupCard.Header" xml:space="preserve"><value>Restore last profile on startup</value></data>
   <data name="RestoreOnStartupCard.Description" xml:space="preserve"><value>Re-apply the most recently used profile when Mo launches.</value></data>
   <data name="RestoreColorCard.Header" xml:space="preserve"><value>Restore color settings on startup</value></data>

@@ -25,6 +25,7 @@ public sealed partial class ProfileListPage : Page
     public static readonly string RenameKey = "Rename";
     public static readonly string ActiveKey = "ActiveProfile";
     public static readonly string MoreActionsKey = "MoreActions";
+    public static readonly string UnavailableKey = "ProfileUnavailable";
 
     public static string L(string key) => ResourceHelper.GetString(key);
 
@@ -490,6 +491,16 @@ public sealed partial class ProfileListPage : Page
     public static Visibility BoolToVisibility(bool value)
         => value ? Visibility.Visible : Visibility.Collapsed;
 
+    public static Visibility UnavailableVisibility(bool isAvailable)
+        => isAvailable ? Visibility.Collapsed : Visibility.Visible;
+
+    /// <summary>
+    /// Dims the plan view of a profile that cannot be applied right now. Dimmed rather
+    /// than disabled: the profile is still editable, exportable and worth looking at —
+    /// it just is not something you can switch to at this moment.
+    /// </summary>
+    public static double UnavailableOpacity(bool isAvailable) => isAvailable ? 1.0 : 0.4;
+
     // ── Slot badge ──
     //
     // App.RegisterAllHotkeys binds <modifier>+0..9 to Profiles[0..9], so a profile's
@@ -605,6 +616,7 @@ public sealed partial class ProfileListPage : Page
         flyout.Items.Add(MenuItem("Apply", "", profile.Id, ApplyButton_Click));
         flyout.Items.Add(MenuItem("SetHotkey", "", profile.Id, HotkeyButton_Click));
         flyout.Items.Add(MenuItem("Export", "", profile.Id, ExportButton_Click));
+        flyout.Items.Add(MenuItem("Duplicate", "", profile.Id, Duplicate_Click));
         flyout.Items.Add(new MenuFlyoutSeparator());
 
         // Reordering needs a path that is not a mouse gesture. Dragging a card competes
@@ -650,6 +662,44 @@ public sealed partial class ProfileListPage : Page
             item.Click += onClick;
             return item;
         }
+    }
+
+    /// <summary>
+    /// Copies a profile so a variant can be built without rebuilding it from scratch —
+    /// the same desk with one monitor rotated, say.
+    /// </summary>
+    private async void Duplicate_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is not string profileId) return;
+
+        var profiles = App.Services.GetRequiredService<IProfileService>();
+        var source = profiles.Profiles.FirstOrDefault(p => p.Id == profileId);
+        if (source == null) return;
+
+        try
+        {
+            // Round-trip through JSON so every nested member (monitors, colour
+            // settings, schedule, live wallpaper) is deep-copied. Sharing the Monitors
+            // list would make edits to the copy silently change the original.
+            var json = JsonSerializer.Serialize(source, MoJsonContext.Default.DisplayProfile);
+            var copy = JsonSerializer.Deserialize(json, MoJsonContext.Default.DisplayProfile);
+            if (copy == null) return;
+
+            copy.Id = Guid.NewGuid().ToString("N");
+            copy.Name = ResourceHelper.GetString("DuplicateNameFormat", source.Name);
+            copy.CreatedAt = DateTime.UtcNow;
+            copy.SortOrder = 0; // SaveProfileAsync places a new profile last.
+
+            // A shortcut belongs to one profile; carrying it over would leave two
+            // profiles claiming the same keys and one of them silently losing.
+            copy.Hotkey = null;
+            // Two auto-switch profiles matching the same monitors would fight.
+            copy.AutoSwitch = false;
+
+            await profiles.SaveProfileAsync(copy);
+            ViewModel.RefreshIsEmpty();
+        }
+        catch (Exception ex) { Helpers.BootLog.WriteError("profile.duplicate", ex); }
     }
 
     private void MoveUp_Click(object sender, RoutedEventArgs e) => MoveProfile(sender, -1);

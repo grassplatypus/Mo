@@ -145,6 +145,16 @@
                                     Text="{x:Bind Name, Mode=OneWay}"
                                     Style="{StaticResource SubtitleTextBlockStyle}"
                                     TextTrimming="CharacterEllipsis" />
+                                <!-- A profile whose monitors are not all attached cannot
+                                     be applied right now. Saying so here beats making the
+                                     user click Apply to find out. -->
+                                <FontIcon
+                                    Glyph="&#xE7BA;"
+                                    FontSize="14"
+                                    VerticalAlignment="Center"
+                                    Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                                    Visibility="{x:Bind local:ProfileListPage.UnavailableVisibility(IsAvailable), Mode=OneWay}"
+                                    ToolTipService.ToolTip="{x:Bind local:ProfileListPage.L(local:ProfileListPage.UnavailableKey)}" />
                                 <Border
                                     Visibility="{x:Bind local:ProfileListPage.BoolToVisibility(IsActive), Mode=OneWay}"
                                     Background="{ThemeResource AccentFillColorDefaultBrush}"
@@ -180,6 +190,7 @@
                         <controls:MonitorLayoutThumbnail
                             Grid.Row="1"
                             Monitors="{x:Bind Monitors, Mode=OneWay}"
+                            Opacity="{x:Bind local:ProfileListPage.UnavailableOpacity(IsAvailable), Mode=OneWay}"
                             MinHeight="104"
                             Margin="0,12,0,10" />
 

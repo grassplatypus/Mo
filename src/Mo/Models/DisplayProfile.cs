@@ -34,6 +34,7 @@ public sealed class DisplayProfile : ObservableObject
     private List<MonitorInfo> _monitors = [];
     private bool _autoSwitch;
     private bool _isActive;
+    private bool _isAvailable = true;
 
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
 
@@ -129,6 +130,21 @@ public sealed class DisplayProfile : ObservableObject
     {
         get => _isActive;
         set => SetProperty(ref _isActive, value);
+    }
+
+    /// <summary>
+    /// False when a monitor this profile needs is not currently attached.
+    /// </summary>
+    /// <remarks>
+    /// Runtime-only, like <see cref="IsActive"/>. Lets the list answer "which of these
+    /// can I actually switch to right now" without the user clicking Apply on each one
+    /// to find out.
+    /// </remarks>
+    [JsonIgnore]
+    public bool IsAvailable
+    {
+        get => _isAvailable;
+        set => SetProperty(ref _isAvailable, value);
     }
 
     [JsonIgnore]

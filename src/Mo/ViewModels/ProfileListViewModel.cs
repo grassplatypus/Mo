@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
+using Microsoft.Win32;
 using Mo.Models;
 using Mo.Services;
 
@@ -20,7 +21,16 @@ public partial class ProfileListViewModel : ObservableObject
         // Keep the "currently applied" marker correct no matter what triggered the
         // apply — button, tray, hotkey, schedule or auto-switch all raise this.
         _profileService.ProfileApplied += (_, applied) => MarkActive(applied.Id);
-        Profiles.CollectionChanged += (_, _) => MarkActive(_activeProfileId);
+        Profiles.CollectionChanged += (_, _) =>
+        {
+            MarkActive(_activeProfileId);
+            RefreshAvailability();
+        };
+
+        // Availability depends on what is plugged in, so it is recomputed when that
+        // changes rather than polled. Raised on a system thread; marshalled here.
+        SystemEvents.DisplaySettingsChanged += (_, _) =>
+            App.MainWindow?.DispatcherQueue?.TryEnqueue(RefreshAvailability);
 
         _ = LoadAsync();
     }
@@ -32,6 +42,30 @@ public partial class ProfileListViewModel : ObservableObject
         _activeProfileId = profileId;
         foreach (var p in Profiles)
             p.IsActive = p.Id == profileId;
+    }
+
+    /// <summary>
+    /// Marks which profiles can be applied with the monitors currently attached.
+    /// </summary>
+    /// <remarks>
+    /// One CheckCompatibility per profile against a single hardware read, refreshed
+    /// when the display configuration changes rather than on a timer. Without it the
+    /// only way to learn a profile is unusable was to apply it and read the warning.
+    /// </remarks>
+    public void RefreshAvailability()
+    {
+        try
+        {
+            var display = App.Services.GetRequiredService<IDisplayService>();
+            foreach (var p in Profiles)
+                p.IsAvailable = display.CheckCompatibility(p).MissingMonitors.Count == 0;
+        }
+        catch
+        {
+            // If the hardware cannot be read, claim nothing — greying every card out
+            // on a transient failure would be worse than saying nothing.
+            foreach (var p in Profiles) p.IsAvailable = true;
+        }
     }
 
     public ObservableCollection<DisplayProfile> Profiles { get; }
@@ -79,6 +113,7 @@ public partial class ProfileListViewModel : ObservableObject
         }
         catch { }
 
+        RefreshAvailability();
         OnPropertyChanged(nameof(IsEmpty));
     }
 }

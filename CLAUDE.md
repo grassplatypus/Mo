@@ -125,6 +125,23 @@ every caller goes through, and it is wired to:
   every scheduled or boot-time switch.
 - User-facing switches: `AppSettings.ConfirmApply`, `ApplyConfirmSeconds`.
 
+### DDC/CI handle safety
+Every DDC/CI call must go through `MonitorColorService.WithHandles` /
+`WithHandleFor`, which hold the cache lock for the whole transaction. Handing a raw
+`hPhysicalMonitor` back to a caller is a use-after-free:
+`SystemEvents.DisplaySettingsChanged` fires on a system thread and calls
+`DestroyPhysicalMonitors`, and applying a profile changes the display configuration —
+raising that event — immediately before pushing colour down the same handles. Never
+call WMI from inside the lambda; do it after, outside the lock.
+
+### Uninstall leaves nothing
+`Services/AppDataCleanup` removes `%LOCALAPPDATA%\Mo` and the HKCU Run entry. Reachable
+from Settings → "Remove Mo's data" and from `Mo.exe --cleanup [--quiet]` for
+uninstallers. The packaged LocalFolder is Windows' to remove and is left alone. Do not
+reintroduce Windows event-log writes: `EventLog.CreateEventSource` puts a key under
+HKLM that needs admin to create *and* to remove, and survives uninstall. BootLog covers
+the same need with nothing left behind.
+
 ### Startup Diagnostics
 `Helpers/BootLog` writes `%LOCALAPPDATA%/Mo/logs/boot.log` with a timestamped step
 trace. WinUI3 startup failures are frequently *silent* — if `OnLaunched` throws, the
@@ -177,6 +194,22 @@ verifies each save round-trips and throws rather than overwriting a good file.
 continuation posts back to it deadlocks before any window exists — with no exception
 and no crash log. Suppress locally with `#pragma warning disable RS0030` *only* with
 a comment establishing the call is off the UI thread.
+
+### Profile Ordering
+`DisplayProfile.SortOrder` is the user's own ordering, and it is load-bearing: the slot
+hotkeys bind `<modifier>+1..9` to `Profiles[0..8]`, the next/previous hotkeys cycle in
+this order, and the tray menu follows it. Before it existed the order was
+`Directory.GetFiles` order — GUID filenames — so shortcuts pointed at arbitrary
+profiles. Reorder via drag or the profile menu's Move up/Move down (drag alone is not
+enough: it competes with click-to-open and gives keyboard users no path). Order changes
+go through `PersistOrderAsync`, which does **not** touch `ModifiedAt`, then call
+`App.RegisterAllHotkeys()` to rebind the slots.
+
+### Runtime-only profile state
+`IsActive` and `IsAvailable` are `[JsonIgnore]` and describe the machine right now, not
+the profile. `ProfileListViewModel` maintains both — `IsActive` from `ProfileApplied`
+plus `LastAppliedProfileId` on cold start, `IsAvailable` from `CheckCompatibility`,
+refreshed on `SystemEvents.DisplaySettingsChanged` rather than polled.
 
 ### Profile Storage
 - Individual JSON files per profile in `ApplicationData.Current.LocalFolder/profiles/`
