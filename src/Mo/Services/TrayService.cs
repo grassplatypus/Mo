@@ -102,6 +102,15 @@ public sealed class TrayService : ITrayService
         if (_profileService.Profiles.Count > 0)
             flyout.Items.Add(new MenuFlyoutSeparator());
 
+        // Capturing the current arrangement is the one thing worth doing without
+        // opening the window: you finish arranging your monitors and want to keep it,
+        // and the tray is already where you are.
+        flyout.Items.Add(new MenuFlyoutItem
+        {
+            Text = ResourceHelper.GetString("TraySaveCurrent"),
+            Command = new SimpleCommand(SaveCurrentConfiguration),
+        });
+
         flyout.Items.Add(new MenuFlyoutItem
         {
             Text = ResourceHelper.GetString("TrayOpen"),
@@ -129,6 +138,36 @@ public sealed class TrayService : ITrayService
     private static void ShowMainWindow()
     {
         App.MainWindow?.ShowAndActivate();
+    }
+
+    /// <summary>
+    /// Captures the current display arrangement as a new profile, then shows the window
+    /// on it so the user can name it.
+    /// </summary>
+    /// <remarks>
+    /// Marshalled onto the UI thread: the tray command runs on whatever thread
+    /// H.NotifyIcon dispatches from, while capture touches the profile collection that
+    /// the list is bound to.
+    /// </remarks>
+    private void SaveCurrentConfiguration()
+    {
+        var queue = App.MainWindow?.DispatcherQueue;
+        if (queue == null) return;
+
+        queue.TryEnqueue(async () =>
+        {
+            try
+            {
+                var name = ResourceHelper.GetString("TraySavedNameFormat", _profileService.Profiles.Count + 1);
+                var profile = await _profileService.CaptureCurrentAsync(name);
+                await _profileService.SaveProfileAsync(profile);
+
+                // Surface the window rather than saving silently — an unnamed profile
+                // appearing in the tray list with no feedback is worse than none.
+                App.MainWindow?.ShowAndActivate();
+            }
+            catch (Exception ex) { Helpers.BootLog.WriteError("tray.savecurrent", ex); }
+        });
     }
 
     private void ExitApp()

@@ -63,11 +63,14 @@ public sealed class AmdColorService : IDisposable
         {
             if (ADL2_Main_Control_Create(ADL_Alloc, 1, out _ctx) == 0 && _ctx != IntPtr.Zero)
             {
-                ADL2_Adapter_NumberOfAdapters_Get(_ctx, out int numAdapters);
-                IsAvailable = numAdapters > 0;
+                // Requires a real AMD adapter, not just any adapter ADL can see — it
+                // enumerates NVIDIA ones too, so a count would enable this on a GeForce
+                // machine and put dead saturation/hue sliders in the tuning page.
+                IsAvailable = AdlDisplays.HasAmdAdapter(_ctx);
             }
         }
         catch (DllNotFoundException) { IsAvailable = false; }
+        catch (EntryPointNotFoundException) { IsAvailable = false; }
         catch { IsAvailable = false; }
     }
 

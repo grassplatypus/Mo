@@ -217,6 +217,8 @@ Delete 또는 Backspace로 삭제. Escape로 취소.</value></data>
   <data name="Duplicate" xml:space="preserve"><value>복제</value></data>
   <data name="DuplicateNameFormat" xml:space="preserve"><value>{0} 복사본</value></data>
   <data name="ProfileUnavailable" xml:space="preserve"><value>이 프로필의 일부 모니터가 현재 연결되어 있지 않습니다.</value></data>
+  <data name="TraySaveCurrent" xml:space="preserve"><value>현재 배치 저장</value></data>
+  <data name="TraySavedNameFormat" xml:space="preserve"><value>레이아웃 {0}</value></data>
   <data name="RestoreOnStartupCard.Header" xml:space="preserve"><value>시작 시 마지막 프로필 복원</value></data>
   <data name="RestoreOnStartupCard.Description" xml:space="preserve"><value>Mo가 시작될 때 가장 최근에 적용한 프로필을 자동으로 다시 적용합니다.</value></data>
   <data name="RestoreColorCard.Header" xml:space="preserve"><value>시작 시 색상 설정 복원</value></data>

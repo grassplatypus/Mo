@@ -81,7 +81,12 @@ public sealed class AmdRotationService : IDisposable
             if (ADL2_Main_Control_Create(AllocCallback, 1, out var ctx) == ADL_OK && ctx != 0)
             {
                 _context = ctx;
-                IsAvailable = ADL2_Adapter_NumberOfAdapters_Get(ctx, out int n) == ADL_OK && n > 0;
+
+                // Adapter count is not the test: on a GeForce machine ADL still
+                // enumerates the NVIDIA adapters, so counting them would enable the
+                // AMD backend on hardware it cannot drive. Verified on a Radeon +
+                // RTX 5080 box where ADL reported nine adapters, four of them NVIDIA.
+                IsAvailable = AdlDisplays.HasAmdAdapter(ctx);
 
                 if (!IsAvailable)
                 {

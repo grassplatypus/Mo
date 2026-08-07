@@ -34,6 +34,23 @@ internal static class AdlDisplays
     private const int DISPLAYINFO_CONNECTED = 0x00000001;
     private const int DISPLAYINFO_MAPPED = 0x00000002;
 
+    /// <summary>
+    /// AMD's vendor ID as ADL reports it: decimal 1002, not the PCI value 0x1002.
+    /// </summary>
+    /// <remarks>
+    /// ADL enumerates every display adapter in the machine, not only AMD's. Probing a
+    /// real Radeon + GeForce system showed ADL reporting "NVIDIA GeForce RTX 5080"
+    /// adapters on \\.\DISPLAY1..4 alongside Radeon ones on \\.\DISPLAY5..9, so
+    /// matching a GDI name alone would hand back an NVIDIA adapter index and then aim
+    /// ADL calls at it.
+    ///
+    /// The literal matters: that same probe returned iVendorID = 1002 decimal (0x3EA)
+    /// for the Radeon adapters. Writing 0x1002 here would match nothing at all and
+    /// silently disable AMD support everywhere. AMD's own samples use
+    /// <c>#define AMDVENDORID (1002)</c>.
+    /// </remarks>
+    private const int AMD_VENDOR_ID = 1002;
+
     [DllImport(AdlLib, CallingConvention = CallingConvention.Cdecl)]
     private static extern int ADL2_Adapter_NumberOfAdapters_Get(nint context, out int numAdapters);
 
@@ -105,6 +122,8 @@ internal static class AdlDisplays
                 // iExist distinguishes an adapter that is actually present from a stale
                 // entry the driver still lists.
                 if (adapter.Exist == 0) continue;
+                // Never return a non-AMD adapter: ADL lists them but cannot drive them.
+                if (adapter.VendorID != AMD_VENDOR_ID) continue;
                 if (!string.Equals(adapter.DisplayName?.Trim(), gdiDeviceName, StringComparison.OrdinalIgnoreCase))
                     continue;
 
@@ -122,6 +141,21 @@ internal static class AdlDisplays
         catch (Exception ex) { Helpers.BootLog.WriteError("adl.resolve", ex); }
 
         return null;
+    }
+
+    /// <summary>
+    /// True when at least one present adapter is actually AMD.
+    /// </summary>
+    /// <remarks>
+    /// atiadlxx.dll being loadable and reporting adapters is not evidence of a Radeon:
+    /// on a GeForce machine with any AMD driver remnants ADL still enumerates the
+    /// NVIDIA adapters, so an adapter count alone would light up the AMD backend on
+    /// hardware it cannot drive.
+    /// </remarks>
+    public static bool HasAmdAdapter(nint context)
+    {
+        try { return EnumerateAdapters(context).Any(a => a.Exist != 0 && a.VendorID == AMD_VENDOR_ID); }
+        catch { return false; }
     }
 
     private static List<AdapterInfo> EnumerateAdapters(nint context)
