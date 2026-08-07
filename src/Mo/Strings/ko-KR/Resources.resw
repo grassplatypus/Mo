@@ -190,6 +190,14 @@ Delete 또는 Backspace로 삭제. Escape로 취소.</value></data>
   <data name="ChannelGreen" xml:space="preserve"><value>초록 게인</value></data>
   <data name="ChannelBlue" xml:space="preserve"><value>파랑 게인</value></data>
   <data name="ActiveProfile" xml:space="preserve"><value>사용 중</value></data>
+  <data name="TooltipImportCurrent" xml:space="preserve"><value>현재 연결된 모니터로 이 레이아웃을 교체합니다</value></data>
+  <data name="TooltipAlignHorizontal" xml:space="preserve"><value>모니터를 위쪽 가장자리에 맞춰 가로로 정렬합니다</value></data>
+  <data name="TooltipSetPrimary" xml:space="preserve"><value>선택한 모니터를 주 디스플레이로 지정합니다</value></data>
+  <data name="TooltipRemoveMonitor" xml:space="preserve"><value>이 모니터를 프로필에서 제거합니다</value></data>
+  <data name="TooltipBack" xml:space="preserve"><value>프로필 목록으로</value></data>
+  <data name="TooltipAddMonitor" xml:space="preserve"><value>{0}을(를) 이 프로필에 추가</value></data>
+  <data name="TooltipMonitorInProfile" xml:space="preserve"><value>{0}은(는) 이미 프로필에 있습니다 — 레이아웃에서 선택</value></data>
+  <data name="MoreActions" xml:space="preserve"><value>추가 작업</value></data>
   <data name="RestoreOnStartupCard.Header" xml:space="preserve"><value>시작 시 마지막 프로필 복원</value></data>
   <data name="RestoreOnStartupCard.Description" xml:space="preserve"><value>Mo가 시작될 때 가장 최근에 적용한 프로필을 자동으로 다시 적용합니다.</value></data>
   <data name="RestoreColorCard.Header" xml:space="preserve"><value>시작 시 색상 설정 복원</value></data>

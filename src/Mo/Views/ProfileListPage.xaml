@@ -35,7 +35,7 @@
                 Style="{StaticResource TitleTextBlockStyle}" />
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                <Button Click="NewLayoutButton_Click">
+                <Button x:Name="NewLayoutBtn" Click="NewLayoutButton_Click">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon Glyph="&#xE7C4;" FontSize="14" />
                         <TextBlock x:Name="NewLayoutText" />
@@ -44,7 +44,7 @@
 
                 <!-- Import is a secondary action; only "save current setup" gets accent
                      styling. Two accent buttons side by side gave neither any weight. -->
-                <Button Click="ImportButton_Click">
+                <Button x:Name="ImportBtn" Click="ImportButton_Click">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon Glyph="&#xE8B5;" FontSize="14" />
                         <TextBlock x:Name="ImportText" />
@@ -52,6 +52,7 @@
                 </Button>
 
                 <Button
+                    x:Name="SaveCurrentBtn"
                     Style="{StaticResource AccentButtonStyle}"
                     Click="SaveCurrentButton_Click">
                     <StackPanel Orientation="Horizontal" Spacing="8">
@@ -87,46 +88,17 @@
                          a narrow window instead of leaving a fixed 280px column and a
                          ragged edge. The active profile takes an accent border so
                          "which one am I on right now" is answerable at a glance. -->
+                    <!-- The right-click menu and the "..." menu were two byte-identical
+                         30-line MenuFlyout blocks; every menu change had to be made
+                         twice. Both are now built once per card by BuildProfileMenu. -->
                     <Grid
                         MinHeight="180"
                         Padding="16"
                         CornerRadius="8"
+                        Loaded="ProfileCard_Loaded"
                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                         BorderBrush="{x:Bind local:ProfileListPage.CardBorder(IsActive), Mode=OneWay}"
                         BorderThickness="{x:Bind local:ProfileListPage.CardBorderThickness(IsActive), Mode=OneWay}">
-
-                        <Grid.ContextFlyout>
-                            <MenuFlyout>
-                                <MenuFlyoutItem Text="{x:Bind local:ProfileListPage.L(local:ProfileListPage.ApplyKey)}" Tag="{x:Bind Id}" Click="ApplyButton_Click">
-                                    <MenuFlyoutItem.Icon>
-                                        <FontIcon Glyph="&#xE7F4;" />
-                                    </MenuFlyoutItem.Icon>
-                                </MenuFlyoutItem>
-                                <MenuFlyoutItem Text="{x:Bind local:ProfileListPage.L(local:ProfileListPage.SetHotkeyKey)}" Tag="{x:Bind Id}" Click="HotkeyButton_Click">
-                                    <MenuFlyoutItem.Icon>
-                                        <FontIcon Glyph="&#xE765;" />
-                                    </MenuFlyoutItem.Icon>
-                                </MenuFlyoutItem>
-                                <MenuFlyoutItem Text="{x:Bind local:ProfileListPage.L(local:ProfileListPage.ExportKey)}" Tag="{x:Bind Id}" Click="ExportButton_Click">
-                                    <MenuFlyoutItem.Icon>
-                                        <FontIcon Glyph="&#xE78C;" />
-                                    </MenuFlyoutItem.Icon>
-                                </MenuFlyoutItem>
-                                <MenuFlyoutSeparator />
-                                <ToggleMenuFlyoutItem Text="{x:Bind local:ProfileListPage.L(local:ProfileListPage.AutoSwitchKey)}" Tag="{x:Bind Id}" IsChecked="{x:Bind AutoSwitch}" Click="AutoSwitchToggle_Click">
-                                    <ToggleMenuFlyoutItem.Icon>
-                                        <FontIcon Glyph="&#xE8AB;" />
-                                    </ToggleMenuFlyoutItem.Icon>
-                                </ToggleMenuFlyoutItem>
-                                <MenuFlyoutSeparator />
-                                <MenuFlyoutItem Text="{x:Bind local:ProfileListPage.L(local:ProfileListPage.RenameKey)}" Tag="{x:Bind Id}" Click="RenameButton_Click" />
-                                <MenuFlyoutItem Text="{x:Bind local:ProfileListPage.L(local:ProfileListPage.DeleteKey)}" Tag="{x:Bind Id}" Click="DeleteButton_Click">
-                                    <MenuFlyoutItem.Icon>
-                                        <FontIcon Glyph="&#xE74D;" />
-                                    </MenuFlyoutItem.Icon>
-                                </MenuFlyoutItem>
-                            </MenuFlyout>
-                        </Grid.ContextFlyout>
 
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -162,45 +134,19 @@
                                 </Border>
                             </StackPanel>
 
+                            <!-- Icon-only: without these it had no hover hint and a
+                                 screen reader announced only "button". -->
                             <Button
                                 Grid.Column="1"
                                 Padding="4,2"
                                 Background="Transparent"
                                 BorderThickness="0"
-                                VerticalAlignment="Top">
+                                VerticalAlignment="Top"
+                                Click="MoreActionsButton_Click"
+                                Tag="{x:Bind Id}"
+                                ToolTipService.ToolTip="{x:Bind local:ProfileListPage.L(local:ProfileListPage.MoreActionsKey)}"
+                                AutomationProperties.Name="{x:Bind local:ProfileListPage.L(local:ProfileListPage.MoreActionsKey)}">
                                 <FontIcon Glyph="&#xE712;" FontSize="14" />
-                                <Button.Flyout>
-                                    <MenuFlyout>
-                                        <MenuFlyoutItem Text="{x:Bind local:ProfileListPage.L(local:ProfileListPage.ApplyKey)}" Tag="{x:Bind Id}" Click="ApplyButton_Click">
-                                            <MenuFlyoutItem.Icon>
-                                                <FontIcon Glyph="&#xE7F4;" />
-                                            </MenuFlyoutItem.Icon>
-                                        </MenuFlyoutItem>
-                                        <MenuFlyoutItem Text="{x:Bind local:ProfileListPage.L(local:ProfileListPage.SetHotkeyKey)}" Tag="{x:Bind Id}" Click="HotkeyButton_Click">
-                                            <MenuFlyoutItem.Icon>
-                                                <FontIcon Glyph="&#xE765;" />
-                                            </MenuFlyoutItem.Icon>
-                                        </MenuFlyoutItem>
-                                        <MenuFlyoutItem Text="{x:Bind local:ProfileListPage.L(local:ProfileListPage.ExportKey)}" Tag="{x:Bind Id}" Click="ExportButton_Click">
-                                            <MenuFlyoutItem.Icon>
-                                                <FontIcon Glyph="&#xE78C;" />
-                                            </MenuFlyoutItem.Icon>
-                                        </MenuFlyoutItem>
-                                        <MenuFlyoutSeparator />
-                                        <ToggleMenuFlyoutItem Text="{x:Bind local:ProfileListPage.L(local:ProfileListPage.AutoSwitchKey)}" Tag="{x:Bind Id}" IsChecked="{x:Bind AutoSwitch}" Click="AutoSwitchToggle_Click">
-                                            <ToggleMenuFlyoutItem.Icon>
-                                                <FontIcon Glyph="&#xE8AB;" />
-                                            </ToggleMenuFlyoutItem.Icon>
-                                        </ToggleMenuFlyoutItem>
-                                        <MenuFlyoutSeparator />
-                                        <MenuFlyoutItem Text="{x:Bind local:ProfileListPage.L(local:ProfileListPage.RenameKey)}" Tag="{x:Bind Id}" Click="RenameButton_Click" />
-                                        <MenuFlyoutItem Text="{x:Bind local:ProfileListPage.L(local:ProfileListPage.DeleteKey)}" Tag="{x:Bind Id}" Click="DeleteButton_Click">
-                                            <MenuFlyoutItem.Icon>
-                                                <FontIcon Glyph="&#xE74D;" />
-                                            </MenuFlyoutItem.Icon>
-                                        </MenuFlyoutItem>
-                                    </MenuFlyout>
-                                </Button.Flyout>
                             </Button>
                         </Grid>
 

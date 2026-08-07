@@ -707,6 +707,17 @@ public sealed partial class ProfileEditorPage : Page
         SetPrimaryBtn.IsEnabled = false;
     }
 
+    /// <summary>
+    /// Sets a control's tooltip and its accessible name from the same resource, so an
+    /// icon-only button reads the same way to a mouse user and to a screen reader.
+    /// </summary>
+    private static void SetHint(Microsoft.UI.Xaml.FrameworkElement element, string resourceKey)
+    {
+        var text = ResourceHelper.GetString(resourceKey);
+        ToolTipService.SetToolTip(element, text);
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(element, text);
+    }
+
     private void ApplyLocalization()
     {
         ProfileNameBox.PlaceholderText = ResourceHelper.GetString("ProfileNamePlaceholder");
@@ -728,6 +739,15 @@ public sealed partial class ProfileEditorPage : Page
         ImportCurrentLabel.Text = ResourceHelper.GetString("ImportCurrent");
         AlignHorizontalLabel.Text = ResourceHelper.GetString("AlignHorizontal");
         SetPrimaryLabel.Text = ResourceHelper.GetString("SetPrimary");
+
+        // Tooltips were hardcoded English in the XAML, so they stayed English on a
+        // Korean UI. The back and remove buttons are icon-only, which also left them
+        // with nothing for a screen reader to announce.
+        SetHint(ImportCurrentBtn, "TooltipImportCurrent");
+        SetHint(AlignHorizontalBtn, "TooltipAlignHorizontal");
+        SetHint(SetPrimaryBtn, "TooltipSetPrimary");
+        SetHint(RemoveMonitorBtn, "TooltipRemoveMonitor");
+        SetHint(BackBtn, "TooltipBack");
         AvailableMonitorsTitle.Text = ResourceHelper.GetString("AvailableMonitors");
         AvailableMonitorsDesc.Text = ResourceHelper.GetString("AvailableMonitorsDesc");
         UnmatchedCombo.Items.Clear();
@@ -788,4 +808,11 @@ public sealed class AvailableMonitorItem
     public double RowOpacity => Monitor.IsEnabled ? 1.0 : 0.55;
     public Visibility AddIconVisibility => InProfile ? Visibility.Collapsed : Visibility.Visible;
     public Visibility CheckIconVisibility => InProfile ? Visibility.Visible : Visibility.Collapsed;
+
+    /// <summary>
+    /// Tooltip and accessible name for the row's single icon button, whose glyph flips
+    /// between "+" and "✓". The icon alone carried the entire meaning of the action.
+    /// </summary>
+    public string ActionHint => ResourceHelper.GetString(
+        InProfile ? "TooltipMonitorInProfile" : "TooltipAddMonitor", Title);
 }

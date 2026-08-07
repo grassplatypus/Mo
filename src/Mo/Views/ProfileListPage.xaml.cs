@@ -23,6 +23,7 @@ public sealed partial class ProfileListPage : Page
     public static readonly string AutoSwitchKey = "AutoSwitch";
     public static readonly string RenameKey = "Rename";
     public static readonly string ActiveKey = "ActiveProfile";
+    public static readonly string MoreActionsKey = "MoreActions";
 
     public static string L(string key) => ResourceHelper.GetString(key);
 
@@ -62,6 +63,13 @@ public sealed partial class ProfileListPage : Page
         EmptyTitleText.Text = ResourceHelper.GetString("EmptyTitle");
         EmptyDescText.Text = ResourceHelper.GetString("EmptyDescription");
         EmptyCtaText.Text = ResourceHelper.GetString("SaveCurrent");
+
+        // A Button whose Content is a panel (icon + label) does not hand its peer a
+        // name, so these three announced themselves as an unnamed "button" despite
+        // showing a caption. Name them from the same resource as the caption.
+        AutomationProperties.SetName(NewLayoutBtn, NewLayoutText.Text);
+        AutomationProperties.SetName(ImportBtn, ImportText.Text);
+        AutomationProperties.SetName(SaveCurrentBtn, SaveCurrentText.Text);
     }
 
     private async void ApplyButton_Click(object sender, RoutedEventArgs e)
@@ -489,6 +497,83 @@ public sealed partial class ProfileListPage : Page
     /// <summary>"Updated 3 min ago" — derived at render time, never stored.</summary>
     public static string FormatModified(DateTime modifiedUtc)
         => ResourceHelper.GetString("ModifiedPrefix", RelativeTimeText.Format(modifiedUtc));
+
+    // ── Profile card menu ──
+    //
+    // The right-click menu and the "..." button menu are the same list of actions, and
+    // were previously two identical 30-line MenuFlyout blocks in the DataTemplate.
+    // Building it once here means the two can no longer drift apart.
+
+    private void ProfileCard_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement card || card.DataContext is not DisplayProfile profile)
+            return;
+
+        // Rebuild rather than reuse: GridView recycles containers, so a cached flyout
+        // would still be bound to whichever profile the container held before.
+        card.ContextFlyout = BuildProfileMenu(profile);
+    }
+
+    private void MoreActionsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement button) return;
+
+        // Reuse the card's own flyout so the two entry points are literally the same
+        // menu instance, not two that merely look alike.
+        var card = FindCardRoot(button);
+        var flyout = card?.ContextFlyout
+                     ?? (button.DataContext is DisplayProfile p ? BuildProfileMenu(p) : null);
+
+        flyout?.ShowAt(button);
+    }
+
+    private static FrameworkElement? FindCardRoot(DependencyObject start)
+    {
+        for (var node = VisualTreeHelper.GetParent(start); node != null; node = VisualTreeHelper.GetParent(node))
+        {
+            if (node is FrameworkElement { ContextFlyout: not null } candidate)
+                return candidate;
+        }
+        return null;
+    }
+
+    private MenuFlyout BuildProfileMenu(DisplayProfile profile)
+    {
+        var flyout = new MenuFlyout();
+
+        flyout.Items.Add(MenuItem("Apply", "", profile.Id, ApplyButton_Click));
+        flyout.Items.Add(MenuItem("SetHotkey", "", profile.Id, HotkeyButton_Click));
+        flyout.Items.Add(MenuItem("Export", "", profile.Id, ExportButton_Click));
+        flyout.Items.Add(new MenuFlyoutSeparator());
+
+        var autoSwitch = new ToggleMenuFlyoutItem
+        {
+            Text = ResourceHelper.GetString("AutoSwitch"),
+            Icon = new FontIcon { Glyph = "" },
+            IsChecked = profile.AutoSwitch,
+            Tag = profile.Id,
+        };
+        autoSwitch.Click += AutoSwitchToggle_Click;
+        flyout.Items.Add(autoSwitch);
+
+        flyout.Items.Add(new MenuFlyoutSeparator());
+        flyout.Items.Add(MenuItem("Rename", null, profile.Id, RenameButton_Click));
+        flyout.Items.Add(MenuItem("Delete", "", profile.Id, DeleteButton_Click));
+
+        return flyout;
+
+        static MenuFlyoutItem MenuItem(string key, string? glyph, string tag, RoutedEventHandler onClick)
+        {
+            var item = new MenuFlyoutItem
+            {
+                Text = ResourceHelper.GetString(key),
+                Tag = tag,
+            };
+            if (glyph != null) item.Icon = new FontIcon { Glyph = glyph };
+            item.Click += onClick;
+            return item;
+        }
+    }
 
     // ── Responsive card sizing ──
 

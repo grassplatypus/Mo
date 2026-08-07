@@ -190,6 +190,14 @@ Press Delete or Backspace to clear. Escape to cancel.</value></data>
   <data name="ChannelGreen" xml:space="preserve"><value>Green gain</value></data>
   <data name="ChannelBlue" xml:space="preserve"><value>Blue gain</value></data>
   <data name="ActiveProfile" xml:space="preserve"><value>Active</value></data>
+  <data name="TooltipImportCurrent" xml:space="preserve"><value>Replace this layout with the monitors currently connected</value></data>
+  <data name="TooltipAlignHorizontal" xml:space="preserve"><value>Line the monitors up side by side, top edges aligned</value></data>
+  <data name="TooltipSetPrimary" xml:space="preserve"><value>Make the selected monitor the primary display</value></data>
+  <data name="TooltipRemoveMonitor" xml:space="preserve"><value>Remove this monitor from the profile</value></data>
+  <data name="TooltipBack" xml:space="preserve"><value>Back to profiles</value></data>
+  <data name="TooltipAddMonitor" xml:space="preserve"><value>Add {0} to this profile</value></data>
+  <data name="TooltipMonitorInProfile" xml:space="preserve"><value>{0} is already in this profile — select it in the layout</value></data>
+  <data name="MoreActions" xml:space="preserve"><value>More actions</value></data>
   <data name="RestoreOnStartupCard.Header" xml:space="preserve"><value>Restore last profile on startup</value></data>
   <data name="RestoreOnStartupCard.Description" xml:space="preserve"><value>Re-apply the most recently used profile when Mo launches.</value></data>
   <data name="RestoreColorCard.Header" xml:space="preserve"><value>Restore color settings on startup</value></data>

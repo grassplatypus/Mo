@@ -29,7 +29,7 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <Button Click="BackButton_Click" Margin="0,0,12,0" VerticalAlignment="Center">
+            <Button x:Name="BackBtn" Click="BackButton_Click" Margin="0,0,12,0" VerticalAlignment="Center">
                 <FontIcon Glyph="&#xE72B;" FontSize="14" />
             </Button>
 
@@ -55,19 +55,19 @@
 
                 <!-- Layout toolbar -->
                 <StackPanel Orientation="Horizontal" Spacing="6">
-                    <Button x:Name="ImportCurrentBtn" Click="ImportCurrent_Click" ToolTipService.ToolTip="Import current system layout">
+                    <Button x:Name="ImportCurrentBtn" Click="ImportCurrent_Click">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <FontIcon Glyph="&#xE896;" FontSize="14" />
                             <TextBlock x:Name="ImportCurrentLabel" />
                         </StackPanel>
                     </Button>
-                    <Button x:Name="AlignHorizontalBtn" Click="AlignHorizontal_Click" ToolTipService.ToolTip="Align monitors horizontally, top-edge aligned">
+                    <Button x:Name="AlignHorizontalBtn" Click="AlignHorizontal_Click">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <FontIcon Glyph="&#xE8A1;" FontSize="14" />
                             <TextBlock x:Name="AlignHorizontalLabel" />
                         </StackPanel>
                     </Button>
-                    <Button x:Name="SetPrimaryBtn" Click="SetPrimary_Click" IsEnabled="False" ToolTipService.ToolTip="Make selected monitor primary">
+                    <Button x:Name="SetPrimaryBtn" Click="SetPrimary_Click" IsEnabled="False">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <FontIcon Glyph="&#xE735;" FontSize="14" />
                             <TextBlock x:Name="SetPrimaryLabel" />
@@ -113,6 +113,8 @@
                                         <Button Grid.Column="1" VerticalAlignment="Center"
                                                 Click="AddOrFocusMonitor_Click"
                                                 Tag="{x:Bind}"
+                                                ToolTipService.ToolTip="{x:Bind ActionHint}"
+                                                AutomationProperties.Name="{x:Bind ActionHint}"
                                                 Style="{StaticResource SubtleButtonStyle}">
                                             <Grid>
                                                 <FontIcon Glyph="&#xE710;" FontSize="14"
@@ -175,7 +177,7 @@
                             </ComboBox>
                         </StackPanel>
                         <Button Grid.Column="3" x:Name="RemoveMonitorBtn" Click="RemoveMonitor_Click"
-                                VerticalAlignment="Center" ToolTipService.ToolTip="Remove monitor from profile">
+                                VerticalAlignment="Center">
                             <FontIcon Glyph="&#xE74D;" FontSize="14" />
                         </Button>
                     </Grid>
