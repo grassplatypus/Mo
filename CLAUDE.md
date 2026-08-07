@@ -134,6 +134,28 @@ Every DDC/CI call must go through `MonitorColorService.WithHandles` /
 raising that event — immediately before pushing colour down the same handles. Never
 call WMI from inside the lambda; do it after, outside the lock.
 
+### Radeon (ADL) rules
+Verified against a real Radeon + GeForce machine; do not "simplify" these away.
+- **Locate displays by `AdapterInfo.strDisplayName`** — that is the GDI name
+  (`\.\DISPLAY1`). `ADLDisplayInfo.strDisplayName` is the *EDID model name* and will
+  never match one. `AdlDisplays.Resolve` does adapter-then-display in that order.
+- **Filter on `iVendorID == 1002`** (decimal, not `0x1002`). ADL enumerates non-AMD
+  adapters too — the probe machine listed four `NVIDIA GeForce RTX 5080` adapters on
+  `\.\DISPLAY1..4` next to Radeon ones on `\.\DISPLAY5..9`. An adapter count is
+  therefore not a test for "has AMD"; use `AdlDisplays.HasAmdAdapter`.
+- ADL functions are `__cdecl`; the **allocation callback is `__stdcall`**
+  (`ADL_MAIN_MALLOC_CALLBACK`). Declaring it `Cdecl` corrupts the stack on every ADL
+  allocation.
+- Buffers from `ADL2_Display_*_Get` are allocated through our callback and owned by us
+  (`Marshal.FreeHGlobal`); the `AdapterInfo` buffer is ours to allocate instead.
+- `ADL2_Display_Modes_Set` changes modes only. Topology (enabling/disabling outputs)
+  would need `DisplayMapConfig_Set`, so `TryApplyAmdFullProfile` bails to CCD whenever
+  a profile disables a monitor.
+- The AMD full-profile path is opt-in (`RotationMethod.AmdDriver`) and **verifies by
+  reading the configuration back**; a mismatch returns false so CCD corrects it. Whether
+  ADL wants pre- or post-rotation `iXRes/iYRes` is undocumented, and that read-back is
+  what keeps the guess from mattering.
+
 ### Uninstall leaves nothing
 `Services/AppDataCleanup` removes `%LOCALAPPDATA%\Mo` and the HKCU Run entry. Reachable
 from Settings → "Remove Mo's data" and from `Mo.exe --cleanup [--quiet]` for
