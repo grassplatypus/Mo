@@ -55,12 +55,37 @@ public static class EdidManufacturer
     {
         if (edidManufacturerId == 0) return string.Empty;
 
-        // Try both byte orders; the one that decodes to all A–Z wins. CCD and
-        // NVAPI disagree on endianness for this field depending on the Windows
-        // build, so we accept whichever interpretation yields a valid PNP ID.
-        var asIs = Decode(edidManufacturerId);
-        var swapped = Decode((ushort)((edidManufacturerId << 8) | (edidManufacturerId >> 8)));
+        // CCD and NVAPI disagree on endianness for this field depending on the
+        // Windows build, so both byte orders have to be considered.
+        //
+        // "decodes to three A–Z letters" is NOT enough to pick between them: AOC
+        // encodes to 0x05E3, and the byte swap 0xE305 also decodes to letters
+        // ("XXE") — which is exactly what users were shown. Bit 15 is the reserved
+        // bit and is 0 in every well-formed EDID, so it is the real discriminator;
+        // a candidate with the top bit set cannot be the correct reading.
+        ushort swappedId = (ushort)((edidManufacturerId << 8) | (edidManufacturerId >> 8));
 
+        var asIs = Decode(edidManufacturerId);
+        var swapped = Decode(swappedId);
+
+        bool asIsValid = IsAllLetters(asIs) && (edidManufacturerId & 0x8000) == 0;
+        bool swappedValid = IsAllLetters(swapped) && (swappedId & 0x8000) == 0;
+
+        // Only one reading is well-formed — unambiguous.
+        if (asIsValid && !swappedValid) return asIs;
+        if (swappedValid && !asIsValid) return swapped;
+
+        // Both well-formed (e.g. "DEL" ↔ "IAP"): a code we actually know beats one
+        // we don't. Falls through to the raw field order when neither is known,
+        // which is what the hardware reported.
+        if (asIsValid && swappedValid)
+        {
+            if (Brands.ContainsKey(asIs)) return asIs;
+            if (Brands.ContainsKey(swapped)) return swapped;
+            return asIs;
+        }
+
+        // Neither is well-formed — take whichever at least looks like letters.
         if (IsAllLetters(asIs)) return asIs;
         if (IsAllLetters(swapped)) return swapped;
         return asIs; // Best effort.

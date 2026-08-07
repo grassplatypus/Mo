@@ -39,7 +39,9 @@ public sealed class AudioService : IAudioService
         try
         {
             var task = DeviceInformation.FindAllAsync(MediaDevice.GetAudioRenderSelector()).AsTask();
-            task.Wait();
+            // Bounded wait: a stuck audio driver must degrade to an empty device list,
+            // never hang whichever thread asked for it.
+            if (!task.Wait(TimeSpan.FromSeconds(10))) return result;
             foreach (var device in task.Result)
             {
                 result.Add((device.Id, device.Name));

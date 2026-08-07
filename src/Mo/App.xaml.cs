@@ -15,6 +15,11 @@ public partial class App : Application
 
     private static bool _isShowingErrorDialog;
 
+    // False until MainWindow has been created and activated. While false, an unhandled
+    // exception has no UI surface to report itself through, so it must be fatal rather
+    // than silently swallowed.
+    private static bool _windowReady;
+
     public App()
     {
         InitializeComponent();
@@ -26,9 +31,11 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        BootLog.Write("onlaunched.begin");
         var services = new ServiceCollection();
         ConfigureServices(services);
         Services = services.BuildServiceProvider();
+        BootLog.Write("onlaunched.di.ok");
 
         // Pre-load settings synchronously so StartMinimized / startup-task launches can
         // honor "start in tray" before we ever activate the window. The full async init
@@ -37,7 +44,13 @@ public partial class App : Application
         try
         {
             var settings = Services.GetRequiredService<ISettingsService>();
-            settings.LoadAsync().GetAwaiter().GetResult();
+            // MUST be the synchronous overload. Blocking the UI thread on LoadAsync()
+            // deadlocks: Program.Main installs a DispatcherQueueSynchronizationContext,
+            // so the await continuation inside LoadAsync is posted back to this very
+            // thread while it waits. The hang is intermittent because ReadAllTextAsync
+            // often completes synchronously off the file cache — on a cold cache the
+            // app hangs forever with no window and no crash log.
+            settings.Load();
             startMinimized = settings.Settings.StartMinimized || IsStartupTaskActivation();
 
             // Apply user language override BEFORE the first window is created so initial
@@ -62,9 +75,11 @@ public partial class App : Application
                 catch { }
             }
         }
-        catch (Exception ex) { LogException("OnLaunched.PreInit", ex); }
+        catch (Exception ex) { LogException("OnLaunched.PreInit", ex); BootLog.WriteError("onlaunched.preinit", ex); }
 
+        BootLog.Write("mainwindow.ctor.begin", $"startMinimized={startMinimized}");
         MainWindow = new MainWindow();
+        BootLog.Write("mainwindow.ctor.end");
         if (startMinimized)
         {
             // Hide the OS window FIRST (AppWindow.Hide is valid pre-Activate). We
@@ -80,6 +95,8 @@ public partial class App : Application
         {
             MainWindow.Activate();
         }
+        _windowReady = true;
+        BootLog.Write("mainwindow.activated");
 
         MainWindow.DispatcherQueue.ShutdownStarting += (_, _) => DisposeServices();
 
@@ -91,8 +108,9 @@ public partial class App : Application
             Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().Activated += (_, _) =>
                 MainWindow?.DispatcherQueue?.TryEnqueue(() => MainWindow?.ShowAndActivate());
         }
-        catch (Exception ex) { LogException("OnLaunched.RegisterActivated", ex); }
+        catch (Exception ex) { LogException("OnLaunched.RegisterActivated", ex); BootLog.WriteError("onlaunched.registeractivated", ex); }
 
+        BootLog.Write("onlaunched.end");
         _ = InitializeAsync();
     }
 
@@ -112,10 +130,45 @@ public partial class App : Application
 
     private void App_UnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
     {
-        e.Handled = true;
         var ex = e.Exception;
         LogException("UnhandledException", ex);
+        BootLog.WriteError("unhandled", ex);
+
+        // Before the window exists there is no XamlRoot to host a ContentDialog, so
+        // swallowing here would leave a live dispatcher with nothing on screen — the
+        // invisible-zombie state that also holds the single-instance key and makes
+        // every later launch appear to do nothing. Report and terminate instead.
+        if (!_windowReady)
+        {
+            e.Handled = true; // Suppress the WinUI fail-fast so our own message wins.
+            ReportStartupFailureAndExit(ex);
+            return;
+        }
+
+        e.Handled = true;
         _ = ShowErrorDialogAsync(ex);
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private static extern int MessageBoxW(nint hWnd, string text, string caption, uint type);
+
+    private static void ReportStartupFailureAndExit(Exception? ex)
+    {
+        const uint MB_OK = 0x0, MB_ICONERROR = 0x10, MB_SETFOREGROUND = 0x10000;
+        try
+        {
+            MessageBoxW(0,
+                "Mo 창을 여는 중 오류가 발생했습니다.\n\n" +
+                $"{ex?.GetType().Name}: {ex?.Message}\n\n" +
+                $"로그: {Path.Combine(GetLogDirectory(), "boot.log")}",
+                "Mo", MB_OK | MB_ICONERROR | MB_SETFOREGROUND);
+        }
+        catch { }
+
+        // Environment.Exit, not Application.Exit: the dispatcher may already be in an
+        // unusable state, and the one thing we must guarantee is that this process
+        // releases the single-instance key so the next launch can start clean.
+        Environment.Exit(-2);
     }
 
     private static void TaskScheduler_UnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
