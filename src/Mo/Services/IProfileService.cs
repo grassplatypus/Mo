@@ -10,6 +10,12 @@ public interface IProfileService
     ObservableCollection<DisplayProfile> Profiles { get; }
     Task LoadAllAsync();
     Task SaveProfileAsync(DisplayProfile profile);
+
+    /// <summary>
+    /// Writes the current list order back to disk. Call after the user reorders.
+    /// Does not change ModifiedAt — reordering is not an edit to any profile.
+    /// </summary>
+    Task PersistOrderAsync();
     Task DeleteProfileAsync(string profileId);
     Task<DisplayProfile> CaptureCurrentAsync(string name);
     /// <summary>

@@ -29,6 +29,7 @@ public sealed class ProfileService : IProfileService
         if (!Directory.Exists(_profilesDir))
             return;
 
+        var loaded = new List<DisplayProfile>();
         foreach (var file in Directory.GetFiles(_profilesDir, "*.json"))
         {
             try
@@ -38,7 +39,7 @@ public sealed class ProfileService : IProfileService
                 if (profile != null)
                 {
                     MigrateGeneratedDescription(profile);
-                    Profiles.Add(profile);
+                    loaded.Add(profile);
                 }
             }
             catch
@@ -46,6 +47,42 @@ public sealed class ProfileService : IProfileService
                 // Skip corrupt files
             }
         }
+
+        // The user's order decides what Ctrl+Alt+1..9 apply and how next/previous
+        // cycles, so it has to be stable and theirs. CreatedAt breaks ties for profiles
+        // saved before SortOrder existed (they all deserialize to 0), which at least
+        // gives them oldest-first instead of GUID order.
+        foreach (var profile in loaded.OrderBy(p => p.SortOrder).ThenBy(p => p.CreatedAt))
+            Profiles.Add(profile);
+
+        NormalizeSortOrder();
+    }
+
+    /// <summary>
+    /// Rewrites SortOrder to match the current list positions, persisting only the
+    /// profiles whose value actually changed.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately does not touch ModifiedAt: reordering is not an edit to a profile,
+    /// and bumping it would make every card read "updated just now" after a drag.
+    /// </remarks>
+    public async Task PersistOrderAsync()
+    {
+        foreach (var profile in NormalizeSortOrder())
+            await SaveProfileAsync(profile, touchModified: false);
+    }
+
+    /// <summary>Assigns 0..n-1 in list order. Returns the profiles that changed.</summary>
+    private List<DisplayProfile> NormalizeSortOrder()
+    {
+        var changed = new List<DisplayProfile>();
+        for (int i = 0; i < Profiles.Count; i++)
+        {
+            if (Profiles[i].SortOrder == i) continue;
+            Profiles[i].SortOrder = i;
+            changed.Add(Profiles[i]);
+        }
+        return changed;
     }
 
     /// <summary>
@@ -96,9 +133,21 @@ public sealed class ProfileService : IProfileService
             profile.Description = string.Empty;
     }
 
-    public async Task SaveProfileAsync(DisplayProfile profile)
+    public Task SaveProfileAsync(DisplayProfile profile) => SaveProfileAsync(profile, touchModified: true);
+
+    /// <param name="touchModified">
+    /// False for bookkeeping writes that are not edits the user made — reordering, for
+    /// one. Bumping ModifiedAt there would relabel every card "updated just now".
+    /// </param>
+    public async Task SaveProfileAsync(DisplayProfile profile, bool touchModified)
     {
-        profile.ModifiedAt = DateTime.UtcNow;
+        if (touchModified) profile.ModifiedAt = DateTime.UtcNow;
+
+        // A profile the user just created has no place in the order yet; put it last
+        // rather than letting it default to 0 and jump to the front.
+        if (profile.SortOrder == 0 && !Profiles.Contains(profile) && Profiles.Count > 0)
+            profile.SortOrder = Profiles.Max(p => p.SortOrder) + 1;
+
         var filePath = Path.Combine(_profilesDir, $"{profile.Id}.json");
         var json = JsonSerializer.Serialize(profile, MoJsonContext.Default.DisplayProfile);
 

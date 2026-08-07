@@ -9,6 +9,7 @@ using Mo.Helpers;
 using Mo.Models;
 using Mo.Services;
 using Mo.ViewModels;
+using Windows.ApplicationModel.DataTransfer;
 
 namespace Mo.Views;
 
@@ -489,6 +490,44 @@ public sealed partial class ProfileListPage : Page
     public static Visibility BoolToVisibility(bool value)
         => value ? Visibility.Visible : Visibility.Collapsed;
 
+    // ── Slot badge ──
+    //
+    // App.RegisterAllHotkeys binds <modifier>+0..9 to Profiles[0..9], so a profile's
+    // position in the list *is* its shortcut. The badge states that rather than
+    // decorating the card with an index.
+
+    /// <summary>Slots exist for the first nine profiles only.</summary>
+    public static Visibility SlotVisibility(int sortOrder)
+        => sortOrder is >= 0 and < 9 ? Visibility.Visible : Visibility.Collapsed;
+
+    public static string SlotNumber(int sortOrder) => (sortOrder + 1).ToString();
+
+    public static string SlotTooltip(int sortOrder)
+    {
+        var modifier = TryGetSlotModifier();
+        return modifier == null
+            ? ResourceHelper.GetString("SlotNoShortcut")
+            : ResourceHelper.GetString("SlotShortcut", $"{modifier}{sortOrder + 1}");
+    }
+
+    /// <summary>Formats the configured slot modifier as a "Ctrl+Alt+" prefix.</summary>
+    private static string? TryGetSlotModifier()
+    {
+        try
+        {
+            var mod = App.Services.GetRequiredService<ISettingsService>().Settings.ProfileSlotModifier;
+            if (mod == null) return null;
+
+            var parts = new List<string>();
+            if (mod.Ctrl) parts.Add("Ctrl");
+            if (mod.Alt) parts.Add("Alt");
+            if (mod.Shift) parts.Add("Shift");
+            if (mod.Win) parts.Add("Win");
+            return parts.Count == 0 ? null : string.Join("+", parts) + "+";
+        }
+        catch { return null; }
+    }
+
     public static Brush CardBorder(bool isActive) => (Brush)Application.Current.Resources[
         isActive ? "AccentFillColorDefaultBrush" : "CardStrokeColorDefaultBrush"];
 
@@ -497,6 +536,28 @@ public sealed partial class ProfileListPage : Page
     /// <summary>"Updated 3 min ago" — derived at render time, never stored.</summary>
     public static string FormatModified(DateTime modifiedUtc)
         => ResourceHelper.GetString("ModifiedPrefix", RelativeTimeText.Format(modifiedUtc));
+
+    /// <summary>
+    /// The card's single caption line: monitor count, when it last changed, and the
+    /// shortcut if one is assigned.
+    /// </summary>
+    /// <remarks>
+    /// These were three separate elements. The count in particular restated in words
+    /// what the plan view above it already draws, so they are folded into one quiet
+    /// line and the drawing is left to carry the card.
+    /// </remarks>
+    public static string CardCaption(int monitorCount, DateTime modifiedUtc, HotkeyBinding? hotkey)
+    {
+        var parts = new List<string>
+        {
+            $"{monitorCount} {ResourceHelper.GetString("MonitorsSuffix")}",
+            RelativeTimeText.Format(modifiedUtc),
+        };
+
+        if (hotkey != null) parts.Add(hotkey.ToString());
+
+        return string.Join("  ·  ", parts.Where(p => !string.IsNullOrWhiteSpace(p)));
+    }
 
     // ── Profile card menu ──
     //
@@ -546,6 +607,22 @@ public sealed partial class ProfileListPage : Page
         flyout.Items.Add(MenuItem("Export", "", profile.Id, ExportButton_Click));
         flyout.Items.Add(new MenuFlyoutSeparator());
 
+        // Reordering needs a path that is not a mouse gesture. Dragging a card competes
+        // with clicking it to open the editor, and it offers nothing to a keyboard or
+        // screen-reader user — while the order decides which profile each Ctrl+Alt+N
+        // shortcut applies, so it has to be reachable by everyone.
+        int index = ViewModel.Profiles.IndexOf(profile);
+
+        var moveUp = MenuItem("MoveUp", "", profile.Id, MoveUp_Click);
+        moveUp.IsEnabled = index > 0;
+        flyout.Items.Add(moveUp);
+
+        var moveDown = MenuItem("MoveDown", "", profile.Id, MoveDown_Click);
+        moveDown.IsEnabled = index >= 0 && index < ViewModel.Profiles.Count - 1;
+        flyout.Items.Add(moveDown);
+
+        flyout.Items.Add(new MenuFlyoutSeparator());
+
         var autoSwitch = new ToggleMenuFlyoutItem
         {
             Text = ResourceHelper.GetString("AutoSwitch"),
@@ -573,6 +650,54 @@ public sealed partial class ProfileListPage : Page
             item.Click += onClick;
             return item;
         }
+    }
+
+    private void MoveUp_Click(object sender, RoutedEventArgs e) => MoveProfile(sender, -1);
+    private void MoveDown_Click(object sender, RoutedEventArgs e) => MoveProfile(sender, +1);
+
+    private async void MoveProfile(object sender, int delta)
+    {
+        if ((sender as FrameworkElement)?.Tag is not string profileId) return;
+
+        var profiles = App.Services.GetRequiredService<IProfileService>();
+        var profile = profiles.Profiles.FirstOrDefault(p => p.Id == profileId);
+        if (profile == null) return;
+
+        int from = profiles.Profiles.IndexOf(profile);
+        int to = from + delta;
+        if (from < 0 || to < 0 || to >= profiles.Profiles.Count) return;
+
+        // Move on the shared collection the grid is bound to, so the reorder is visible
+        // immediately; PersistOrderAsync then writes the new SortOrder values.
+        profiles.Profiles.Move(from, to);
+
+        try
+        {
+            await profiles.PersistOrderAsync();
+            // The slot shortcuts index into this list, so they have to be rebound.
+            App.RegisterAllHotkeys();
+        }
+        catch (Exception ex) { Helpers.BootLog.WriteError("profile.move", ex); }
+    }
+
+    /// <summary>
+    /// Persists the new order after a drag.
+    /// </summary>
+    /// <remarks>
+    /// The GridView has already reordered the bound collection by this point — it is
+    /// the same ObservableCollection the service owns — so all that is left is writing
+    /// SortOrder back out and re-pointing the slot hotkeys, which index into this list.
+    /// </remarks>
+    private async void ProfileGrid_DragItemsCompleted(ListViewBase sender, DragItemsCompletedEventArgs args)
+    {
+        if (args.DropResult != DataPackageOperation.Move) return;
+
+        try
+        {
+            await App.Services.GetRequiredService<IProfileService>().PersistOrderAsync();
+            App.RegisterAllHotkeys();
+        }
+        catch (Exception ex) { Helpers.BootLog.WriteError("profile.reorder", ex); }
     }
 
     // ── Responsive card sizing ──

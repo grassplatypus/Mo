@@ -8,19 +8,17 @@ using Mo.Models;
 namespace Mo.Controls;
 
 /// <summary>
-/// Read-only miniature of a profile's monitor arrangement.
-///
-/// Mo's whole subject is where the monitors sit relative to each other, yet the
-/// profile list described that with a number ("2 monitors"). A thumbnail lets the
-/// user tell two profiles apart at a glance without opening either. Intentionally
-/// separate from <see cref="MonitorLayoutCanvas"/>: that one is an editor with drag,
-/// snapping and hit-testing, all of which would be dead weight — and a scrolling
-/// cost — inside a list item.
+/// Read-only plan view of a profile's monitor arrangement.
 /// </summary>
 /// <remarks>
-/// Derives from <see cref="Grid"/> and builds its own Canvas rather than using a
-/// templated <c>Control</c>: the project has no Themes/Generic.xaml, and adding that
-/// plumbing for one non-interactive shape would cost more than it explains.
+/// Mo's subject is where the monitors physically sit, so the list leads with the
+/// geometry rather than describing it as "2 monitors". Each panel is drawn to relative
+/// scale and carries the three things that identify it at a glance: its number, whether
+/// it is primary, and its resolution.
+///
+/// Intentionally separate from <see cref="MonitorLayoutCanvas"/>: that one is an editor
+/// with drag, snapping and hit-testing, all of which would be dead weight — and a
+/// scrolling cost — inside a list item.
 /// </remarks>
 public sealed partial class MonitorLayoutThumbnail : Grid
 {
@@ -30,6 +28,7 @@ public sealed partial class MonitorLayoutThumbnail : Grid
     {
         Children.Add(_canvas);
         SizeChanged += (_, _) => Render();
+        ActualThemeChanged += (_, _) => Render();
     }
 
     public static readonly DependencyProperty MonitorsProperty = DependencyProperty.Register(
@@ -42,16 +41,24 @@ public sealed partial class MonitorLayoutThumbnail : Grid
         set => SetValue(MonitorsProperty, value);
     }
 
-    /// <summary>Highlights the monitor marked primary. Off for dense lists.</summary>
-    public static readonly DependencyProperty ShowPrimaryProperty = DependencyProperty.Register(
-        nameof(ShowPrimary), typeof(bool), typeof(MonitorLayoutThumbnail),
+    /// <summary>Draws the number, primary marker and resolution inside each panel.</summary>
+    public static readonly DependencyProperty ShowDetailProperty = DependencyProperty.Register(
+        nameof(ShowDetail), typeof(bool), typeof(MonitorLayoutThumbnail),
         new PropertyMetadata(true, (d, _) => ((MonitorLayoutThumbnail)d).Render()));
 
-    public bool ShowPrimary
+    public bool ShowDetail
     {
-        get => (bool)GetValue(ShowPrimaryProperty);
-        set => SetValue(ShowPrimaryProperty, value);
+        get => (bool)GetValue(ShowDetailProperty);
+        set => SetValue(ShowDetailProperty, value);
     }
+
+    // A panel narrower or shorter than this has no room for a label without it
+    // colliding with the edges; below each threshold the corresponding text is dropped
+    // rather than shrunk to illegibility.
+    private const double MinWidthForNumber = 26;
+    private const double MinHeightForNumber = 22;
+    private const double MinWidthForResolution = 68;
+    private const double MinHeightForResolution = 40;
 
     private void Render()
     {
@@ -63,48 +70,115 @@ public sealed partial class MonitorLayoutThumbnail : Grid
         double w = ActualWidth, h = ActualHeight;
         if (w <= 0 || h <= 0) return;
 
-        // Disabled monitors are not part of the desktop, so they must not stretch the
-        // bounding box — otherwise a profile that turns one off renders shrunken and
-        // off-centre compared with the layout the user will actually get.
-        var active = monitors.Where(m => m.IsEnabled && m.Width > 0 && m.Height > 0).ToList();
-        if (active.Count == 0) return;
+        // Disabled panels are drawn too, ghosted: a profile whose whole point is
+        // turning a monitor off should show that monitor, not omit it.
+        var drawable = monitors.Where(m => m.Width > 0 && m.Height > 0).ToList();
+        if (drawable.Count == 0) return;
 
-        var rects = active.Select(m => new DisplayTopology.MonitorRect(
-            m.PositionX, m.PositionY, m.Width, m.Height)).ToList();
+        var rects = drawable
+            .Select(m => new DisplayTopology.MonitorRect(m.PositionX, m.PositionY, m.Width, m.Height))
+            .ToList();
 
         var bounds = DisplayTopology.ComputeBoundingBox(rects);
         // Padding scales with the control so the same class works at card size and at
         // the larger size the editor header uses.
         double padding = Math.Max(2, Math.Min(w, h) * 0.06);
         double scale = DisplayTopology.ComputeScaleFactor(bounds, w, h, padding);
-        if (scale <= 0 || double.IsInfinity(scale)) return;
+        if (scale <= 0 || double.IsInfinity(scale) || double.IsNaN(scale)) return;
 
-        var fill = (Brush)Application.Current.Resources["AccentFillColorSecondaryBrush"];
-        var primaryFill = (Brush)Application.Current.Resources["AccentFillColorDefaultBrush"];
+        for (int i = 0; i < drawable.Count; i++)
+            DrawPanel(drawable[i], i + 1, bounds, scale, w, h);
+    }
+
+    // A hairline crosshair at desktop coordinate (0,0) was tried here and removed.
+    // The origin is genuinely meaningful — it is the primary monitor's top-left, and
+    // every window position is measured from it — but at card size it lands on a panel
+    // edge, where it is either hidden under the panel or too faint to read. A mark that
+    // conveys nothing at the size it is actually drawn is not worth the ink.
+
+    private void DrawPanel(MonitorInfo monitor, int number, DisplayTopology.Bounds bounds, double scale, double w, double h)
+    {
+        var (x, y) = DisplayTopology.TransformToCanvas(monitor.PositionX, monitor.PositionY, bounds, scale, w, h);
+
+        // The 1px inset keeps abutting panels readable as separate objects; Max() stops
+        // it from consuming a very small thumbnail entirely.
+        double pw = Math.Max(3, monitor.Width * scale - 1);
+        double ph = Math.Max(3, monitor.Height * scale - 1);
+
+        bool off = !monitor.IsEnabled;
+
+        var fill = (Brush)Application.Current.Resources[
+            monitor.IsPrimary ? "AccentFillColorDefaultBrush" : "AccentFillColorSecondaryBrush"];
         var stroke = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"];
 
-        for (int i = 0; i < active.Count; i++)
+        var panel = new Rectangle
         {
-            var m = active[i];
-            var (x, y) = DisplayTopology.TransformToCanvas(
-                m.PositionX, m.PositionY, bounds, scale, w, h);
+            Width = pw,
+            Height = ph,
+            RadiusX = 2,
+            RadiusY = 2,
+            Fill = off ? null : fill,
+            Stroke = stroke,
+            StrokeThickness = 1,
+            // A dashed outline with no fill reads as "present but not switched on"
+            // without needing a legend.
+            StrokeDashArray = off ? [3, 3] : null,
+        };
+        Canvas.SetLeft(panel, x);
+        Canvas.SetTop(panel, y);
+        _canvas.Children.Add(panel);
 
-            bool isPrimary = ShowPrimary && m.IsPrimary;
-            var rect = new Rectangle
+        if (!ShowDetail) return;
+
+        var onAccent = (Brush)Application.Current.Resources["TextOnAccentFillColorPrimaryBrush"];
+        var normal = (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"];
+        var labelBrush = off ? normal : onAccent;
+
+        if (pw >= MinWidthForNumber && ph >= MinHeightForNumber)
+        {
+            var label = new TextBlock
             {
-                // A 1px gap keeps abutting monitors readable as separate tiles; the
-                // Max() stops that gap from consuming a very small thumbnail entirely.
-                Width = Math.Max(2, m.Width * scale - 1),
-                Height = Math.Max(2, m.Height * scale - 1),
-                RadiusX = 2,
-                RadiusY = 2,
-                Fill = isPrimary ? primaryFill : fill,
-                Stroke = stroke,
-                StrokeThickness = 1,
+                Text = number.ToString(),
+                FontSize = Math.Clamp(ph * 0.32, 10, 20),
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                Foreground = labelBrush,
+                Opacity = off ? 0.5 : 0.9,
             };
-            Canvas.SetLeft(rect, x);
-            Canvas.SetTop(rect, y);
-            _canvas.Children.Add(rect);
+            Place(label, x + 4, y + 2);
+
+            if (monitor.IsPrimary)
+            {
+                var star = new TextBlock
+                {
+                    // Segoe Fluent Icons "FavoriteStarFill" — the primary display is the
+                    // one Windows anchors the desktop origin and the taskbar to.
+                    Text = "",
+                    FontFamily = new FontFamily("Segoe Fluent Icons"),
+                    FontSize = Math.Clamp(ph * 0.2, 8, 12),
+                    Foreground = labelBrush,
+                    Opacity = 0.9,
+                };
+                Place(star, x + pw - 16, y + 3);
+            }
         }
+
+        if (pw >= MinWidthForResolution && ph >= MinHeightForResolution)
+        {
+            var res = new TextBlock
+            {
+                Text = $"{monitor.Width}×{monitor.Height}",
+                FontSize = 10,
+                Foreground = labelBrush,
+                Opacity = off ? 0.45 : 0.8,
+            };
+            Place(res, x + 4, y + ph - 16);
+        }
+    }
+
+    private void Place(UIElement element, double left, double top)
+    {
+        Canvas.SetLeft(element, left);
+        Canvas.SetTop(element, top);
+        _canvas.Children.Add(element);
     }
 }

@@ -71,7 +71,11 @@
             SelectionMode="None"
             IsItemClickEnabled="True"
             SizeChanged="ProfileGrid_SizeChanged"
-            ItemClick="ProfileGrid_ItemClick">
+            ItemClick="ProfileGrid_ItemClick"
+            CanDragItems="True"
+            CanReorderItems="True"
+            AllowDrop="True"
+            DragItemsCompleted="ProfileGrid_DragItemsCompleted">
 
             <GridView.ItemContainerStyle>
                 <Style TargetType="GridViewItem" BasedOn="{StaticResource DefaultGridViewItemStyle}">
@@ -92,7 +96,7 @@
                          30-line MenuFlyout blocks; every menu change had to be made
                          twice. Both are now built once per card by BuildProfileMenu. -->
                     <Grid
-                        MinHeight="180"
+                        MinHeight="220"
                         Padding="16"
                         CornerRadius="8"
                         Loaded="ProfileCard_Loaded"
@@ -102,13 +106,11 @@
 
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
-                            <!-- 0: name + overflow -->
-                            <RowDefinition Height="Auto" />
-                            <!-- 1: monitor count + hotkey badge -->
+                            <!-- 0: slot + name + overflow -->
                             <RowDefinition Height="*" />
-                            <!-- 2: layout preview, absorbs slack -->
+                            <!-- 1: plan view, absorbs all slack -->
                             <RowDefinition Height="Auto" />
-                            <!-- 3: metadata + apply -->
+                            <!-- 2: caption + apply -->
                         </Grid.RowDefinitions>
 
                         <!-- Profile Name + Overflow Menu -->
@@ -119,6 +121,26 @@
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Orientation="Horizontal" Spacing="8">
+                                <!-- The slot number IS the shortcut: this is the N in
+                                     Ctrl+Alt+N. Shown only for the first nine, because
+                                     only those have a shortcut to name. -->
+                                <Border
+                                    Visibility="{x:Bind local:ProfileListPage.SlotVisibility(SortOrder), Mode=OneWay}"
+                                    Width="22" Height="22"
+                                    CornerRadius="11"
+                                    VerticalAlignment="Center"
+                                    Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    ToolTipService.ToolTip="{x:Bind local:ProfileListPage.SlotTooltip(SortOrder), Mode=OneWay}">
+                                    <TextBlock
+                                        Text="{x:Bind local:ProfileListPage.SlotNumber(SortOrder), Mode=OneWay}"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        FontSize="12"
+                                        FontWeight="SemiBold"
+                                        Opacity="0.85" />
+                                </Border>
                                 <TextBlock
                                     Text="{x:Bind Name, Mode=OneWay}"
                                     Style="{StaticResource SubtitleTextBlockStyle}"
@@ -150,46 +172,25 @@
                             </Button>
                         </Grid>
 
-                        <!-- Monitor Count -->
-                        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0" VerticalAlignment="Top">
-                            <FontIcon Glyph="&#xE7F4;" FontSize="14" Opacity="0.6" />
-                            <TextBlock Opacity="0.6">
-                                <Run Text="{x:Bind MonitorCount, Mode=OneWay}" />
-                                <Run Text="{x:Bind local:ProfileListPage.L(local:ProfileListPage.MonitorsKey)}" />
-                            </TextBlock>
-                        </StackPanel>
-
-                        <!-- Hotkey Badge -->
-                        <Border
-                            Grid.Row="1"
-                            HorizontalAlignment="Right"
-                            VerticalAlignment="Top"
-                            Visibility="{x:Bind local:ProfileListPage.HasHotkey(Hotkey)}"
-                            Background="{ThemeResource SystemFillColorNeutralBackgroundBrush}"
-                            CornerRadius="4"
-                            Padding="6,2">
-                            <TextBlock
-                                Text="{x:Bind local:ProfileListPage.FormatHotkey(Hotkey)}"
-                                Style="{StaticResource CaptionTextBlockStyle}"
-                                Opacity="0.8" />
-                        </Border>
-
-                        <!-- Layout preview: the arrangement is what distinguishes one
-                             profile from another, so show it rather than describe it. -->
+                        <!-- The plan view is the card. The arrangement is what
+                             distinguishes one profile from another, so it takes the
+                             space and everything else becomes caption. The monitor
+                             count that used to sit above it said, in words, exactly
+                             what the drawing now says. -->
                         <controls:MonitorLayoutThumbnail
-                            Grid.Row="2"
+                            Grid.Row="1"
                             Monitors="{x:Bind Monitors, Mode=OneWay}"
-                            MinHeight="56"
-                            Margin="0,10,0,4" />
+                            MinHeight="104"
+                            Margin="0,12,0,10" />
 
                         <!-- Actions -->
-                        <Grid Grid.Row="3" Margin="0,8,0,0">
+                        <Grid Grid.Row="2">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
 
-                            <StackPanel VerticalAlignment="Center" Spacing="1">
+                            <StackPanel VerticalAlignment="Center" Spacing="1" Margin="0,0,8,0">
                                 <!-- The user's own note, shown only when they wrote one. -->
                                 <TextBlock
                                     Text="{x:Bind Description, Mode=OneWay}"
@@ -198,9 +199,11 @@
                                     MaxLines="1"
                                     TextTrimming="CharacterEllipsis"
                                     Style="{StaticResource CaptionTextBlockStyle}" />
+                                <!-- One caption line: how many monitors, when it changed,
+                                     and the shortcut if it has one. -->
                                 <TextBlock
-                                    Text="{x:Bind local:ProfileListPage.FormatModified(ModifiedAt), Mode=OneWay}"
-                                    Opacity="0.5"
+                                    Text="{x:Bind local:ProfileListPage.CardCaption(MonitorCount, ModifiedAt, Hotkey), Mode=OneWay}"
+                                    Opacity="0.55"
                                     TextTrimming="CharacterEllipsis"
                                     Style="{StaticResource CaptionTextBlockStyle}" />
                             </StackPanel>

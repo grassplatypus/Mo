@@ -37,6 +37,18 @@ public sealed class DisplayProfile : ObservableObject
 
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
 
+    /// <summary>
+    /// Position in the user's own ordering. Lower comes first.
+    /// </summary>
+    /// <remarks>
+    /// Before this existed, the list order was whatever <c>Directory.GetFiles</c>
+    /// returned — effectively GUID filename order. That order is what the slot hotkeys
+    /// (Ctrl+Alt+1..9 → Profiles[0..9]), the next/previous cycling, and the tray menu
+    /// all index into, so those shortcuts pointed at arbitrary profiles and could
+    /// silently change meaning whenever a profile was added or removed.
+    /// </remarks>
+    public int SortOrder { get; set; }
+
     // The setters coalesce null away. These properties are non-nullable to the rest of
     // the app, but System.Text.Json will happily assign null from `"name": null` in a
     // hand-edited or third-party profile file — and Program.QuarantineCorruptUserData

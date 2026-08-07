@@ -209,6 +209,11 @@ Press Delete or Backspace to clear. Escape to cancel.</value></data>
   <data name="RemoveDataDone" xml:space="preserve"><value>Removed. Mo will close now.</value></data>
   <data name="RemoveDataPartial" xml:space="preserve"><value>Some items could not be removed. Close Mo and delete them manually.</value></data>
   <data name="OpenLogFolderText" xml:space="preserve"><value>Open logs</value></data>
+  <data name="SlotShortcut" xml:space="preserve"><value>Apply with {0}</value></data>
+  <data name="SlotNoShortcut" xml:space="preserve"><value>Position in your order. Assign a slot shortcut in Settings to apply this with the keyboard.</value></data>
+  <data name="ReorderHint" xml:space="preserve"><value>Drag cards to reorder. The number is the keyboard slot.</value></data>
+  <data name="MoveUp" xml:space="preserve"><value>Move up</value></data>
+  <data name="MoveDown" xml:space="preserve"><value>Move down</value></data>
   <data name="RestoreOnStartupCard.Header" xml:space="preserve"><value>Restore last profile on startup</value></data>
   <data name="RestoreOnStartupCard.Description" xml:space="preserve"><value>Re-apply the most recently used profile when Mo launches.</value></data>
   <data name="RestoreColorCard.Header" xml:space="preserve"><value>Restore color settings on startup</value></data>
