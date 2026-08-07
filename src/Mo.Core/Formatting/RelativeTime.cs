@@ -1,10 +1,7 @@
 namespace Mo.Core.Formatting;
 
-/// <summary>
-/// Picks the coarse bucket a timestamp falls into, so the UI can render "3분 전"
-/// instead of "2026-04-12 오전 3:38". Pure and culture-free on purpose: the caller
-/// supplies the localized wording, this decides only which wording applies.
-/// </summary>
+// Picks the coarse bucket a timestamp falls into. Culture-free: the caller supplies
+// the localized wording, this only decides which wording applies.
 public static class RelativeTime
 {
     public enum Bucket
@@ -26,8 +23,7 @@ public static class RelativeTime
     {
         var delta = nowUtc - whenUtc;
 
-        // A clock change or a profile written by a machine running slightly ahead can
-        // put the timestamp in the future. "in -3 minutes" helps nobody.
+        // Clock skew can put the timestamp in the future.
         if (delta < TimeSpan.Zero) return new Result(Bucket.JustNow, 0);
 
         if (delta < TimeSpan.FromMinutes(1)) return new Result(Bucket.JustNow, 0);

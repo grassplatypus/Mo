@@ -34,8 +34,7 @@ public sealed class ApplyGuardService : IApplyGuardService
         }
         catch
         {
-            // A monitor without DDC/CI simply contributes nothing to restore. The
-            // topology part of the snapshot is what actually prevents a lockout.
+            // A monitor without DDC/CI contributes nothing; topology is what matters.
         }
 
         return new DisplaySnapshot
@@ -60,8 +59,7 @@ public sealed class ApplyGuardService : IApplyGuardService
             var window = App.MainWindow;
             if (window == null) return true;
 
-            // Callers reach this from hotkey messages, poll timers and startup
-            // continuations; XAML work has to happen on the dispatcher thread.
+            // Callers arrive from hotkey messages, timers and startup continuations.
             var queue = window.DispatcherQueue;
             if (queue is { HasThreadAccess: false })
             {
@@ -97,9 +95,8 @@ public sealed class ApplyGuardService : IApplyGuardService
         var window = App.MainWindow;
         if (window == null) return true;
 
-        // A hotkey or auto-switch apply usually happens with the window hidden in
-        // the tray. Surfacing it is the whole point: if the change made the desktop
-        // unusable, the dialog is the only thing the user can still reach.
+        // These usually fire with the window hidden; if the change broke the desktop,
+        // this dialog is the only thing left to reach.
         if (trigger != ApplyTrigger.User)
             window.ShowAndActivate();
 
@@ -122,8 +119,7 @@ public sealed class ApplyGuardService : IApplyGuardService
         bool ok = false;
         try
         {
-            // Reuse the normal apply path so the revert benefits from the same
-            // NVAPI/CCD fallbacks and mouse-unstick workaround the forward path uses.
+            // Reuse the normal apply path for the same fallbacks and cursor fix.
             var revertProfile = new DisplayProfile
             {
                 Name = "__revert__",

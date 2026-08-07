@@ -34,9 +34,8 @@ public sealed partial class MainWindow : Window
         ApplySizeConstraints();
         RestorePlacement();
 
-        // Windows applies its own default placement the first time a window is shown,
-        // which discards a position set beforehand (the size does survive). Re-apply
-        // once on first activation, then stop listening.
+        // Windows applies its own default placement on first show, discarding a
+        // position set beforehand (size survives). Re-apply once, then stop listening.
         Activated += MainWindow_FirstActivated;
 
         RootFrame.Navigate(typeof(ShellPage));
@@ -53,20 +52,16 @@ public sealed partial class MainWindow : Window
 
     private DispatcherTimer? _placementSaveTimer;
 
-    /// <summary>
-    /// False until the saved placement has been applied to a shown window. Blocks the
-    /// save path in the meantime so the OS's default position is never written back
-    /// over the position we are in the middle of restoring.
-    /// </summary>
+    // Blocks the save path until restore finishes, so the OS default position is not
+    // written back over the one being restored.
     private bool _placementRestored;
 
     private void MainWindow_FirstActivated(object sender, WindowActivatedEventArgs args)
     {
         Activated -= MainWindow_FirstActivated;
 
-        // Queued rather than applied inline: the OS default placement is applied as
-        // part of the same show sequence that raises Activated, so moving the window
-        // here would be overwritten. Running on the next dispatcher turn lands after it.
+        // Queued, not inline: the OS default placement lands in the same show sequence
+        // that raises Activated, so an inline move would be overwritten.
         DispatcherQueue.TryEnqueue(() =>
         {
             RestorePlacement();
@@ -97,8 +92,7 @@ public sealed partial class MainWindow : Window
 
     private void ApplySizeConstraints()
     {
-        // Below this the profile grid and the tuning sliders stop being usable, and
-        // nothing previously stopped the user from dragging the window down to a strip.
+        // Below this the profile grid and tuning sliders stop being usable.
         if (AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter presenter)
         {
             presenter.PreferredMinimumWidth = (int)(MinWidthDip * ScaleFactor);
@@ -107,15 +101,9 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Restores the last window position and size.
+    /// Restores the last window position and size. The stored rectangle is validated
+    /// first — the display it sat on may be gone.
     /// </summary>
-    /// <remarks>
-    /// AppSettings.WindowPlacement existed and was serialized but was never read or
-    /// written, so the window reset to a hard-coded 1000x680 at an OS-chosen position
-    /// on every launch. The stored rectangle is validated first: this app rearranges
-    /// monitors for a living, so the display the window last sat on may well be gone,
-    /// and restoring blindly would put it somewhere unreachable.
-    /// </remarks>
     private void RestorePlacement()
     {
         double scale = ScaleFactor;
@@ -140,8 +128,7 @@ public sealed partial class MainWindow : Window
 
         if (!Core.WindowPlacementValidator.IsReachable(wanted, workAreas))
         {
-            // The monitor it lived on is gone or has moved; keep the size, let the OS
-            // pick the position.
+            // Its monitor is gone; keep the size, let the OS pick the position.
             AppWindow.Resize(new Windows.Graphics.SizeInt32(saved.Width, saved.Height));
             return;
         }
@@ -179,8 +166,7 @@ public sealed partial class MainWindow : Window
         {
             if (!_placementRestored) return;
 
-            // A hidden window reports a stale or zeroed rect; saving that would move
-            // the window to a corner the next time it is shown.
+            // A hidden window reports a stale rect.
             var hwnd = WindowHelper.GetHwnd(this);
             if (hwnd == 0 || !IsWindowVisible(hwnd)) return;
 
@@ -192,8 +178,8 @@ public sealed partial class MainWindow : Window
             var settings = App.Services.GetRequiredService<ISettingsService>();
             var existing = settings.Settings.WindowPlacement;
 
-            // While maximized the reported rect is the maximized one; keep the restore
-            // rect that was saved before so unmaximizing returns somewhere sensible.
+            // While maximized the reported rect is the maximized one; keep the previous
+            // restore rect.
             var placement = new Models.WindowPlacement
             {
                 X = maximized ? existing?.X ?? AppWindow.Position.X : AppWindow.Position.X,
@@ -221,11 +207,8 @@ public sealed partial class MainWindow : Window
             if (!settings.Settings.MinimizeToTrayOnClose)
                 return;
 
-            // Hiding is only safe if there is a tray icon to get back in through.
-            // Shell_NotifyIcon can fail (Explorer restarting, notification area full,
-            // some elevated-session combos), and hiding anyway leaves a live process
-            // with no window and no icon — unreachable, and still holding the
-            // single-instance key so every later launch also appears to do nothing.
+            // Only safe if there is a tray icon to get back in through: hiding without
+            // one leaves an unreachable process still holding the single-instance key.
             var tray = App.Services.GetRequiredService<ITrayService>();
             if (!tray.EnsureCreated())
             {

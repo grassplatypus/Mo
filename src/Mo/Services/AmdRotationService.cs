@@ -3,22 +3,9 @@ using Mo.Models;
 
 namespace Mo.Services;
 
-/// <summary>
-/// Driver-level rotation for Radeon GPUs via AMD's ADL2 API.
-/// </summary>
-/// <remarks>
-/// Rotating through Windows' own CCD path triggers a long-standing cursor-coordinate
-/// bug, so when the user opts into <see cref="RotationMethod.AmdDriver"/> the rotation
-/// is handed to the driver instead.
-///
-/// The display has to be resolved before it can be rotated. ADL indexes displays per
-/// adapter, and those indices have nothing to do with the order Windows reports
-/// monitors in — so a monitor is matched by its GDI device name ("\\.\DISPLAY1"),
-/// which ADL surfaces as ADLDisplayInfo.strDisplayName. This is the same bridge the
-/// NVIDIA path uses. Earlier versions skipped this entirely and always wrote to
-/// display index 0 of each adapter, which rotated whichever monitor happened to be
-/// first rather than the one the user asked for.
-/// </remarks>
+// Driver-level rotation for Radeon GPUs via ADL2, used when the user picks
+// RotationMethod.AmdDriver — Windows' own CCD rotation has a cursor-coordinate bug.
+// Displays must be resolved by GDI name; see CLAUDE.md "Radeon (ADL) rules".
 public sealed class AmdRotationService : IDisposable
 {
     private const string AdlLib = "atiadlxx.dll";
@@ -45,14 +32,11 @@ public sealed class AmdRotationService : IDisposable
     [DllImport(AdlLib, CallingConvention = CallingConvention.Cdecl)]
     private static extern int ADL2_Display_Modes_Set(nint context, int adapterIndex, int displayIndex, int numModes, ref ADLMode modes);
 
-    // ADL's functions are __cdecl but the allocation callback is __stdcall
-    // (ADL_MAIN_MALLOC_CALLBACK in adl_sdk.h). Winapi resolves to StdCall on Windows,
-    // which is what the default would give — stated explicitly so it survives a move.
+    // Functions are __cdecl, but ADL_MAIN_MALLOC_CALLBACK is __stdcall.
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     private delegate nint ADL_Main_Memory_Alloc(int size);
 
-    // ADL allocates its out-buffers through this callback and hands ownership to us,
-    // so every pointer it returns has to come back through Marshal.FreeHGlobal.
+    // ADL allocates out-buffers through this and hands us ownership.
     private static readonly ADL_Main_Memory_Alloc AllocCallback = Marshal.AllocHGlobal;
 
     [StructLayout(LayoutKind.Sequential)]
@@ -76,16 +60,12 @@ public sealed class AmdRotationService : IDisposable
     {
         try
         {
-            // The context is created once and kept. ADL2_Main_Control_Create is slow,
-            // and the previous code paid that cost on every single rotation.
+            // Created once and kept — ADL2_Main_Control_Create is slow.
             if (ADL2_Main_Control_Create(AllocCallback, 1, out var ctx) == ADL_OK && ctx != 0)
             {
                 _context = ctx;
 
-                // Adapter count is not the test: on a GeForce machine ADL still
-                // enumerates the NVIDIA adapters, so counting them would enable the
-                // AMD backend on hardware it cannot drive. Verified on a Radeon +
-                // RTX 5080 box where ADL reported nine adapters, four of them NVIDIA.
+                // Not an adapter count: ADL enumerates NVIDIA adapters too.
                 IsAvailable = AdlDisplays.HasAmdAdapter(ctx);
 
                 if (!IsAvailable)
@@ -101,7 +81,6 @@ public sealed class AmdRotationService : IDisposable
     }
 
     /// <summary>One display's desired state, already matched to attached hardware.</summary>
-    /// <param name="GdiDeviceName">"\\.\DISPLAY1" — how the display is located in ADL.</param>
     public readonly record struct DisplayTarget(
         string GdiDeviceName,
         int PositionX,
@@ -112,19 +91,10 @@ public sealed class AmdRotationService : IDisposable
         DisplayRotation Rotation);
 
     /// <summary>
-    /// Applies position, size, refresh rate and rotation for every target in one pass,
-    /// driver-side. Returns false if any target could not be set, so the caller can fall
-    /// back to the CCD path.
+    /// Applies position, size, refresh and rotation for every target in one pass.
+    /// All-or-nothing: any failure returns false and DisplayService runs CCD over the
+    /// whole profile, rather than leaving a half-applied desktop.
     /// </summary>
-    /// <remarks>
-    /// The Radeon counterpart to NvidiaRotationService.ApplyFullProfile. Going through
-    /// the driver avoids the cursor-coordinate bug that Windows' own rotation path has.
-    ///
-    /// This is all-or-nothing on purpose: a partial apply would leave the desktop in a
-    /// state that is neither the old layout nor the requested one. Any failure returns
-    /// false with nothing further attempted, and DisplayService then runs the CCD path
-    /// over the whole profile.
-    /// </remarks>
     public bool ApplyFullProfile(IReadOnlyList<DisplayTarget> targets)
     {
         if (!IsAvailable || targets.Count == 0) return false;
@@ -135,8 +105,7 @@ public sealed class AmdRotationService : IDisposable
 
             try
             {
-                // Resolve every target before writing anything. If even one display
-                // cannot be located, the whole apply is abandoned untouched.
+                // Resolve everything before writing anything.
                 var resolved = new List<(DisplayTarget target, int adapter, int display)>(targets.Count);
                 foreach (var target in targets)
                 {
@@ -167,9 +136,8 @@ public sealed class AmdRotationService : IDisposable
 
     private bool ApplyOne(DisplayTarget target, int adapterIndex, int displayIndex)
     {
-        // Read the current mode first and edit it, rather than building one from
-        // scratch: ModeFlag/ModeMask/ModeValue and colour depth carry driver state this
-        // code has no business inventing.
+        // Edit the current mode rather than build one: ModeFlag/Mask/Value and colour
+        // depth carry driver state we have no business inventing.
         if (ADL2_Display_Modes_Get(_context, adapterIndex, displayIndex, out int numModes, out nint modesPtr) != ADL_OK
             || numModes == 0 || modesPtr == 0)
             return false;
@@ -181,9 +149,9 @@ public sealed class AmdRotationService : IDisposable
         mode.XPos = target.PositionX;
         mode.YPos = target.PositionY;
 
-        // Mo stores Width/Height already swapped for portrait rotations, but ADL wants
-        // the panel's own resolution with Orientation applied separately. Swap back so
-        // a 1440x2560 portrait entry is sent as a 2560x1440 panel rotated 90 degrees.
+        // Mo stores Width/Height pre-swapped for portrait; ADL wants the panel's own
+        // resolution with Orientation separate. Verified only by the read-back check in
+        // DisplayService — ADL does not document which it expects.
         bool portrait = target.Rotation is DisplayRotation.Rotate90 or DisplayRotation.Rotate270;
         mode.XRes = portrait ? target.Height : target.Width;
         mode.YRes = portrait ? target.Width : target.Height;

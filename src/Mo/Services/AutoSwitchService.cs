@@ -3,20 +3,9 @@ using Mo.Models;
 
 namespace Mo.Services;
 
-/// <summary>
-/// Applies a matching profile when the set of connected monitors changes.
-/// </summary>
-/// <remarks>
-/// Driven by <c>SystemEvents.DisplaySettingsChanged</c> rather than a poll. The
-/// previous version called QueryDisplayConfig every two seconds for the entire life of
-/// the process — a constant background cost for an event that fires a few times a day
-/// — and, because the callback could outlast its own two-second period, two runs could
-/// overlap and both decide to apply.
-///
-/// A short debounce still matters: a single dock or undock raises the event several
-/// times as Windows settles the topology, and acting on the first one would read a
-/// half-built configuration.
-/// </remarks>
+// Applies a matching profile when the connected monitors change. Event-driven, not
+// polled. The debounce matters: one dock/undock raises the event several times as
+// Windows settles the topology.
 public sealed class AutoSwitchService : IAutoSwitchService
 {
     private readonly IDisplayService _displayService;
@@ -58,8 +47,7 @@ public sealed class AutoSwitchService : IAutoSwitchService
 
     private void OnDisplaySettingsChanged(object? sender, EventArgs e)
     {
-        // Restart the one-shot timer on every event, so the burst that accompanies a
-        // dock/undock collapses into a single evaluation once things stop moving.
+        // Restart on every event so a burst collapses into one evaluation.
         try { _debounceTimer?.Change(TimeSpan.FromSeconds(2), Timeout.InfiniteTimeSpan); }
         catch (ObjectDisposedException) { }
     }
@@ -68,15 +56,11 @@ public sealed class AutoSwitchService : IAutoSwitchService
     {
         if (!_settingsService.Settings.AutoSwitchEnabled) return;
 
-        // One evaluation at a time. Applying a profile itself changes the display
-        // configuration, which raises the event again — without this guard that can
-        // re-enter while the first apply is still in flight.
+        // Applying a profile re-raises the event; guard against re-entry.
         if (Interlocked.CompareExchange(ref _running, 1, 0) != 0) return;
 
-        // Marshalled to the UI thread: IProfileService.Profiles is an
-        // ObservableCollection mutated there, and enumerating it from the timer thread
-        // throws "collection was modified" — swallowed by the catch below, so an
-        // auto-switch would silently not happen.
+        // Profiles is a UI-thread ObservableCollection; enumerating it from the timer
+        // thread throws and the catch below would swallow it.
         var queue = App.MainWindow?.DispatcherQueue;
         if (queue == null || !queue.TryEnqueue(EvaluateOnUiThread))
             Interlocked.Exchange(ref _running, 0);
@@ -125,10 +109,8 @@ public sealed class AutoSwitchService : IAutoSwitchService
         {
             Interlocked.Exchange(ref _running, 0);
 
-            // The apply above is queued to the UI thread, so the configuration it
-            // produces lands after this method returns. Re-baseline once it settles;
-            // otherwise the next event sees a hash that differs from the stale one and
-            // applies the same profile all over again.
+            // The apply lands after this returns; re-baseline once it settles or the
+            // next event re-applies the same profile.
             try { _debounceTimer?.Change(TimeSpan.FromSeconds(5), Timeout.InfiniteTimeSpan); }
             catch (ObjectDisposedException) { }
         }
@@ -138,10 +120,8 @@ public sealed class AutoSwitchService : IAutoSwitchService
     {
         try
         {
-            // Reached only when every monitor the profile names is physically present,
-            // so the layout is the one the user authored for exactly this hardware — a
-            // countdown on every dock/undock would be noise. CheckCompatibility still
-            // gets the final say, because it also weighs mode support, not just identity.
+            // Every named monitor is present, so this is the layout the user authored
+            // for exactly this hardware; a countdown per dock/undock would be noise.
             bool? confirm = _displayService.CheckCompatibility(target).IsFullMatch ? false : null;
             await _profileService.ApplyProfileAsync(target.Id, trigger: ApplyTrigger.AutoSwitch, confirm: confirm);
             ProfileAutoApplied?.Invoke(this, target.Id);

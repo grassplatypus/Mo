@@ -48,10 +48,8 @@ public sealed class ProfileService : IProfileService
             }
         }
 
-        // The user's order decides what Ctrl+Alt+1..9 apply and how next/previous
-        // cycles, so it has to be stable and theirs. CreatedAt breaks ties for profiles
-        // saved before SortOrder existed (they all deserialize to 0), which at least
-        // gives them oldest-first instead of GUID order.
+        // CreatedAt breaks ties for profiles saved before SortOrder existed (all 0),
+        // giving them oldest-first instead of GUID order.
         foreach (var profile in loaded.OrderBy(p => p.SortOrder).ThenBy(p => p.CreatedAt))
             Profiles.Add(profile);
 
@@ -59,13 +57,9 @@ public sealed class ProfileService : IProfileService
     }
 
     /// <summary>
-    /// Rewrites SortOrder to match the current list positions, persisting only the
-    /// profiles whose value actually changed.
+    /// Writes SortOrder to match list positions. Does not touch ModifiedAt — reordering
+    /// is not an edit, and bumping it would relabel every card "updated just now".
     /// </summary>
-    /// <remarks>
-    /// Deliberately does not touch ModifiedAt: reordering is not an edit to a profile,
-    /// and bumping it would make every card read "updated just now" after a drag.
-    /// </remarks>
     public async Task PersistOrderAsync()
     {
         foreach (var profile in NormalizeSortOrder())
@@ -86,18 +80,10 @@ public sealed class ProfileService : IProfileService
     }
 
     /// <summary>
-    /// Refuses to write a profile whose serialized form has lost data.
+    /// Refuses to write a profile whose serialized form has lost data. MoJsonContext is
+    /// source-generated, so a member becoming invisible to it silently drops from the
+    /// contract and every save would overwrite a good file with a blank one.
     /// </summary>
-    /// <remarks>
-    /// MoJsonContext is source-generated, so the JSON contract is decided at compile
-    /// time from what the generator can see on <see cref="DisplayProfile"/>. A member
-    /// that becomes invisible to it — the way a CommunityToolkit
-    /// <c>[ObservableProperty]</c> field does, since that property is emitted by a
-    /// second generator the first one never sees — silently disappears from the
-    /// contract. Every save would then overwrite a good file with a blank one, and
-    /// nothing would report it. Checking the round-trip at the moment of writing
-    /// turns that class of mistake into a loud failure instead of data loss.
-    /// </remarks>
     private static void EnsureRoundTrips(DisplayProfile profile, string json)
     {
         var reloaded = JsonSerializer.Deserialize(json, MoJsonContext.Default.DisplayProfile);
@@ -120,13 +106,9 @@ public sealed class ProfileService : IProfileService
     }
 
     /// <summary>
-    /// Clears descriptions this app generated itself in earlier versions.
+    /// Clears descriptions earlier versions generated. In memory only — rewriting the
+    /// files at startup would churn ModifiedAt for every profile.
     /// </summary>
-    /// <remarks>
-    /// Done in memory on every load rather than as a one-shot rewrite of the files:
-    /// re-saving every profile at startup would churn ModifiedAt and make each one
-    /// read "updated just now" the first time the user opens the new build.
-    /// </remarks>
     private static void MigrateGeneratedDescription(DisplayProfile profile)
     {
         if (Mo.Core.Formatting.LegacyDescription.IsGenerated(profile.Description))
@@ -135,16 +117,12 @@ public sealed class ProfileService : IProfileService
 
     public Task SaveProfileAsync(DisplayProfile profile) => SaveProfileAsync(profile, touchModified: true);
 
-    /// <param name="touchModified">
-    /// False for bookkeeping writes that are not edits the user made — reordering, for
-    /// one. Bumping ModifiedAt there would relabel every card "updated just now".
-    /// </param>
+    /// <param name="touchModified">False for bookkeeping writes such as reordering.</param>
     public async Task SaveProfileAsync(DisplayProfile profile, bool touchModified)
     {
         if (touchModified) profile.ModifiedAt = DateTime.UtcNow;
 
-        // A profile the user just created has no place in the order yet; put it last
-        // rather than letting it default to 0 and jump to the front.
+        // A new profile goes last rather than defaulting to 0 and jumping to front.
         if (profile.SortOrder == 0 && !Profiles.Contains(profile) && Profiles.Count > 0)
             profile.SortOrder = Profiles.Max(p => p.SortOrder) + 1;
 
@@ -153,8 +131,7 @@ public sealed class ProfileService : IProfileService
 
         EnsureRoundTrips(profile, json);
 
-        // Temp file + atomic replace: a crash or power loss mid-write must not be able
-        // to leave a half-written profile behind.
+        // Temp file + atomic replace so an interrupted write cannot truncate.
         var tmp = filePath + ".tmp";
         await File.WriteAllTextAsync(tmp, json).ConfigureAwait(true);
         try { File.Move(tmp, filePath, overwrite: true); }
@@ -195,10 +172,8 @@ public sealed class ProfileService : IProfileService
         var profile = new DisplayProfile
         {
             Name = name,
-            // Description is the user's own note and stays empty until they write one.
-            // The monitor count and last-modified time are derived at render time —
-            // baking them in here produced untranslatable English in the saved JSON
-            // that also went stale the moment the profile was edited.
+            // Description is the user's note only; count and time are derived at
+            // render time.
             Monitors = monitors,
         };
 
@@ -249,9 +224,8 @@ public sealed class ProfileService : IProfileService
         if (profile == null)
             return DisplayApplyResult.Failed;
 
-        // Snapshot BEFORE anything touches the hardware. The guard is wired here, at
-        // the single choke point every caller (UI, tray, hotkey, auto-switch, startup)
-        // already goes through, so no future call site can forget to opt in.
+        // Snapshot before anything touches hardware. Wired at this single choke point
+        // so no future call site can forget to opt in.
         var guard = TryGetGuard(out var guardService) ? guardService : null;
         var snapshot = guard?.Capture();
 
@@ -312,15 +286,14 @@ public sealed class ProfileService : IProfileService
                 catch { }
             }
 
-            // Confirm last, after color/audio/wallpaper have landed — a profile that
-            // drives DDC/CI brightness to zero is just as unusable as a bad topology,
-            // so the user has to be judging the finished result.
+            // Confirm after colour/audio/wallpaper land — brightness zero is as
+            // unusable as a bad topology.
             if (guard != null && snapshot != null && ShouldGuard(confirm))
             {
                 if (!await guard.ConfirmOrRevertAsync(snapshot, trigger))
                 {
-                    // Reverted. Deliberately do NOT record LastAppliedProfileId or raise
-                    // ProfileApplied: a rejected profile must not come back on next boot.
+                    // Not recorded as last-applied: a rejected profile must not return
+                    // on next boot.
                     return DisplayApplyResult.Reverted;
                 }
             }
@@ -358,10 +331,8 @@ public sealed class ProfileService : IProfileService
         }
     }
 
-    // Every trigger is guarded by default — a hotkey, an auto-switch on hot-plug and a
-    // schedule can all strand the user just as thoroughly as a click on Apply. Only an
-    // explicit `confirm: false` from the caller, or the user's own ConfirmApply
-    // setting, turns it off.
+    // Every trigger is guarded by default; only an explicit confirm:false or the
+    // user's ConfirmApply setting turns it off.
     private static bool ShouldGuard(bool? confirm)
     {
         if (confirm == false) return false;

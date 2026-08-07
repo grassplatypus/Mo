@@ -7,19 +7,9 @@ using Mo.Models;
 
 namespace Mo.Controls;
 
-/// <summary>
-/// Read-only plan view of a profile's monitor arrangement.
-/// </summary>
-/// <remarks>
-/// Mo's subject is where the monitors physically sit, so the list leads with the
-/// geometry rather than describing it as "2 monitors". Each panel is drawn to relative
-/// scale and carries the three things that identify it at a glance: its number, whether
-/// it is primary, and its resolution.
-///
-/// Intentionally separate from <see cref="MonitorLayoutCanvas"/>: that one is an editor
-/// with drag, snapping and hit-testing, all of which would be dead weight — and a
-/// scrolling cost — inside a list item.
-/// </remarks>
+// Read-only plan view of a profile's monitor arrangement: the list leads with the
+// geometry rather than describing it as "2 monitors". Separate from
+// MonitorLayoutCanvas, whose drag/snap/hit-testing would be dead weight in a list item.
 public sealed partial class MonitorLayoutThumbnail : Grid
 {
     private readonly Canvas _canvas = new();
@@ -38,11 +28,8 @@ public sealed partial class MonitorLayoutThumbnail : Grid
     /// Re-draws only when the size changed enough to look different.
     /// </summary>
     /// <remarks>
-    /// Dragging the window edge resizes the grid continuously, and because
-    /// ProfileGrid_SizeChanged recomputes the column width, every card is resized on
-    /// every frame of that drag. A full rebuild of the panels and labels per card per
-    /// frame is a lot of allocation for a picture that would look identical; sub-pixel
-    /// deltas are skipped.
+    /// A window-edge drag resizes every card on every frame; rebuilding all panels and
+    /// labels each time is a lot of allocation for an identical picture.
     /// </remarks>
     private void OnSizeChanged(object sender, SizeChangedEventArgs e)
     {
@@ -74,9 +61,7 @@ public sealed partial class MonitorLayoutThumbnail : Grid
         set => SetValue(ShowDetailProperty, value);
     }
 
-    // A panel narrower or shorter than this has no room for a label without it
-    // colliding with the edges; below each threshold the corresponding text is dropped
-    // rather than shrunk to illegibility.
+    // Below these, the label is dropped rather than shrunk to illegibility.
     private const double MinWidthForNumber = 26;
     private const double MinHeightForNumber = 22;
     private const double MinWidthForResolution = 68;
@@ -95,8 +80,7 @@ public sealed partial class MonitorLayoutThumbnail : Grid
         _renderedWidth = w;
         _renderedHeight = h;
 
-        // Disabled panels are drawn too, ghosted: a profile whose whole point is
-        // turning a monitor off should show that monitor, not omit it.
+        // Disabled panels are drawn ghosted, not omitted.
         var drawable = monitors.Where(m => m.Width > 0 && m.Height > 0).ToList();
         if (drawable.Count == 0) return;
 
@@ -105,8 +89,7 @@ public sealed partial class MonitorLayoutThumbnail : Grid
             .ToList();
 
         var bounds = DisplayTopology.ComputeBoundingBox(rects);
-        // Padding scales with the control so the same class works at card size and at
-        // the larger size the editor header uses.
+        // Padding scales with the control so one class serves both sizes.
         double padding = Math.Max(2, Math.Min(w, h) * 0.06);
         double scale = DisplayTopology.ComputeScaleFactor(bounds, w, h, padding);
         if (scale <= 0 || double.IsInfinity(scale) || double.IsNaN(scale)) return;
@@ -115,18 +98,11 @@ public sealed partial class MonitorLayoutThumbnail : Grid
             DrawPanel(drawable[i], i + 1, bounds, scale, w, h);
     }
 
-    // A hairline crosshair at desktop coordinate (0,0) was tried here and removed.
-    // The origin is genuinely meaningful — it is the primary monitor's top-left, and
-    // every window position is measured from it — but at card size it lands on a panel
-    // edge, where it is either hidden under the panel or too faint to read. A mark that
-    // conveys nothing at the size it is actually drawn is not worth the ink.
-
     private void DrawPanel(MonitorInfo monitor, int number, DisplayTopology.Bounds bounds, double scale, double w, double h)
     {
         var (x, y) = DisplayTopology.TransformToCanvas(monitor.PositionX, monitor.PositionY, bounds, scale, w, h);
 
-        // The 1px inset keeps abutting panels readable as separate objects; Max() stops
-        // it from consuming a very small thumbnail entirely.
+        // 1px inset separates abutting panels; Max() protects tiny thumbnails.
         double pw = Math.Max(3, monitor.Width * scale - 1);
         double ph = Math.Max(3, monitor.Height * scale - 1);
 
@@ -145,8 +121,7 @@ public sealed partial class MonitorLayoutThumbnail : Grid
             Fill = off ? null : fill,
             Stroke = stroke,
             StrokeThickness = 1,
-            // A dashed outline with no fill reads as "present but not switched on"
-            // without needing a legend.
+            // Dashed and unfilled reads as "present but off" without a legend.
             StrokeDashArray = off ? [3, 3] : null,
         };
         Canvas.SetLeft(panel, x);
@@ -175,8 +150,7 @@ public sealed partial class MonitorLayoutThumbnail : Grid
             {
                 var star = new TextBlock
                 {
-                    // Segoe Fluent Icons "FavoriteStarFill" — the primary display is the
-                    // one Windows anchors the desktop origin and the taskbar to.
+                    // FavoriteStarFill — Windows anchors the origin and taskbar here.
                     Text = "",
                     FontFamily = new FontFamily("Segoe Fluent Icons"),
                     FontSize = Math.Clamp(ph * 0.2, 8, 12),

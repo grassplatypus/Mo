@@ -5,27 +5,13 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Mo.Models;
 
-/// <summary>
-/// A saved display configuration.
-/// </summary>
-/// <remarks>
-/// Observable because the list UI binds straight to these instances. As a plain POCO
-/// it happened to keep working only because <c>ProfileService.SaveProfileAsync</c>
-/// re-assigns the collection slot, forcing the item container to re-realize and
-/// re-run its OneTime bindings. Any code path that mutated a profile without going
-/// through Save would silently leave a stale card — and <see cref="IsActive"/>, which
-/// changes without a save at all, could not have worked that way.
-/// </remarks>
+// A saved display configuration. Observable because the list binds straight to these
+// instances; IsActive/IsAvailable change without any save at all.
 public sealed class DisplayProfile : ObservableObject
 {
-    // Properties are written out by hand rather than with [ObservableProperty].
-    //
-    // MoJsonContext is a System.Text.Json *source generator*, and it runs against the
-    // same original compilation as the MVVM toolkit's generator — so it can only see
-    // what is written here. Declaring `[ObservableProperty] private string _name`
-    // makes STJ see a private field and no public property, silently dropping the
-    // member from the JSON contract: profiles round-trip as blank. SetProperty gives
-    // the same change notification while keeping the property visible to both.
+    // Hand-written rather than [ObservableProperty]: MoJsonContext is a source
+    // generator running on the same original compilation as the MVVM one, so it would
+    // see only the private field and drop the member from the JSON contract.
 
     private string _name = string.Empty;
     private string _description = string.Empty;
@@ -39,22 +25,13 @@ public sealed class DisplayProfile : ObservableObject
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
 
     /// <summary>
-    /// Position in the user's own ordering. Lower comes first.
+    /// Position in the user's own ordering; lower comes first. Load-bearing — the slot
+    /// hotkeys and next/previous cycling index into this order.
     /// </summary>
-    /// <remarks>
-    /// Before this existed, the list order was whatever <c>Directory.GetFiles</c>
-    /// returned — effectively GUID filename order. That order is what the slot hotkeys
-    /// (Ctrl+Alt+1..9 → Profiles[0..9]), the next/previous cycling, and the tray menu
-    /// all index into, so those shortcuts pointed at arbitrary profiles and could
-    /// silently change meaning whenever a profile was added or removed.
-    /// </remarks>
     public int SortOrder { get; set; }
 
-    // The setters coalesce null away. These properties are non-nullable to the rest of
-    // the app, but System.Text.Json will happily assign null from `"name": null` in a
-    // hand-edited or third-party profile file — and Program.QuarantineCorruptUserData
-    // only catches files that fail to *parse*, not ones that parse to nulls. Without
-    // this, importing such a file NREs while rendering the card.
+    // Setters coalesce null away: a hand-edited file can parse cleanly and still hold
+    // nulls, which the corrupt-file quarantine does not catch.
 
     public string Name
     {
@@ -88,8 +65,6 @@ public sealed class DisplayProfile : ObservableObject
         get => _monitors;
         set
         {
-            // A null here would take down every consumer: MonitorCount, the layout
-            // thumbnail, the editor and CheckCompatibility all dereference it.
             if (SetProperty(ref _monitors, value ?? []))
                 OnPropertyChanged(nameof(MonitorCount));
         }
@@ -121,10 +96,7 @@ public sealed class DisplayProfile : ObservableObject
     // What to do with monitors not listed in this profile
     public UnmatchedMonitorAction UnmatchedAction { get; set; } = UnmatchedMonitorAction.Keep;
 
-    /// <summary>
-    /// True for the profile currently in effect. Runtime-only: it describes the
-    /// machine's present state, not anything about the profile worth saving.
-    /// </summary>
+    /// <summary>True for the profile currently in effect. Runtime-only.</summary>
     [JsonIgnore]
     public bool IsActive
     {
@@ -133,13 +105,8 @@ public sealed class DisplayProfile : ObservableObject
     }
 
     /// <summary>
-    /// False when a monitor this profile needs is not currently attached.
+    /// False when a monitor this profile needs is not attached. Runtime-only.
     /// </summary>
-    /// <remarks>
-    /// Runtime-only, like <see cref="IsActive"/>. Lets the list answer "which of these
-    /// can I actually switch to right now" without the user clicking Apply on each one
-    /// to find out.
-    /// </remarks>
     [JsonIgnore]
     public bool IsAvailable
     {
@@ -151,21 +118,9 @@ public sealed class DisplayProfile : ObservableObject
     public int MonitorCount => Monitors.Count;
 
     /// <summary>
-    /// Raises change notification for values derived from the monitor list, which is
-    /// mutated in place by the editor rather than replaced.
+    /// The profile's name. A GridViewItem's automation peer names itself from this,
+    /// and a DataTemplate cannot set AutomationProperties.Name on the container.
     /// </summary>
-    public void NotifyMonitorsChanged() => OnPropertyChanged(nameof(MonitorCount));
-
-    /// <summary>
-    /// The profile's name.
-    /// </summary>
-    /// <remarks>
-    /// This is what accessibility tooling actually reads. A GridViewItem's automation
-    /// peer names itself from the bound item's ToString() unless the *container* has
-    /// an explicit AutomationProperties.Name — which a DataTemplate cannot set — so
-    /// the default implementation had every card in the list announcing itself as
-    /// "Mo.Models.DisplayProfile".
-    /// </remarks>
     public override string ToString() => Name;
 }
 

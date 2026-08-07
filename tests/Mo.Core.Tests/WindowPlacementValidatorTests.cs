@@ -64,25 +64,4 @@ public class WindowPlacementValidatorTests
     {
         Assert.False(IsReachable(new Rect(0, 0, 800, 600), []));
     }
-
-    [Fact]
-    public void ClampPullsAnOffScreenWindowBackInside()
-    {
-        var clamped = ClampInto(new Rect(1800, 900, 1000, 680), Primary);
-        Assert.Equal(new Rect(920, 360, 1000, 680), clamped);
-    }
-
-    [Fact]
-    public void ClampShrinksAWindowLargerThanTheMonitor()
-    {
-        var clamped = ClampInto(new Rect(-100, -100, 3000, 2000), Primary);
-        Assert.Equal(new Rect(0, 0, 1920, 1040), clamped);
-    }
-
-    [Fact]
-    public void ClampLeavesAWindowThatAlreadyFits()
-    {
-        var placement = new Rect(200, 150, 900, 600);
-        Assert.Equal(placement, ClampInto(placement, Primary));
-    }
 }

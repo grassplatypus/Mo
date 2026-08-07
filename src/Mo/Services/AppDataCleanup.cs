@@ -2,29 +2,15 @@ using Microsoft.Win32;
 
 namespace Mo.Services;
 
-/// <summary>
-/// Removes everything Mo writes outside its own install folder.
-/// </summary>
-/// <remarks>
-/// Neither of Mo's distribution shapes cleans up on its own: the ZIP build has no
-/// installer at all, and while MSIX deletes its own LocalFolder, an unpackaged run on
-/// the same machine writes to <c>%LOCALAPPDATA%\Mo</c>, which MSIX knows nothing about.
-/// The HKCU Run entry survives both. Deleting the app folder therefore used to leave
-/// profiles, settings, logs and an auto-start entry that relaunched a program the user
-/// had already removed.
-///
-/// Exposed two ways: Settings → About → "Remove Mo's data", and <c>Mo.exe --cleanup</c>
-/// so an uninstaller or script can call it without any UI.
-/// </remarks>
+// Removes everything Mo writes outside its install folder: the ZIP build has no
+// installer, and MSIX only knows about its own LocalFolder. Reachable from Settings
+// and from `Mo.exe --cleanup` for uninstall scripts.
 public static class AppDataCleanup
 {
     private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string RunValueName = "Mo";
 
-    public sealed record Result(List<string> Removed, List<string> Failed)
-    {
-        public bool AnythingRemoved => Removed.Count > 0;
-    }
+    public sealed record Result(List<string> Removed, List<string> Failed);
 
     /// <summary>Describes what a cleanup would delete, without deleting it.</summary>
     public static List<string> Preview()
@@ -44,8 +30,8 @@ public static class AppDataCleanup
         var removed = new List<string>();
         var failed = new List<string>();
 
-        // 1. Auto-start entry. Removed first: if the data delete fails halfway, the
-        //    worst outcome should still not be a program that keeps relaunching itself.
+        // Auto-start first: a half-failed cleanup must not leave a program that keeps
+        // relaunching itself.
         try
         {
             using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: true);
@@ -57,9 +43,8 @@ public static class AppDataCleanup
         }
         catch (Exception ex) { failed.Add($"Run entry: {ex.Message}"); }
 
-        // 2. Profiles, settings and logs for unpackaged runs. The packaged LocalFolder
-        //    is Windows' to remove and is deliberately left alone — deleting it here
-        //    would wipe a still-installed MSIX copy's data.
+        // The packaged LocalFolder is Windows' to remove — deleting it here would wipe
+        // a still-installed MSIX copy's data.
         var dir = UnpackagedDataDirectory();
         try
         {
@@ -71,8 +56,7 @@ public static class AppDataCleanup
         }
         catch (Exception ex)
         {
-            // boot.log is held open only briefly, but a log viewer or AV scanner can
-            // still have a handle. Fall back to emptying what we can.
+            // A log viewer or AV scanner may hold a handle; empty what we can.
             failed.Add($"{dir}: {ex.Message}");
             TryDeleteContents(dir, removed, failed);
         }
@@ -108,9 +92,8 @@ public static class AppDataCleanup
     }
 
     /// <summary>
-    /// <c>%LOCALAPPDATA%\Mo</c> — where unpackaged runs keep profiles, settings and
-    /// logs. Resolved directly rather than through ApplicationData.Current, which for
-    /// a packaged process would point at the container instead.
+    /// %LOCALAPPDATA%\Mo. Resolved directly, not via ApplicationData.Current, which
+    /// for a packaged process points at the container.
     /// </summary>
     public static string UnpackagedDataDirectory() => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Mo");

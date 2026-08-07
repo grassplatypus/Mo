@@ -16,13 +16,7 @@ namespace Mo.Views;
 public sealed partial class ProfileListPage : Page
 {
     // Static resource keys for x:Bind in DataTemplate
-    public static readonly string SetHotkeyKey = "SetHotkey";
-    public static readonly string DeleteKey = "Delete";
-    public static readonly string MonitorsKey = "MonitorsSuffix";
     public static readonly string ApplyKey = "Apply";
-    public static readonly string ExportKey = "Export";
-    public static readonly string AutoSwitchKey = "AutoSwitch";
-    public static readonly string RenameKey = "Rename";
     public static readonly string ActiveKey = "ActiveProfile";
     public static readonly string MoreActionsKey = "MoreActions";
     public static readonly string UnavailableKey = "ProfileUnavailable";
@@ -543,10 +537,6 @@ public sealed partial class ProfileListPage : Page
         isActive ? "AccentFillColorDefaultBrush" : "CardStrokeColorDefaultBrush"];
 
     public static Thickness CardBorderThickness(bool isActive) => new(isActive ? 2 : 1);
-
-    /// <summary>"Updated 3 min ago" — derived at render time, never stored.</summary>
-    public static string FormatModified(DateTime modifiedUtc)
-        => ResourceHelper.GetString("ModifiedPrefix", RelativeTimeText.Format(modifiedUtc));
 
     /// <summary>
     /// The card's single caption line: monitor count, when it last changed, and the

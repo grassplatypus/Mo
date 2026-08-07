@@ -3,18 +3,12 @@ using System.Text;
 
 namespace Mo.Helpers;
 
-/// <summary>
-/// Append-only startup trace written to <c>%LOCALAPPDATA%\Mo\logs\boot.log</c>.
-///
-/// Startup failures in a WinUI3 app are frequently *silent*: the process stays
-/// alive with a running dispatcher but never creates a window, so the user sees
-/// nothing and no exception handler ever runs. A boot trace is the only way to
-/// tell "died before Main" from "hung in the single-instance redirect" from
-/// "MainWindow ctor threw" after the fact.
-///
-/// Deliberately dependency-free (no DI, no settings, no WinRT) so it works at
-/// the very first instruction of Main, before anything else is initialized.
-/// </summary>
+// Append-only startup trace at %LOCALAPPDATA%\Mo\logs\boot.log.
+//
+// WinUI3 startup failures are frequently silent: the dispatcher keeps running with no
+// window, so nothing is shown and no handler fires. The trace is what identifies where
+// it stopped. Dependency-free (no DI, settings or WinRT) so it works from the first
+// instruction of Main.
 public static class BootLog
 {
     private static readonly object Gate = new();
@@ -24,12 +18,11 @@ public static class BootLog
 
     private const long MaxBytes = 256 * 1024;
 
-    /// <summary>Writes a session header. Call once, first thing in Main.</summary>
-    /// <remarks>
-    /// Appends rather than truncates: a secondary (redirecting) instance runs
-    /// concurrently with the primary, and truncating here would erase the primary's
-    /// trace — destroying exactly the evidence needed to diagnose a hung primary.
-    /// </remarks>
+    /// <summary>
+    /// Writes a session header. Call once, first thing in Main. Appends rather than
+    /// truncates — a redirecting instance runs alongside the primary and would
+    /// otherwise erase the primary's trace.
+    /// </summary>
     public static void BeginSession(string version)
     {
         try
@@ -37,7 +30,7 @@ public static class BootLog
             var path = Path();
             if (path == null) return;
 
-            // Roll rather than grow unbounded; one previous file is kept for comparison.
+            // Roll rather than grow unbounded.
             try
             {
                 var info = new FileInfo(path);
@@ -91,8 +84,8 @@ public static class BootLog
         if (_path != null) return _path;
         try
         {
-            // Never touch ApplicationData.Current here — it throws for unpackaged
-            // launches, and this logger must work in exactly that case.
+            // Not ApplicationData.Current — it throws unpackaged, the case this logger
+            // most needs to work in.
             var dir = System.IO.Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "Mo", "logs");
