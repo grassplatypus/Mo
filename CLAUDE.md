@@ -20,17 +20,23 @@ Mo.slnx
 ├── src/Mo/              → WinUI3 app (MSIX packaged)
 │   ├── Models/          → DisplayProfile, MonitorInfo, AppSettings, HotkeyBinding
 │   ├── Services/        → IDisplayService, IProfileService, ISettingsService, ITrayService, IHotkeyService,
-│   │                      IMonitorColorService (DDC/CI + VCP + WMI), NvidiaRotationService,
-│   │                      AmdRotationService, IntelRotationService
+│   │                      IApplyGuardService (undo safety net), IMonitorColorService (DDC/CI + VCP + WMI),
+│   │                      NvidiaRotationService, AmdRotationService, IntelRotationService
 │   ├── ViewModels/      → MVVM ViewModels (CommunityToolkit.Mvvm)
 │   ├── Views/           → Pages (ShellPage, ProfileListPage, SettingsPage, ProfileEditorPage, DisplayTuningPage)
-│   ├── Controls/        → Custom controls (MonitorLayoutCanvas, MonitorTile, ProfileCard)
+│   │                      ProfileEditorPage is split across partials: .xaml.cs (shell/load/localization),
+│   │                      .Monitors.cs, .Extras.cs, .Persistence.cs
+│   ├── Controls/        → MonitorLayoutCanvas (drag editor), MonitorLayoutThumbnail (read-only preview),
+│   │                      MonitorTile, ApplyConfirmationDialog, HotkeyPicker
 │   ├── Converters/      → XAML value converters
-│   ├── Helpers/         → WindowHelper, JsonHelper (MoJsonContext), SystemInfoHelper, AnimationHelper
-│   └── Themes/          → XAML style resources
+│   ├── Helpers/         → WindowHelper (+ Win32 work-area enumeration), JsonHelper (MoJsonContext),
+│   │                      BootLog (startup trace), RelativeTimeText, SystemInfoHelper, AnimationHelper
+│   └── Themes/          → (empty — there is no Generic.xaml; custom controls build their own visual tree)
 ├── src/Mo.Core/         → Pure logic (no Win32 deps, fully unit-testable)
-│   └── DisplayConfiguration/ → MonitorMatcher, ProfileDiffer, DisplayTopology, SnapCalculator,
-│                               EdidManufacturer
+│   ├── DisplayConfiguration/ → MonitorMatcher, ProfileDiffer, DisplayTopology, SnapCalculator,
+│   │                           EdidManufacturer
+│   ├── Formatting/      → RelativeTime, LegacyDescription
+│   └── WindowPlacementValidator.cs
 ├── src/Mo.Interop/      → P/Invoke definitions (AllowUnsafeBlocks)
 │   ├── DisplayConfig/   → CCD API structs, enums, NativeDisplayApi, ChangeDisplaySettingsEx, SendInput
 │   ├── Hotkey/          → RegisterHotKey P/Invoke
@@ -100,6 +106,33 @@ recorded in `AppSettings.LastAppliedProfileId` after launch. Gated by
 `RestoreOnStartup`; color re-push gated by `RestoreColorOnStartup` (DDC/CI state
 is *not* persisted by Windows, so color must be re-pushed every boot).
 
+### Apply Safety Net (IApplyGuardService)
+A bad profile can black out a monitor or move it off-screen, leaving the user unable
+to reach Mo to undo it. `ProfileService.ApplyProfileAsync` is the single choke point
+every caller goes through, and it is wired to:
+1. `Capture()` the topology + DDC/CI state **before** touching hardware,
+2. apply, then `ConfirmOrRevertAsync()` — a countdown dialog that rolls back on
+   "Revert" or on timeout,
+3. skip `LastAppliedProfileId` and `ProfileApplied` when reverted, so a rejected
+   profile never returns on the next boot.
+
+- No prompt when the before/after signature is identical (a no-op apply).
+- The window is force-shown for non-`User` triggers — a hotkey apply that broke the
+  desktop must still surface the dialog.
+- `ApplyTrigger` (User / Hotkey / AutoSwitch / Schedule / Startup) tells the guard
+  whether to surface the window. Unattended triggers pass `confirm: false` when
+  `CheckCompatibility().IsFullMatch` — otherwise an unanswered countdown would revert
+  every scheduled or boot-time switch.
+- User-facing switches: `AppSettings.ConfirmApply`, `ApplyConfirmSeconds`.
+
+### Startup Diagnostics
+`Helpers/BootLog` writes `%LOCALAPPDATA%/Mo/logs/boot.log` with a timestamped step
+trace. WinUI3 startup failures are frequently *silent* — if `OnLaunched` throws, the
+handler marks it handled and the dispatcher keeps running with no window, leaving a
+live process that also holds the single-instance key. The last line in boot.log
+identifies where it stopped. `App.App_UnhandledException` refuses to swallow anything
+thrown before `MainWindow` is activated: it reports and exits so the key is released.
+
 ### Color Control
 - **DDC/CI** via `IMonitorColorService` using dxva2.dll — brightness, contrast,
   RGB gain, plus raw VCP Get/Set (color-temperature preset code 0x14, etc.).
@@ -128,10 +161,42 @@ JsonSerializer.Serialize(profile, MoJsonContext.Default.DisplayProfile);
 JsonSerializer.Deserialize(json, MoJsonContext.Default.AppSettings);
 ```
 
+**Never use `[ObservableProperty]` on a serialized model.** `MoJsonContext` and the
+CommunityToolkit MVVM generator both run against the *same original compilation*, so
+System.Text.Json sees `private string _name` and never the `Name` property MVVM emits
+afterward. The member silently vanishes from the JSON contract and profiles
+deserialize blank. `DisplayProfile` therefore derives from `ObservableObject` but
+writes its properties by hand with `SetProperty`. `ProfileService.EnsureRoundTrips`
+verifies each save round-trips and throws rather than overwriting a good file.
+
+### Blocking calls are a build error
+`BannedSymbols.txt` + `Microsoft.CodeAnalysis.BannedApiAnalyzers` fail the build
+(RS0030 via `WarningsAsErrors`) on `Task.Wait()`, `.Result`, and
+`GetAwaiter().GetResult()`. `Program.Main` installs a
+`DispatcherQueueSynchronizationContext`, so blocking the UI thread on a task whose
+continuation posts back to it deadlocks before any window exists — with no exception
+and no crash log. Suppress locally with `#pragma warning disable RS0030` *only* with
+a comment establishing the call is off the UI thread.
+
 ### Profile Storage
 - Individual JSON files per profile in `ApplicationData.Current.LocalFolder/profiles/`
+  (unpackaged builds fall back to `%LOCALAPPDATA%/Mo/`)
 - Settings in `ApplicationData.Current.LocalFolder/settings.json`
-- NVAPI debug log in `%LOCALAPPDATA%/Mo/logs/nvapi_debug.log`
+- Both write via temp file + atomic replace so an interrupted write can't truncate them
+- `DisplayProfile.Description` is the **user's own note only**. The monitor count and
+  last-modified time are derived at render time; older builds baked untranslatable
+  English into the field, and `LegacyDescription.IsGenerated` clears those on load.
+- Logs in `%LOCALAPPDATA%/Mo/logs/`: `boot.log` (startup trace), `crash_*.log`,
+  `startup_crash_*.log`, `nvapi_debug.log`
+
+### Window Placement
+`AppSettings.WindowPlacement` is restored on first activation, not in the constructor:
+Windows applies its own default placement when a window is first shown and discards a
+position set beforehand (the size survives). `WindowPlacementValidator` (Mo.Core)
+rejects a saved rectangle that no longer lands on any monitor — this app rearranges
+displays for a living, so that happens often. Work areas come from
+`WindowHelper.GetWorkAreas()` (Win32 `EnumDisplayMonitors`); `DisplayArea.FindAll()`
+throws `InvalidCastException` in this app's self-contained/unpackaged configuration.
 
 ## Code Style
 - File-scoped namespaces
