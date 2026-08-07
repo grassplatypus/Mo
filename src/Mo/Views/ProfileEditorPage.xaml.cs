@@ -517,7 +517,6 @@ public sealed partial class ProfileEditorPage : Page
         MonitorDetailsPanel.Visibility = Visibility.Collapsed;
         ColorSettingsPanel.Visibility = Visibility.Collapsed;
         LayoutCanvas.SetMonitors(_profile.Monitors);
-        DescriptionBox.Text = $"{_profile.Monitors.Count} monitor(s)";
         RefreshAvailableMonitors();
     }
 
@@ -645,7 +644,6 @@ public sealed partial class ProfileEditorPage : Page
             TargetId = source.TargetId,
         });
         LayoutCanvas.SetMonitors(_profile.Monitors);
-        DescriptionBox.Text = $"{_profile.Monitors.Count} monitor(s)";
         RefreshAvailableMonitors();
     }
 
@@ -675,7 +673,6 @@ public sealed partial class ProfileEditorPage : Page
         ColorSettingsPanel.Visibility = Visibility.Collapsed;
         LayoutCanvas.SetMonitors(_profile.Monitors);
         RefreshAvailableMonitors();
-        DescriptionBox.Text = $"{_profile.Monitors.Count} monitor(s)";
     }
 
     private void AlignHorizontal_Click(object sender, RoutedEventArgs e)

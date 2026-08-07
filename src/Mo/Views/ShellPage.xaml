@@ -7,13 +7,20 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
+    <!-- LeftCompact, not Left: the rail holds two destinations plus Settings, and the
+         expanded pane spent a third of a 1000px window on them. The toggle button is
+         still there for anyone who wants the labels, and each item carries a ToolTip
+         so the icon-only state stays readable. OpenPaneLength is trimmed to match the
+         longest label rather than the 320px default. -->
     <NavigationView
         x:Name="NavView"
         IsBackButtonVisible="Auto"
         IsSettingsVisible="True"
+        IsPaneToggleButtonVisible="True"
+        OpenPaneLength="220"
         BackRequested="NavView_BackRequested"
         ItemInvoked="NavView_ItemInvoked"
-        PaneDisplayMode="Left">
+        PaneDisplayMode="LeftCompact">
 
         <NavigationView.MenuItems>
             <NavigationViewItem x:Name="NavProfilesItem" Tag="Profiles">

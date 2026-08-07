@@ -180,6 +180,12 @@ Press Delete or Backspace to clear. Escape to cancel.</value></data>
   <data name="ApplyConfirmSecondsCard.Description" xml:space="preserve"><value>Seconds to wait for confirmation (5-120).</value></data>
   <data name="TrayUnavailableTitle" xml:space="preserve"><value>Mo could not create a tray icon</value></data>
   <data name="TrayUnavailableDesc" xml:space="preserve"><value>Windows refused the notification-area icon, so Mo is keeping its window open — otherwise you would have no way to reach it. Closing the window will now exit Mo. Restarting Windows Explorer usually fixes this.</value></data>
+  <data name="TimeJustNow" xml:space="preserve"><value>just now</value></data>
+  <data name="TimeMinutesAgo" xml:space="preserve"><value>{0} min ago</value></data>
+  <data name="TimeHoursAgo" xml:space="preserve"><value>{0} hr ago</value></data>
+  <data name="TimeYesterday" xml:space="preserve"><value>yesterday</value></data>
+  <data name="TimeDaysAgo" xml:space="preserve"><value>{0} days ago</value></data>
+  <data name="ModifiedPrefix" xml:space="preserve"><value>Updated {0}</value></data>
   <data name="RestoreOnStartupCard.Header" xml:space="preserve"><value>Restore last profile on startup</value></data>
   <data name="RestoreOnStartupCard.Description" xml:space="preserve"><value>Re-apply the most recently used profile when Mo launches.</value></data>
   <data name="RestoreColorCard.Header" xml:space="preserve"><value>Restore color settings on startup</value></data>

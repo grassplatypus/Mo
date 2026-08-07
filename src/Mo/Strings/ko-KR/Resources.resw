@@ -180,6 +180,12 @@ Delete 또는 Backspace로 삭제. Escape로 취소.</value></data>
   <data name="ApplyConfirmSecondsCard.Description" xml:space="preserve"><value>확인을 기다리는 초 (5~120).</value></data>
   <data name="TrayUnavailableTitle" xml:space="preserve"><value>트레이 아이콘을 만들지 못했습니다</value></data>
   <data name="TrayUnavailableDesc" xml:space="preserve"><value>Windows가 알림 영역 아이콘 생성을 거부해, Mo가 창을 계속 열어 둡니다. 그러지 않으면 앱에 접근할 방법이 없습니다. 이제 창을 닫으면 Mo가 종료됩니다. Windows 탐색기를 다시 시작하면 대개 해결됩니다.</value></data>
+  <data name="TimeJustNow" xml:space="preserve"><value>방금</value></data>
+  <data name="TimeMinutesAgo" xml:space="preserve"><value>{0}분 전</value></data>
+  <data name="TimeHoursAgo" xml:space="preserve"><value>{0}시간 전</value></data>
+  <data name="TimeYesterday" xml:space="preserve"><value>어제</value></data>
+  <data name="TimeDaysAgo" xml:space="preserve"><value>{0}일 전</value></data>
+  <data name="ModifiedPrefix" xml:space="preserve"><value>{0} 수정</value></data>
   <data name="RestoreOnStartupCard.Header" xml:space="preserve"><value>시작 시 마지막 프로필 복원</value></data>
   <data name="RestoreOnStartupCard.Description" xml:space="preserve"><value>Mo가 시작될 때 가장 최근에 적용한 프로필을 자동으로 다시 적용합니다.</value></data>
   <data name="RestoreColorCard.Header" xml:space="preserve"><value>시작 시 색상 설정 복원</value></data>

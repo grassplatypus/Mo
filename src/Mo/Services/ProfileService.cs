@@ -36,13 +36,30 @@ public sealed class ProfileService : IProfileService
                 var json = await File.ReadAllTextAsync(file);
                 var profile = JsonSerializer.Deserialize(json, MoJsonContext.Default.DisplayProfile);
                 if (profile != null)
+                {
+                    MigrateGeneratedDescription(profile);
                     Profiles.Add(profile);
+                }
             }
             catch
             {
                 // Skip corrupt files
             }
         }
+    }
+
+    /// <summary>
+    /// Clears descriptions this app generated itself in earlier versions.
+    /// </summary>
+    /// <remarks>
+    /// Done in memory on every load rather than as a one-shot rewrite of the files:
+    /// re-saving every profile at startup would churn ModifiedAt and make each one
+    /// read "updated just now" the first time the user opens the new build.
+    /// </remarks>
+    private static void MigrateGeneratedDescription(DisplayProfile profile)
+    {
+        if (Mo.Core.Formatting.LegacyDescription.IsGenerated(profile.Description))
+            profile.Description = string.Empty;
     }
 
     public async Task SaveProfileAsync(DisplayProfile profile)
@@ -87,7 +104,10 @@ public sealed class ProfileService : IProfileService
         var profile = new DisplayProfile
         {
             Name = name,
-            Description = $"{monitors.Count} monitor(s) — {DateTime.Now:g}",
+            // Description is the user's own note and stays empty until they write one.
+            // The monitor count and last-modified time are derived at render time —
+            // baking them in here produced untranslatable English in the saved JSON
+            // that also went stale the moment the profile was edited.
             Monitors = monitors,
         };
 

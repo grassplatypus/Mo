@@ -39,7 +39,6 @@ public sealed partial class ProfileListPage : Page
         var profile = new DisplayProfile
         {
             Name = $"Layout {ViewModel.Profiles.Count + 1}",
-            Description = $"{monitors.Count} monitor(s) — {DateTime.Now:g}",
             Monitors = monitors,
         };
 
@@ -471,4 +470,11 @@ public sealed partial class ProfileListPage : Page
 
     public static string FormatHotkey(HotkeyBinding? hotkey)
         => hotkey?.ToString() ?? "";
+
+    public static Visibility HasText(string? value)
+        => string.IsNullOrWhiteSpace(value) ? Visibility.Collapsed : Visibility.Visible;
+
+    /// <summary>"Updated 3 min ago" — derived at render time, never stored.</summary>
+    public static string FormatModified(DateTime modifiedUtc)
+        => ResourceHelper.GetString("ModifiedPrefix", RelativeTimeText.Format(modifiedUtc));
 }
