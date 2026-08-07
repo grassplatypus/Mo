@@ -220,6 +220,11 @@ Press Delete or Backspace to clear. Escape to cancel.</value></data>
   <data name="TraySaveCurrent" xml:space="preserve"><value>Save current layout</value></data>
   <data name="TraySavedNameFormat" xml:space="preserve"><value>Layout {0}</value></data>
   <data name="CompatDisabledMonitors" xml:space="preserve"><value>Currently switched off and will be turned back on: {0}</value></data>
+  <data name="ImportFailedTitle" xml:space="preserve"><value>Could not import that file</value></data>
+  <data name="ImportFailedNotValidJson" xml:space="preserve"><value>The file is not readable as a Mo profile. It may be damaged or exported by a different program.</value></data>
+  <data name="ImportFailedNotAProfile" xml:space="preserve"><value>The file is valid JSON but does not contain a display profile.</value></data>
+  <data name="ImportFailedSave" xml:space="preserve"><value>The profile was read but could not be saved. Check that Mo can write to its data folder.</value></data>
+  <data name="ImportedProfileFallbackName" xml:space="preserve"><value>Imported profile</value></data>
   <data name="RestoreOnStartupCard.Header" xml:space="preserve"><value>Restore last profile on startup</value></data>
   <data name="RestoreOnStartupCard.Description" xml:space="preserve"><value>Re-apply the most recently used profile when Mo launches.</value></data>
   <data name="RestoreColorCard.Header" xml:space="preserve"><value>Restore color settings on startup</value></data>

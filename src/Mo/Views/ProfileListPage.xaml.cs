@@ -242,10 +242,16 @@ public sealed partial class ProfileListPage : Page
         picker.FileTypeChoices.Add(ResourceHelper.GetString("ExportProfileType"), new List<string> { ".moprofile" });
 
         var file = await picker.PickSaveFileAsync();
-        if (file != null)
+        if (file == null) return;
+
+        try
         {
-            var json = JsonSerializer.Serialize(profile, MoJsonContext.Default.DisplayProfile);
-            await Windows.Storage.FileIO.WriteTextAsync(file, json);
+            var service = App.Services.GetRequiredService<ExportImportService>();
+            await Windows.Storage.FileIO.WriteTextAsync(file, service.Serialize(profile));
+        }
+        catch (Exception ex)
+        {
+            Helpers.BootLog.WriteError("profile.export", ex);
         }
     }
 
@@ -447,21 +453,47 @@ public sealed partial class ProfileListPage : Page
         picker.FileTypeFilter.Add(".moprofile");
 
         var file = await picker.PickSingleFileAsync();
-        if (file != null)
+        if (file == null) return;
+
+        // A file the user picked can be anything. Reading and parsing it used to run
+        // bare: a malformed file threw out of this async void handler into the global
+        // handler's generic error dialog, and a file that parsed to nothing was
+        // swallowed so the import simply appeared to do nothing.
+        var service = App.Services.GetRequiredService<ExportImportService>();
+        ExportImportService.ImportResult result;
+        try
         {
             var json = await Windows.Storage.FileIO.ReadTextAsync(file);
-            var profile = JsonSerializer.Deserialize(json, MoJsonContext.Default.DisplayProfile);
-            if (profile != null)
-            {
-                // Assign a new ID to avoid collisions with existing profiles
-                profile.Id = Guid.NewGuid().ToString("N");
-                profile.ModifiedAt = DateTime.UtcNow;
-
-                var profileService = App.Services.GetRequiredService<IProfileService>();
-                await profileService.SaveProfileAsync(profile);
-                ViewModel.RefreshIsEmpty();
-            }
+            result = await service.ImportAsync(json);
         }
+        catch (Exception ex)
+        {
+            Helpers.BootLog.WriteError("profile.import.read", ex);
+            result = new ExportImportService.ImportResult(null, ExportImportService.ImportError.NotValidJson);
+        }
+
+        if (result.Succeeded)
+        {
+            ViewModel.RefreshIsEmpty();
+            return;
+        }
+
+        await new ContentDialog
+        {
+            Title = ResourceHelper.GetString("ImportFailedTitle"),
+            Content = new TextBlock
+            {
+                Text = ResourceHelper.GetString(result.Error switch
+                {
+                    ExportImportService.ImportError.NotAProfile => "ImportFailedNotAProfile",
+                    ExportImportService.ImportError.SaveFailed => "ImportFailedSave",
+                    _ => "ImportFailedNotValidJson",
+                }),
+                TextWrapping = TextWrapping.Wrap,
+            },
+            CloseButtonText = ResourceHelper.GetString("OK"),
+            XamlRoot = XamlRoot,
+        }.ShowAsync();
     }
 
     private void ProfileGrid_ItemClick(object sender, ItemClickEventArgs e)
