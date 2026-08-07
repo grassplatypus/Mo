@@ -14,27 +14,44 @@
         </TransitionCollection>
     </Page.Transitions>
 
+    <!-- Title spans the full width instead of sitting on top of the monitor list.
+         The list column previously reserved 260px of full-height space for what is
+         usually one or two entries, leaving a tall empty gutter under it. -->
     <Grid Padding="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="260" />
+            <ColumnDefinition Width="240" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <!-- Monitor list -->
-        <StackPanel Spacing="8">
-            <TextBlock x:Name="TitleText" Style="{StaticResource TitleTextBlockStyle}" />
-            <TextBlock x:Name="SubtitleText" Opacity="0.6" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap" />
-            <Button x:Name="RefreshBtn" Click="RefreshBtn_Click" Margin="0,8,0,0" HorizontalAlignment="Stretch">
+        <!-- Header -->
+        <Grid Grid.ColumnSpan="2" Margin="0,0,0,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Spacing="2">
+                <TextBlock x:Name="TitleText" Style="{StaticResource TitleTextBlockStyle}" />
+                <TextBlock x:Name="SubtitleText" Opacity="0.6" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap" />
+            </StackPanel>
+            <Button Grid.Column="1" x:Name="RefreshBtn" Click="RefreshBtn_Click" VerticalAlignment="Center">
                 <StackPanel Orientation="Horizontal" Spacing="6">
                     <FontIcon Glyph="&#xE72C;" FontSize="14" />
                     <TextBlock x:Name="RefreshLabel" />
                 </StackPanel>
             </Button>
-            <ListView x:Name="MonitorList" SelectionChanged="MonitorList_SelectionChanged" Margin="0,8,0,0" />
-        </StackPanel>
+        </Grid>
 
-        <!-- Detail panel -->
-        <ScrollViewer Grid.Column="1" Padding="24,0,0,0">
+        <!-- Monitor list -->
+        <ListView Grid.Row="1" x:Name="MonitorList" SelectionChanged="MonitorList_SelectionChanged"
+                  VerticalAlignment="Top" />
+
+        <!-- Detail panel. Bottom padding so the last card doesn't butt against the
+             window edge when scrolled to the end. -->
+        <ScrollViewer Grid.Row="1" Grid.Column="1" Padding="24,0,4,24">
             <StackPanel x:Name="DetailPanel" Spacing="12" Visibility="Collapsed">
 
                 <!-- Header -->
@@ -84,7 +101,14 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="80" /><ColumnDefinition Width="*" /><ColumnDefinition Width="48" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="R" Foreground="#FF4444" FontWeight="Bold" VerticalAlignment="Center" />
+                            <!-- The colour lives in the swatch, not in the glyph. A tinted
+                                 letter on its own failed contrast outright in the light
+                                 theme (#44BB44 on white is about 2.2:1) and made the
+                                 channel unreadable for anyone who can't separate the hues. -->
+                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <Rectangle Width="10" Height="10" RadiusX="2" RadiusY="2" Fill="#E03A3A" />
+                                <TextBlock Text="R" FontWeight="SemiBold" />
+                            </StackPanel>
                             <Slider Grid.Column="1" x:Name="RedSlider" Minimum="0" Maximum="100" ValueChanged="Slider_ValueChanged" />
                             <TextBlock Grid.Column="2" x:Name="RedValue" HorizontalAlignment="Right" VerticalAlignment="Center" />
                         </Grid>
@@ -93,7 +117,10 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="80" /><ColumnDefinition Width="*" /><ColumnDefinition Width="48" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="G" Foreground="#44BB44" FontWeight="Bold" VerticalAlignment="Center" />
+                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <Rectangle Width="10" Height="10" RadiusX="2" RadiusY="2" Fill="#2FA84F" />
+                                <TextBlock Text="G" FontWeight="SemiBold" />
+                            </StackPanel>
                             <Slider Grid.Column="1" x:Name="GreenSlider" Minimum="0" Maximum="100" ValueChanged="Slider_ValueChanged" />
                             <TextBlock Grid.Column="2" x:Name="GreenValue" HorizontalAlignment="Right" VerticalAlignment="Center" />
                         </Grid>
@@ -102,7 +129,10 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="80" /><ColumnDefinition Width="*" /><ColumnDefinition Width="48" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="B" Foreground="#4488FF" FontWeight="Bold" VerticalAlignment="Center" />
+                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <Rectangle Width="10" Height="10" RadiusX="2" RadiusY="2" Fill="#3A6FE0" />
+                                <TextBlock Text="B" FontWeight="SemiBold" />
+                            </StackPanel>
                             <Slider Grid.Column="1" x:Name="BlueSlider" Minimum="0" Maximum="100" ValueChanged="Slider_ValueChanged" />
                             <TextBlock Grid.Column="2" x:Name="BlueValue" HorizontalAlignment="Right" VerticalAlignment="Center" />
                         </Grid>
@@ -119,9 +149,12 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel>
+                    <!-- Margin keeps the description off the combo; without it the text
+                         column collapsed and the caption wrapped to four cramped lines. -->
+                    <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
                         <TextBlock x:Name="PresetLabel" />
-                        <TextBlock x:Name="PresetDesc" Opacity="0.5" Style="{StaticResource CaptionTextBlockStyle}" />
+                        <TextBlock x:Name="PresetDesc" Opacity="0.5" TextWrapping="Wrap"
+                                   Style="{StaticResource CaptionTextBlockStyle}" />
                     </StackPanel>
                     <ComboBox Grid.Column="1" x:Name="PresetCombo" MinWidth="160" SelectionChanged="PresetCombo_SelectionChanged" VerticalAlignment="Center" />
                 </Grid>
@@ -134,7 +167,7 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel>
+                    <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
                         <TextBlock x:Name="HdrLabel" />
                         <TextBlock x:Name="HdrDesc" Opacity="0.5" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap" />
                     </StackPanel>

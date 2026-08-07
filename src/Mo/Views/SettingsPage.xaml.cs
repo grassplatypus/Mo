@@ -15,9 +15,16 @@ public sealed partial class SettingsPage : Page
     public SettingsViewModel ViewModel { get; }
 
     // Static binding sources for the ComboBoxes.
-    public IReadOnlyList<AppTheme> ThemeOptions { get; } = new[]
+    //
+    // Themes carry a localized label rather than binding the bare enum: a raw
+    // ToString() put an English "Dark" in the middle of a Korean settings page.
+    // Same shape as LanguageOptions/RotationOptions so all three combos are wired
+    // identically (see the note below on why that wiring is manual).
+    public IReadOnlyList<ThemeOption> ThemeOptions { get; } = new[]
     {
-        AppTheme.System, AppTheme.Light, AppTheme.Dark,
+        new ThemeOption(AppTheme.System, ResourceHelper.GetString("ThemeSystem")),
+        new ThemeOption(AppTheme.Light, ResourceHelper.GetString("ThemeLight")),
+        new ThemeOption(AppTheme.Dark, ResourceHelper.GetString("ThemeDark")),
     };
 
     public IReadOnlyList<RotationMethodOption> RotationOptions { get; }
@@ -57,6 +64,26 @@ public sealed partial class SettingsPage : Page
 
     private bool _syncingLanguageCombo;
     private bool _syncingRotationCombo;
+    private bool _syncingThemeCombo;
+
+    private void ThemeCombo_Loaded(object sender, RoutedEventArgs e)
+    {
+        _syncingThemeCombo = true;
+        try
+        {
+            ThemeCombo.SelectedItem =
+                ThemeOptions.FirstOrDefault(o => o.Theme == ViewModel.Theme)
+                ?? ThemeOptions.FirstOrDefault(o => o.Theme == AppTheme.System);
+        }
+        finally { _syncingThemeCombo = false; }
+    }
+
+    private void ThemeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_syncingThemeCombo) return;
+        if (ThemeCombo.SelectedItem is ThemeOption opt)
+            ViewModel.Theme = opt.Theme;
+    }
 
     private void LanguageCombo_Loaded(object sender, RoutedEventArgs e)
     {
@@ -239,3 +266,4 @@ public sealed partial class SettingsPage : Page
 
 public sealed record RotationMethodOption(RotationMethod Method, string DisplayName);
 public sealed record LanguageOption(string Tag, string Display);
+public sealed record ThemeOption(AppTheme Theme, string Display);

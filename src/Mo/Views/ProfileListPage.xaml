@@ -69,18 +69,31 @@
             ItemsSource="{x:Bind ViewModel.Profiles}"
             SelectionMode="None"
             IsItemClickEnabled="True"
+            SizeChanged="ProfileGrid_SizeChanged"
             ItemClick="ProfileGrid_ItemClick">
+
+            <GridView.ItemContainerStyle>
+                <Style TargetType="GridViewItem" BasedOn="{StaticResource DefaultGridViewItemStyle}">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    <Setter Property="Margin" Value="0,0,12,12" />
+                    <Setter Property="Padding" Value="0" />
+                </Style>
+            </GridView.ItemContainerStyle>
 
             <GridView.ItemTemplate>
                 <DataTemplate x:DataType="models:DisplayProfile">
+                    <!-- No fixed Width: ProfileGrid_SizeChanged divides each row into
+                         equal columns for the current window size, so cards grow to use
+                         a narrow window instead of leaving a fixed 280px column and a
+                         ragged edge. The active profile takes an accent border so
+                         "which one am I on right now" is answerable at a glance. -->
                     <Grid
-                        Width="280"
-                        MinHeight="140"
+                        MinHeight="180"
                         Padding="16"
                         CornerRadius="8"
                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        BorderThickness="1">
+                        BorderBrush="{x:Bind local:ProfileListPage.CardBorder(IsActive), Mode=OneWay}"
+                        BorderThickness="{x:Bind local:ProfileListPage.CardBorderThickness(IsActive), Mode=OneWay}">
 
                         <Grid.ContextFlyout>
                             <MenuFlyout>
@@ -133,10 +146,21 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
 
-                            <TextBlock
-                                Text="{x:Bind Name}"
-                                Style="{StaticResource SubtitleTextBlockStyle}"
-                                TextTrimming="CharacterEllipsis" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock
+                                    Text="{x:Bind Name, Mode=OneWay}"
+                                    Style="{StaticResource SubtitleTextBlockStyle}"
+                                    TextTrimming="CharacterEllipsis" />
+                                <Border
+                                    Visibility="{x:Bind local:ProfileListPage.BoolToVisibility(IsActive), Mode=OneWay}"
+                                    Background="{ThemeResource AccentFillColorDefaultBrush}"
+                                    CornerRadius="4" Padding="6,1" VerticalAlignment="Center">
+                                    <TextBlock
+                                        Text="{x:Bind local:ProfileListPage.L(local:ProfileListPage.ActiveKey)}"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
+                                </Border>
+                            </StackPanel>
 
                             <Button
                                 Grid.Column="1"
@@ -264,7 +288,22 @@
             <TextBlock
                 x:Name="EmptyDescText"
                 Opacity="0.4"
+                TextWrapping="Wrap"
+                TextAlignment="Center"
+                MaxWidth="360"
                 HorizontalAlignment="Center" />
+            <!-- The empty state described the action but made the user go find the
+                 button for it. Offer it right here. -->
+            <Button
+                Style="{StaticResource AccentButtonStyle}"
+                HorizontalAlignment="Center"
+                Margin="0,8,0,0"
+                Click="SaveCurrentButton_Click">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <FontIcon Glyph="&#xE710;" FontSize="14" />
+                    <TextBlock x:Name="EmptyCtaText" />
+                </StackPanel>
+            </Button>
         </StackPanel>
     </Grid>
 </Page>

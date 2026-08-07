@@ -1,7 +1,9 @@
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Mo.Controls;
 using Mo.Helpers;
 using Mo.Models;
@@ -20,6 +22,7 @@ public sealed partial class ProfileListPage : Page
     public static readonly string ExportKey = "Export";
     public static readonly string AutoSwitchKey = "AutoSwitch";
     public static readonly string RenameKey = "Rename";
+    public static readonly string ActiveKey = "ActiveProfile";
 
     public static string L(string key) => ResourceHelper.GetString(key);
 
@@ -58,6 +61,7 @@ public sealed partial class ProfileListPage : Page
         ImportText.Text = ResourceHelper.GetString("Import");
         EmptyTitleText.Text = ResourceHelper.GetString("EmptyTitle");
         EmptyDescText.Text = ResourceHelper.GetString("EmptyDescription");
+        EmptyCtaText.Text = ResourceHelper.GetString("SaveCurrent");
     }
 
     private async void ApplyButton_Click(object sender, RoutedEventArgs e)
@@ -474,7 +478,39 @@ public sealed partial class ProfileListPage : Page
     public static Visibility HasText(string? value)
         => string.IsNullOrWhiteSpace(value) ? Visibility.Collapsed : Visibility.Visible;
 
+    public static Visibility BoolToVisibility(bool value)
+        => value ? Visibility.Visible : Visibility.Collapsed;
+
+    public static Brush CardBorder(bool isActive) => (Brush)Application.Current.Resources[
+        isActive ? "AccentFillColorDefaultBrush" : "CardStrokeColorDefaultBrush"];
+
+    public static Thickness CardBorderThickness(bool isActive) => new(isActive ? 2 : 1);
+
     /// <summary>"Updated 3 min ago" — derived at render time, never stored.</summary>
     public static string FormatModified(DateTime modifiedUtc)
         => ResourceHelper.GetString("ModifiedPrefix", RelativeTimeText.Format(modifiedUtc));
+
+    // ── Responsive card sizing ──
+
+    /// <summary>Smallest width at which a card still reads well.</summary>
+    private const double MinCardWidth = 260;
+
+    /// <summary>
+    /// Divides the row evenly between as many cards as fit, so they stretch to fill
+    /// the window instead of leaving a growing empty gutter on the right. GridView's
+    /// wrap grid sizes items from the template, which is why this has to be computed.
+    /// </summary>
+    private void ProfileGrid_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (ProfileGrid.ItemsPanelRoot is not ItemsWrapGrid panel) return;
+
+        // Matches the 12px right margin in the container style.
+        const double gutter = 12;
+        double available = e.NewSize.Width;
+        if (available <= 0) return;
+
+        int columns = Math.Max(1, (int)((available + gutter) / (MinCardWidth + gutter)));
+        panel.ItemWidth = Math.Floor(available / columns) - gutter;
+    }
+
 }

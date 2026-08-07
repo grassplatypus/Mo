@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Mo.Core.DisplayConfiguration;
 using Mo.Helpers;
@@ -449,5 +450,16 @@ public sealed partial class DisplayTuningPage : Page
         AmdTitle.Text = ResourceHelper.GetString("AmdColorSection");
         AmdSaturationLabel.Text = ResourceHelper.GetString("Saturation");
         AmdHueLabel.Text = ResourceHelper.GetString("Hue");
+
+        // Sliders whose visible label is a bare letter ("R") announce nothing useful,
+        // and the letter isn't a label element the automation tree can associate
+        // anyway. Name them explicitly.
+        AutomationProperties.SetName(BrightnessSlider, ResourceHelper.GetString("Brightness"));
+        AutomationProperties.SetName(ContrastSlider, ResourceHelper.GetString("Contrast"));
+        AutomationProperties.SetName(RedSlider, ResourceHelper.GetString("ChannelRed"));
+        AutomationProperties.SetName(GreenSlider, ResourceHelper.GetString("ChannelGreen"));
+        AutomationProperties.SetName(BlueSlider, ResourceHelper.GetString("ChannelBlue"));
+        AutomationProperties.SetName(AmdSaturationSlider, ResourceHelper.GetString("Saturation"));
+        AutomationProperties.SetName(AmdHueSlider, ResourceHelper.GetString("Hue"));
     }
 }

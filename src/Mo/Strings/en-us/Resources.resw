@@ -148,7 +148,7 @@ Press Delete or Backspace to clear. Escape to cancel.</value></data>
   <data name="StartMinimizedDesc" xml:space="preserve"><value>Start in the system tray instead of showing the window</value></data>
   <data name="Theme" xml:space="preserve"><value>Theme</value></data>
   <data name="ThemeDesc" xml:space="preserve"><value>Choose your preferred appearance</value></data>
-  <data name="ThemeSystem" xml:space="preserve"><value>System</value></data>
+  <data name="ThemeSystem" xml:space="preserve"><value>Use system setting</value></data>
   <data name="ThemeLight" xml:space="preserve"><value>Light</value></data>
   <data name="ThemeDark" xml:space="preserve"><value>Dark</value></data>
   <data name="AutoSwitchSetting" xml:space="preserve"><value>Auto-switch profiles</value></data>
@@ -186,6 +186,10 @@ Press Delete or Backspace to clear. Escape to cancel.</value></data>
   <data name="TimeYesterday" xml:space="preserve"><value>yesterday</value></data>
   <data name="TimeDaysAgo" xml:space="preserve"><value>{0} days ago</value></data>
   <data name="ModifiedPrefix" xml:space="preserve"><value>Updated {0}</value></data>
+  <data name="ChannelRed" xml:space="preserve"><value>Red gain</value></data>
+  <data name="ChannelGreen" xml:space="preserve"><value>Green gain</value></data>
+  <data name="ChannelBlue" xml:space="preserve"><value>Blue gain</value></data>
+  <data name="ActiveProfile" xml:space="preserve"><value>Active</value></data>
   <data name="RestoreOnStartupCard.Header" xml:space="preserve"><value>Restore last profile on startup</value></data>
   <data name="RestoreOnStartupCard.Description" xml:space="preserve"><value>Re-apply the most recently used profile when Mo launches.</value></data>
   <data name="RestoreColorCard.Header" xml:space="preserve"><value>Restore color settings on startup</value></data>

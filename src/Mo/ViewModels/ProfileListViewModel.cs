@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Mo.Models;
 using Mo.Services;
@@ -15,7 +16,22 @@ public partial class ProfileListViewModel : ObservableObject
     {
         _profileService = profileService;
         Profiles = _profileService.Profiles;
+
+        // Keep the "currently applied" marker correct no matter what triggered the
+        // apply — button, tray, hotkey, schedule or auto-switch all raise this.
+        _profileService.ProfileApplied += (_, applied) => MarkActive(applied.Id);
+        Profiles.CollectionChanged += (_, _) => MarkActive(_activeProfileId);
+
         _ = LoadAsync();
+    }
+
+    private string? _activeProfileId;
+
+    private void MarkActive(string? profileId)
+    {
+        _activeProfileId = profileId;
+        foreach (var p in Profiles)
+            p.IsActive = p.Id == profileId;
     }
 
     public ObservableCollection<DisplayProfile> Profiles { get; }
@@ -53,6 +69,16 @@ public partial class ProfileListViewModel : ObservableObject
     private async Task LoadAsync()
     {
         await _profileService.LoadAllAsync();
+
+        // On a cold start nothing has been applied this session, so seed the marker
+        // from the profile the app restored (or last applied before it was closed).
+        try
+        {
+            var settings = App.Services.GetRequiredService<ISettingsService>();
+            MarkActive(settings.Settings.LastAppliedProfileId);
+        }
+        catch { }
+
         OnPropertyChanged(nameof(IsEmpty));
     }
 }

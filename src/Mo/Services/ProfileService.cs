@@ -49,6 +49,40 @@ public sealed class ProfileService : IProfileService
     }
 
     /// <summary>
+    /// Refuses to write a profile whose serialized form has lost data.
+    /// </summary>
+    /// <remarks>
+    /// MoJsonContext is source-generated, so the JSON contract is decided at compile
+    /// time from what the generator can see on <see cref="DisplayProfile"/>. A member
+    /// that becomes invisible to it — the way a CommunityToolkit
+    /// <c>[ObservableProperty]</c> field does, since that property is emitted by a
+    /// second generator the first one never sees — silently disappears from the
+    /// contract. Every save would then overwrite a good file with a blank one, and
+    /// nothing would report it. Checking the round-trip at the moment of writing
+    /// turns that class of mistake into a loud failure instead of data loss.
+    /// </remarks>
+    private static void EnsureRoundTrips(DisplayProfile profile, string json)
+    {
+        var reloaded = JsonSerializer.Deserialize(json, MoJsonContext.Default.DisplayProfile);
+
+        bool intact = reloaded != null
+            && reloaded.Id == profile.Id
+            && reloaded.Name == profile.Name
+            && reloaded.Monitors.Count == profile.Monitors.Count;
+
+        if (intact) return;
+
+        var message =
+            $"Refusing to save profile '{profile.Name}' ({profile.Id}): the serialized form " +
+            $"does not round-trip. Expected name='{profile.Name}', monitors={profile.Monitors.Count}; " +
+            $"got name='{reloaded?.Name}', monitors={reloaded?.Monitors.Count}. " +
+            "MoJsonContext and the DisplayProfile members are out of sync.";
+
+        Helpers.BootLog.Write("profile.save.roundtrip-failed", message);
+        throw new InvalidOperationException(message);
+    }
+
+    /// <summary>
     /// Clears descriptions this app generated itself in earlier versions.
     /// </summary>
     /// <remarks>
@@ -67,7 +101,15 @@ public sealed class ProfileService : IProfileService
         profile.ModifiedAt = DateTime.UtcNow;
         var filePath = Path.Combine(_profilesDir, $"{profile.Id}.json");
         var json = JsonSerializer.Serialize(profile, MoJsonContext.Default.DisplayProfile);
-        await File.WriteAllTextAsync(filePath, json);
+
+        EnsureRoundTrips(profile, json);
+
+        // Temp file + atomic replace: a crash or power loss mid-write must not be able
+        // to leave a half-written profile behind.
+        var tmp = filePath + ".tmp";
+        await File.WriteAllTextAsync(tmp, json).ConfigureAwait(true);
+        try { File.Move(tmp, filePath, overwrite: true); }
+        catch { File.Copy(tmp, filePath, overwrite: true); try { File.Delete(tmp); } catch { } }
 
         var existing = Profiles.FirstOrDefault(p => p.Id == profile.Id);
         if (existing != null)
