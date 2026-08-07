@@ -687,5 +687,6 @@ public partial class App : Application
         try { Services.GetRequiredService<ITrayService>().Dispose(); } catch { }
         try { Services.GetRequiredService<IMonitorColorService>().Dispose(); } catch { }
         try { Services.GetRequiredService<AmdColorService>().Dispose(); } catch { }
+        try { Services.GetRequiredService<AmdRotationService>().Dispose(); } catch { }
     }
 }

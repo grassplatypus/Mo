@@ -17,6 +17,13 @@ public interface IDisplayService
     DisplayApplyResult ApplyProfile(DisplayProfile profile);
     ProfileCompatibility CheckCompatibility(DisplayProfile profile);
 
+    /// <summary>
+    /// Evaluates several profiles against one hardware read. Prefer this over calling
+    /// <see cref="CheckCompatibility"/> in a loop — each call costs two full CCD
+    /// round trips, and the hardware cannot change between iterations.
+    /// </summary>
+    IReadOnlyList<ProfileCompatibility> CheckCompatibilityAll(IReadOnlyList<DisplayProfile> profiles);
+
     /// <summary>Returns true if the monitor reports advanced-color (HDR) support.</summary>
     HdrState GetHdrState(MonitorInfo monitor);
 

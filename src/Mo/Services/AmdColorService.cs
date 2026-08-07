@@ -85,15 +85,18 @@ public sealed class AmdColorService : IDisposable
     public ColorRange? GetColor(int adapterIndex, int displayIndex, ColorKind kind)
     {
         if (!IsAvailable || _disposed) return null;
+        lock (_ctxLock) return GetColorCore(adapterIndex, displayIndex, kind);
+    }
+
+    /// <summary>Caller must hold <see cref="_ctxLock"/>.</summary>
+    private ColorRange? GetColorCore(int adapterIndex, int displayIndex, ColorKind kind)
+    {
         try
         {
-            lock (_ctxLock)
-            {
-                if (ADL2_Display_Color_Get(_ctx, adapterIndex, displayIndex, (int)kind,
-                    out int current, out int def, out int min, out int max, out int step) != 0)
-                    return null;
-                return new ColorRange(current, def, min, max, step);
-            }
+            if (ADL2_Display_Color_Get(_ctx, adapterIndex, displayIndex, (int)kind,
+                out int current, out int def, out int min, out int max, out int step) != 0)
+                return null;
+            return new ColorRange(current, def, min, max, step);
         }
         catch { return null; }
     }
@@ -109,24 +112,38 @@ public sealed class AmdColorService : IDisposable
         catch { return false; }
     }
 
-    // Walks every adapter/display 0 pair and applies the first that accepts the value —
-    // for UIs that don't know the adapter/display index layout.
-    public bool SetColorFirstAvailable(ColorKind kind, int value)
+    // ── Device-name targeting (preferred) ──
+    //
+    // ADL's (adapter, display) indices are unrelated to the order Windows lists
+    // monitors in, so callers must say *which* monitor they mean. The UI previously
+    // hardcoded (0, 0), which meant the saturation and hue sliders read and wrote the
+    // first monitor's values no matter which one was selected in the list.
+
+    /// <summary>Reads a colour control for a specific monitor, by GDI device name.</summary>
+    public ColorRange? GetColorByDeviceName(string gdiDeviceName, ColorKind kind)
+    {
+        if (!IsAvailable || _disposed) return null;
+
+        lock (_ctxLock)
+        {
+            var target = AdlDisplays.Resolve(_ctx, gdiDeviceName);
+            if (target == null) return null;
+            return GetColorCore(target.Value.adapterIndex, target.Value.displayIndex, kind);
+        }
+    }
+
+    /// <summary>Writes a colour control for a specific monitor, by GDI device name.</summary>
+    public bool SetColorByDeviceName(string gdiDeviceName, ColorKind kind, int value)
     {
         if (!IsAvailable || _disposed) return false;
-        try
+
+        lock (_ctxLock)
         {
-            lock (_ctxLock)
-            {
-                ADL2_Adapter_NumberOfAdapters_Get(_ctx, out int numAdapters);
-                for (int adapter = 0; adapter < numAdapters; adapter++)
-                {
-                    if (ADL2_Display_Color_Set(_ctx, adapter, 0, (int)kind, value) == 0)
-                        return true;
-                }
-                return false;
-            }
+            var target = AdlDisplays.Resolve(_ctx, gdiDeviceName);
+            if (target == null) return false;
+
+            try { return ADL2_Display_Color_Set(_ctx, target.Value.adapterIndex, target.Value.displayIndex, (int)kind, value) == 0; }
+            catch { return false; }
         }
-        catch { return false; }
     }
 }

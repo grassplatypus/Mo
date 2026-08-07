@@ -91,6 +91,22 @@ public sealed class IntelRotationService
         catch { IsAvailable = false; }
     }
 
+    /// <summary>
+    /// Rotates via the Intel Control Library. Declines the job when more than one
+    /// display is attached.
+    /// </summary>
+    /// <remarks>
+    /// The Intel API addresses displays by opaque handles, and this code has no way to
+    /// tell which handle corresponds to <paramref name="monitor"/> — CtlDisplayProperties
+    /// exposes no GDI device name to match on, the way ADL and NVAPI do. It previously
+    /// rotated the first attached display it found and reported success, so on a
+    /// multi-monitor system asking to rotate the second screen rotated the first.
+    ///
+    /// Returning false instead lets DisplayService fall back to the CCD path, which
+    /// does target the right monitor. That path has the cursor-coordinate quirk this
+    /// service exists to avoid, but a correctly-rotated monitor with a cursor quirk
+    /// beats the wrong monitor being rotated.
+    /// </remarks>
     public bool ApplyRotation(MonitorInfo monitor, DisplayRotation rotation)
     {
         if (!IsAvailable) return false;
@@ -117,6 +133,11 @@ public sealed class IntelRotationService
                 result = ctlEnumerateDevices(apiHandle, ref deviceCount, devices);
                 if (result != CTL_RESULT_SUCCESS) return false;
 
+                // Collect every attached display first. If there is more than one there
+                // is no way to know which is `monitor`, and picking one would be a coin
+                // flip on the user's screens.
+                var attached = new List<IntPtr>();
+
                 foreach (var device in devices)
                 {
                     // Enumerate displays on this device
@@ -129,6 +150,28 @@ public sealed class IntelRotationService
                     if (result != CTL_RESULT_SUCCESS) continue;
 
                     foreach (var display in displays)
+                    {
+                        var probe = new CtlDisplayProperties
+                        {
+                            Size = (uint)Marshal.SizeOf<CtlDisplayProperties>(),
+                            Version = 0,
+                            Reserved = new byte[256],
+                        };
+                        if (ctlGetDisplayProperties(display, ref probe) == CTL_RESULT_SUCCESS
+                            && probe.AttachedFlag != 0)
+                            attached.Add(display);
+                    }
+                }
+
+                if (attached.Count != 1)
+                {
+                    Helpers.BootLog.Write("intel.rotate.ambiguous",
+                        $"{attached.Count} attached displays; falling back to CCD rotation");
+                    return false;
+                }
+
+                {
+                    foreach (var display in attached)
                     {
                         var props = new CtlDisplayProperties
                         {

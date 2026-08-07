@@ -131,10 +131,19 @@ public sealed partial class DisplayTuningPage : Page
             return;
         }
 
-        // Probe the first adapter/display pair. If ADL rejects the read we hide the card
-        // rather than showing dead sliders.
-        var sat = _amdColorService.GetColor(0, 0, AmdColorService.ColorKind.Saturation);
-        var hue = _amdColorService.GetColor(0, 0, AmdColorService.ColorKind.Hue);
+        // Probe the *selected* monitor. This used to read adapter 0 / display 0, so on
+        // any multi-monitor Radeon setup the sliders showed and changed the first
+        // monitor's saturation and hue regardless of which one was selected here.
+        var deviceName = SelectedDeviceName();
+        if (string.IsNullOrEmpty(deviceName))
+        {
+            AmdCard.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        // If ADL rejects the read we hide the card rather than showing dead sliders.
+        var sat = _amdColorService.GetColorByDeviceName(deviceName, AmdColorService.ColorKind.Saturation);
+        var hue = _amdColorService.GetColorByDeviceName(deviceName, AmdColorService.ColorKind.Hue);
         if (sat == null && hue == null)
         {
             AmdCard.Visibility = Visibility.Collapsed;
@@ -192,8 +201,15 @@ public sealed partial class DisplayTuningPage : Page
         }
         else return;
 
-        _amdColorService.SetColorFirstAvailable(kind, (int)slider.Value);
+        var deviceName = SelectedDeviceName();
+        if (string.IsNullOrEmpty(deviceName)) return;
+
+        _amdColorService.SetColorByDeviceName(deviceName, kind, (int)slider.Value);
     }
+
+    /// <summary>GDI device name of the monitor selected in the list, or null.</summary>
+    private string? SelectedDeviceName() =>
+        _selected >= 0 && _selected < _monitors.Count ? _monitors[_selected].GdiDeviceName : null;
 
     private void LoadDdcSection(MonitorInfo monitor)
     {

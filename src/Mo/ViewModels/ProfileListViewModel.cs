@@ -57,8 +57,12 @@ public partial class ProfileListViewModel : ObservableObject
         try
         {
             var display = App.Services.GetRequiredService<IDisplayService>();
-            foreach (var p in Profiles)
-                p.IsAvailable = display.CheckCompatibility(p).MissingMonitors.Count == 0;
+            var snapshot = Profiles.ToList();
+
+            // One hardware read for the whole list, not one per profile.
+            var results = display.CheckCompatibilityAll(snapshot);
+            for (int i = 0; i < snapshot.Count && i < results.Count; i++)
+                snapshot[i].IsAvailable = results[i].MissingMonitors.Count == 0;
         }
         catch
         {

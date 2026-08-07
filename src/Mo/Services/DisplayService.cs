@@ -410,9 +410,35 @@ public sealed class DisplayService : IDisplayService
             : DisplayApplyResult.Success;
     }
 
-    public ProfileCompatibility CheckCompatibility(DisplayProfile profile)
+    public ProfileCompatibility CheckCompatibility(DisplayProfile profile) =>
+        CheckCompatibilityCore(profile, GetCurrentConfiguration(), GetAllConnectedTargetIdentities());
+
+    /// <summary>
+    /// Evaluates many profiles against a single hardware read.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="CheckCompatibility"/> costs two full CCD round trips — QueryDisplayConfig
+    /// for the active paths plus another for ALL_PATHS, each followed by a
+    /// DisplayConfigGetDeviceInfo per target. Calling it in a loop to answer "which of
+    /// these profiles can I apply right now" made that 2N round trips for N profiles,
+    /// on every display change. The hardware does not change between iterations, so it
+    /// is read once here.
+    /// </remarks>
+    public IReadOnlyList<ProfileCompatibility> CheckCompatibilityAll(IReadOnlyList<DisplayProfile> profiles)
     {
+        if (profiles.Count == 0) return [];
+
         var currentConfig = GetCurrentConfiguration();
+        var allConnected = GetAllConnectedTargetIdentities();
+
+        return [.. profiles.Select(p => CheckCompatibilityCore(p, currentConfig, allConnected))];
+    }
+
+    private static ProfileCompatibility CheckCompatibilityCore(
+        DisplayProfile profile,
+        List<MonitorInfo> currentConfig,
+        List<(string devicePath, ushort mfrId, ushort prodId, uint connector, string name)> allConnected)
+    {
         var profileIdentities = profile.Monitors.Select(m =>
             new MonitorMatcher.MonitorIdentity(m.DevicePath, m.EdidManufacturerId, m.EdidProductCodeId, m.ConnectorInstance, m.FriendlyName)).ToList();
         var currentIdentities = currentConfig.Select(m =>
@@ -420,8 +446,8 @@ public sealed class DisplayService : IDisplayService
 
         var matchResult = MonitorMatcher.Match(profileIdentities, currentIdentities);
 
-        // Check ALL_PATHS to distinguish "not connected" from "connected but disabled"
-        var allConnected = GetAllConnectedTargetIdentities();
+        // allConnected comes from ALL_PATHS, which distinguishes "not connected" from
+        // "connected but disabled".
         var missingMonitors = new List<string>();
         var disabledMonitors = new List<string>();
         foreach (var idx in matchResult.UnmatchedProfile)
