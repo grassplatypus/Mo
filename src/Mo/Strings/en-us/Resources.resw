@@ -219,6 +219,7 @@ Press Delete or Backspace to clear. Escape to cancel.</value></data>
   <data name="ProfileUnavailable" xml:space="preserve"><value>Some monitors in this profile are not connected right now.</value></data>
   <data name="TraySaveCurrent" xml:space="preserve"><value>Save current layout</value></data>
   <data name="TraySavedNameFormat" xml:space="preserve"><value>Layout {0}</value></data>
+  <data name="CompatDisabledMonitors" xml:space="preserve"><value>Currently switched off and will be turned back on: {0}</value></data>
   <data name="RestoreOnStartupCard.Header" xml:space="preserve"><value>Restore last profile on startup</value></data>
   <data name="RestoreOnStartupCard.Description" xml:space="preserve"><value>Re-apply the most recently used profile when Mo launches.</value></data>
   <data name="RestoreColorCard.Header" xml:space="preserve"><value>Restore color settings on startup</value></data>

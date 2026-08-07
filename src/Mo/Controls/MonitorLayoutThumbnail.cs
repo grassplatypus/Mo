@@ -27,8 +27,30 @@ public sealed partial class MonitorLayoutThumbnail : Grid
     public MonitorLayoutThumbnail()
     {
         Children.Add(_canvas);
-        SizeChanged += (_, _) => Render();
+        SizeChanged += OnSizeChanged;
         ActualThemeChanged += (_, _) => Render();
+    }
+
+    private double _renderedWidth;
+    private double _renderedHeight;
+
+    /// <summary>
+    /// Re-draws only when the size changed enough to look different.
+    /// </summary>
+    /// <remarks>
+    /// Dragging the window edge resizes the grid continuously, and because
+    /// ProfileGrid_SizeChanged recomputes the column width, every card is resized on
+    /// every frame of that drag. A full rebuild of the panels and labels per card per
+    /// frame is a lot of allocation for a picture that would look identical; sub-pixel
+    /// deltas are skipped.
+    /// </remarks>
+    private void OnSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (Math.Abs(e.NewSize.Width - _renderedWidth) < 1 &&
+            Math.Abs(e.NewSize.Height - _renderedHeight) < 1)
+            return;
+
+        Render();
     }
 
     public static readonly DependencyProperty MonitorsProperty = DependencyProperty.Register(
@@ -69,6 +91,9 @@ public sealed partial class MonitorLayoutThumbnail : Grid
 
         double w = ActualWidth, h = ActualHeight;
         if (w <= 0 || h <= 0) return;
+
+        _renderedWidth = w;
+        _renderedHeight = h;
 
         // Disabled panels are drawn too, ghosted: a profile whose whole point is
         // turning a monitor off should show that monitor, not omit it.

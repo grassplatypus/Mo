@@ -564,7 +564,17 @@ public sealed class DisplayService : IDisplayService
                 missingMonitors.Add(pm.FriendlyName);
         }
 
+        // A monitor that is plugged in but currently switched off is not a blocker —
+        // applying the profile turns it back on — but the user deserves to be told,
+        // because the screen coming to life is otherwise a surprise. This list was
+        // already being computed and then discarded, leaving the apply dialog's warning
+        // InfoBar permanently empty.
         var warnings = new List<string>();
+        if (disabledMonitors.Count > 0)
+        {
+            warnings.Add(Helpers.ResourceHelper.GetString(
+                "CompatDisabledMonitors", string.Join(", ", disabledMonitors)));
+        }
 
         // Only truly missing monitors matter for compatibility
         bool isFullMatch = missingMonitors.Count == 0;
