@@ -137,11 +137,11 @@ call WMI from inside the lambda; do it after, outside the lock.
 ### Radeon (ADL) rules
 Verified against a real Radeon + GeForce machine; do not "simplify" these away.
 - **Locate displays by `AdapterInfo.strDisplayName`** — that is the GDI name
-  (`\.\DISPLAY1`). `ADLDisplayInfo.strDisplayName` is the *EDID model name* and will
+  (`\\.\DISPLAY1`). `ADLDisplayInfo.strDisplayName` is the *EDID model name* and will
   never match one. `AdlDisplays.Resolve` does adapter-then-display in that order.
 - **Filter on `iVendorID == 1002`** (decimal, not `0x1002`). ADL enumerates non-AMD
   adapters too — the probe machine listed four `NVIDIA GeForce RTX 5080` adapters on
-  `\.\DISPLAY1..4` next to Radeon ones on `\.\DISPLAY5..9`. An adapter count is
+  `\\.\DISPLAY1..4` next to Radeon ones on `\\.\DISPLAY5..9`. An adapter count is
   therefore not a test for "has AMD"; use `AdlDisplays.HasAmdAdapter`.
 - ADL functions are `__cdecl`; the **allocation callback is `__stdcall`**
   (`ADL_MAIN_MALLOC_CALLBACK`). Declaring it `Cdecl` corrupts the stack on every ADL
