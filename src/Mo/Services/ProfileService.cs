@@ -128,11 +128,21 @@ public sealed class ProfileService : IProfileService
         return profile;
     }
 
-    public async Task<DisplayApplyResult> ApplyProfileAsync(string profileId, bool applyColor = true)
+    public async Task<DisplayApplyResult> ApplyProfileAsync(
+        string profileId,
+        bool applyColor = true,
+        ApplyTrigger trigger = ApplyTrigger.User,
+        bool? confirm = null)
     {
         var profile = Profiles.FirstOrDefault(p => p.Id == profileId);
         if (profile == null)
             return DisplayApplyResult.Failed;
+
+        // Snapshot BEFORE anything touches the hardware. The guard is wired here, at
+        // the single choke point every caller (UI, tray, hotkey, auto-switch, startup)
+        // already goes through, so no future call site can forget to opt in.
+        var guard = TryGetGuard(out var guardService) ? guardService : null;
+        var snapshot = guard?.Capture();
 
         var result = _displayService.ApplyProfile(profile);
 
@@ -191,6 +201,19 @@ public sealed class ProfileService : IProfileService
                 catch { }
             }
 
+            // Confirm last, after color/audio/wallpaper have landed — a profile that
+            // drives DDC/CI brightness to zero is just as unusable as a bad topology,
+            // so the user has to be judging the finished result.
+            if (guard != null && snapshot != null && ShouldGuard(confirm))
+            {
+                if (!await guard.ConfirmOrRevertAsync(snapshot, trigger))
+                {
+                    // Reverted. Deliberately do NOT record LastAppliedProfileId or raise
+                    // ProfileApplied: a rejected profile must not come back on next boot.
+                    return DisplayApplyResult.Reverted;
+                }
+            }
+
             // Remember the last-applied profile so App.InitializeAsync can restore it
             // after reboot (reboot-persistence is unreliable on NVIDIA driver paths).
             try
@@ -208,6 +231,31 @@ public sealed class ProfileService : IProfileService
         }
 
         return result;
+    }
+
+    private static bool TryGetGuard(out IApplyGuardService guard)
+    {
+        try
+        {
+            guard = App.Services.GetRequiredService<IApplyGuardService>();
+            return true;
+        }
+        catch
+        {
+            guard = null!;
+            return false;
+        }
+    }
+
+    // Every trigger is guarded by default — a hotkey, an auto-switch on hot-plug and a
+    // schedule can all strand the user just as thoroughly as a click on Apply. Only an
+    // explicit `confirm: false` from the caller, or the user's own ConfirmApply
+    // setting, turns it off.
+    private static bool ShouldGuard(bool? confirm)
+    {
+        if (confirm == false) return false;
+        try { return App.Services.GetRequiredService<ISettingsService>().Settings.ConfirmApply; }
+        catch { return false; }
     }
 
     private static string GetProfilesDirectory()

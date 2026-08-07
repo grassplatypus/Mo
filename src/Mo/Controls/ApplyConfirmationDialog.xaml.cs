@@ -7,12 +7,20 @@ namespace Mo.Controls;
 public sealed partial class ApplyConfirmationDialog : ContentDialog
 {
     private readonly DispatcherTimer _timer;
-    private int _secondsRemaining = 15;
+    private readonly int _totalSeconds;
+    private int _secondsRemaining;
     private bool _confirmed;
 
-    public ApplyConfirmationDialog()
+    public ApplyConfirmationDialog(int seconds = 15)
     {
         InitializeComponent();
+
+        // Clamped: 0 would revert before the user can read the dialog, and an
+        // unbounded value turns the safety net into a stuck window.
+        _totalSeconds = Math.Clamp(seconds, 5, 120);
+        _secondsRemaining = _totalSeconds;
+        CountdownProgress.Maximum = _totalSeconds;
+        CountdownProgress.Value = _totalSeconds;
 
         Title = ResourceHelper.GetString("ApplyConfirmTitle");
         PrimaryButtonText = ResourceHelper.GetString("KeepChanges");
@@ -32,13 +40,13 @@ public sealed partial class ApplyConfirmationDialog : ContentDialog
     /// </summary>
     public async Task<bool> ShowAndWaitAsync()
     {
-        var result = await ShowAsync();
+        await ShowAsync();
         return _confirmed;
     }
 
     private void ContentDialog_Opened(ContentDialog sender, ContentDialogOpenedEventArgs args)
     {
-        _secondsRemaining = 15;
+        _secondsRemaining = _totalSeconds;
         _confirmed = false;
         UpdateDisplay();
         _timer.Start();

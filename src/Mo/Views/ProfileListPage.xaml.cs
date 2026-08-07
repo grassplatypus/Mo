@@ -118,9 +118,11 @@ public sealed partial class ProfileListPage : Page
         if (await confirmDialog.ShowAsync() != ContentDialogResult.Primary)
             return;
 
-        // Capture the current configuration before applying so we can revert
-        var previousConfig = displayService.GetCurrentConfiguration();
-
+        // The snapshot + countdown + revert now lives in ApplyGuardService, wired into
+        // ProfileService.ApplyProfileAsync so every trigger gets it — not just this
+        // button. The previous version here also round-tripped a throwaway "_revert"
+        // profile through disk, which briefly published it to the profile list, the
+        // tray menu and the hotkey registration.
         await ViewModel.ApplyProfileCommand.ExecuteAsync(profileId);
 
         var result = ViewModel.LastApplyResult;
@@ -139,29 +141,6 @@ public sealed partial class ProfileListPage : Page
                 XamlRoot = this.XamlRoot,
             };
             await errorDialog.ShowAsync();
-            return;
-        }
-
-        // Show the revert countdown dialog
-        var revertDialog = new ApplyConfirmationDialog
-        {
-            XamlRoot = this.XamlRoot,
-        };
-
-        var confirmed = await revertDialog.ShowAndWaitAsync();
-
-        if (!confirmed)
-        {
-            // Revert: build a temporary profile from the previous config and apply it
-            var revertProfile = new DisplayProfile
-            {
-                Name = "_revert",
-                Monitors = previousConfig,
-            };
-            var profileService = App.Services.GetRequiredService<IProfileService>();
-            await profileService.SaveProfileAsync(revertProfile);
-            await profileService.ApplyProfileAsync(revertProfile.Id);
-            await profileService.DeleteProfileAsync(revertProfile.Id);
         }
     }
 

@@ -31,7 +31,14 @@ public enum DisplayApplyResult
     Success,
     PartialMatch,
     Failed,
-    ValidationError
+    ValidationError,
+
+    /// <summary>
+    /// The change was applied but then rolled back, because the user declined the
+    /// confirmation prompt or let it time out. Never produced by IDisplayService
+    /// itself — only by IProfileService, which owns the confirmation step.
+    /// </summary>
+    Reverted,
 }
 
 public sealed record ProfileCompatibility(

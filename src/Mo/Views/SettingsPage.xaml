@@ -86,6 +86,19 @@
                             </Button>
                         </StackPanel>
                     </tk:SettingsCard>
+                    <!-- Flat cards, not a nested SettingsExpander: SettingsExpander styles
+                         every child in its Items collection as a SettingsCard, so nesting
+                         one inside another throws at element-prepare time. -->
+                    <tk:SettingsCard x:Uid="ConfirmApplyCard">
+                        <ToggleSwitch IsOn="{x:Bind ViewModel.ConfirmApply, Mode=TwoWay}" OnContent="" OffContent="" />
+                    </tk:SettingsCard>
+                    <tk:SettingsCard x:Uid="ApplyConfirmSecondsCard"
+                                     IsEnabled="{x:Bind ViewModel.ConfirmApply, Mode=OneWay}">
+                        <NumberBox Value="{x:Bind ViewModel.ApplyConfirmSeconds, Mode=TwoWay}"
+                                   Minimum="5" Maximum="120" SmallChange="5"
+                                   SpinButtonPlacementMode="Compact"
+                                   MinWidth="120" />
+                    </tk:SettingsCard>
                     <tk:SettingsCard x:Uid="RestoreOnStartupCard">
                         <ToggleSwitch IsOn="{x:Bind ViewModel.RestoreOnStartup, Mode=TwoWay}" OnContent="" OffContent="" />
                     </tk:SettingsCard>

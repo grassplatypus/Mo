@@ -61,10 +61,17 @@ public sealed class AutoSwitchService : IAutoSwitchService
                          pi.EdidProductCodeId == ci.EdidProductCodeId))))
                 {
                     // Match found - apply on UI thread
+                    var target = profile;
                     App.MainWindow?.DispatcherQueue.TryEnqueue(async () =>
                     {
-                        await _profileService.ApplyProfileAsync(profile.Id);
-                        ProfileAutoApplied?.Invoke(this, profile.Id);
+                        // This branch is only reached when every monitor the profile names
+                        // is physically present, so the layout is the one the user authored
+                        // for exactly this hardware — a countdown on every dock/undock would
+                        // be noise. CheckCompatibility still gets the final say, because it
+                        // also weighs mode support, not just identity.
+                        bool? confirm = _displayService.CheckCompatibility(target).IsFullMatch ? false : null;
+                        await _profileService.ApplyProfileAsync(target.Id, trigger: ApplyTrigger.AutoSwitch, confirm: confirm);
+                        ProfileAutoApplied?.Invoke(this, target.Id);
                     });
                     break;
                 }

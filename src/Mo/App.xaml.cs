@@ -293,6 +293,7 @@ public partial class App : Application
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IDisplayService, DisplayService>();
+        services.AddSingleton<IApplyGuardService, ApplyGuardService>();
         services.AddSingleton<IProfileService, ProfileService>();
         services.AddSingleton<ITrayService, TrayService>();
         services.AddSingleton<IHotkeyService, HotkeyService>();
@@ -334,7 +335,8 @@ public partial class App : Application
             var profileService = Services.GetRequiredService<IProfileService>();
             await profileService.LoadAllAsync();
 
-            SafeInit(() => Services.GetRequiredService<ITrayService>().Initialize());
+            EnsureReachableWithoutTray();
+
             SafeInit(() => Services.GetRequiredService<IAutoSwitchService>().Start());
             SafeInit(() => Services.GetRequiredService<IScheduleService>().Start());
 
@@ -358,6 +360,46 @@ public partial class App : Application
 
         // Auto-check for updates (after everything else, non-blocking)
         _ = CheckForUpdateOnStartupAsync();
+    }
+
+    /// <summary>
+    /// Creates the tray icon and, if that fails, makes sure the user still has a way
+    /// into the app.
+    /// </summary>
+    /// <remarks>
+    /// "Start minimized" plus a failed Shell_NotifyIcon means the app boots with no
+    /// window and no icon: a live process the user cannot reach, which also holds the
+    /// single-instance key so every later launch looks like it does nothing. Failing
+    /// loudly here is the whole point — the previous code ran Initialize() inside
+    /// SafeInit and discarded the outcome.
+    /// </remarks>
+    private static void EnsureReachableWithoutTray()
+    {
+        bool trayReady = false;
+        try { trayReady = Services.GetRequiredService<ITrayService>().Initialize(); }
+        catch (Exception ex) { LogException("TrayInit", ex); BootLog.WriteError("tray.init", ex); }
+
+        if (trayReady) return;
+
+        BootLog.Write("tray.unavailable", "forcing window visible");
+        MainWindow?.DispatcherQueue?.TryEnqueue(async () =>
+        {
+            try
+            {
+                MainWindow?.ShowAndActivate();
+
+                if (MainWindow?.Content?.XamlRoot == null) return;
+                var dialog = new ContentDialog
+                {
+                    Title = ResourceHelper.GetString("TrayUnavailableTitle"),
+                    Content = ResourceHelper.GetString("TrayUnavailableDesc"),
+                    CloseButtonText = ResourceHelper.GetString("OK"),
+                    XamlRoot = MainWindow.Content.XamlRoot,
+                };
+                await dialog.ShowAsync();
+            }
+            catch (Exception ex) { LogException("TrayUnavailableNotice", ex); }
+        });
     }
 
     // On first launch, if the user is on an NVIDIA or AMD GPU and still using the default
@@ -456,7 +498,16 @@ public partial class App : Application
                 return;
             }
 
-            await profileService.ApplyProfileAsync(profileId, applyColor: settings.Settings.RestoreColorOnStartup);
+            // A full match re-applies a layout the user already confirmed, to the same
+            // monitors, so prompting on every single boot would be pure noise and would
+            // train them to click through it. A partial match is the case that can go
+            // wrong — docked/undocked, a panel swapped, a monitor asleep — so that one
+            // gets the countdown and the automatic roll-back.
+            await profileService.ApplyProfileAsync(
+                profileId,
+                applyColor: settings.Settings.RestoreColorOnStartup,
+                trigger: ApplyTrigger.Startup,
+                confirm: compatibility.IsFullMatch ? false : null);
         }
         catch (Exception ex)
         {
@@ -572,11 +623,11 @@ public partial class App : Application
             switch (e.Action)
             {
                 case HotkeyService.HotkeyAction.Profile when e.Payload is { } id:
-                    await profiles.ApplyProfileAsync(id);
+                    await profiles.ApplyProfileAsync(id, trigger: ApplyTrigger.Hotkey);
                     break;
                 case HotkeyService.HotkeyAction.ProfileSlot when int.TryParse(e.Payload, out int slot)
                                                               && slot < profiles.Profiles.Count:
-                    await profiles.ApplyProfileAsync(profiles.Profiles[slot].Id);
+                    await profiles.ApplyProfileAsync(profiles.Profiles[slot].Id, trigger: ApplyTrigger.Hotkey);
                     break;
                 case HotkeyService.HotkeyAction.NextProfile:
                     await CycleProfileAsync(+1);
@@ -603,7 +654,7 @@ public partial class App : Application
                 if (profiles.Profiles[i].Id == lastId) { currentIdx = i; break; }
         }
         int nextIdx = (currentIdx + delta + profiles.Profiles.Count) % profiles.Profiles.Count;
-        await profiles.ApplyProfileAsync(profiles.Profiles[nextIdx].Id);
+        await profiles.ApplyProfileAsync(profiles.Profiles[nextIdx].Id, trigger: ApplyTrigger.Hotkey);
     }
 
     private static void SafeInit(Action action)

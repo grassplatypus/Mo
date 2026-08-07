@@ -42,11 +42,23 @@ public sealed partial class MainWindow : Window
         try
         {
             var settings = App.Services.GetRequiredService<ISettingsService>();
-            if (settings.Settings.MinimizeToTrayOnClose)
+            if (!settings.Settings.MinimizeToTrayOnClose)
+                return;
+
+            // Hiding is only safe if there is a tray icon to get back in through.
+            // Shell_NotifyIcon can fail (Explorer restarting, notification area full,
+            // some elevated-session combos), and hiding anyway leaves a live process
+            // with no window and no icon — unreachable, and still holding the
+            // single-instance key so every later launch also appears to do nothing.
+            var tray = App.Services.GetRequiredService<ITrayService>();
+            if (!tray.EnsureCreated())
             {
-                args.Cancel = true;
-                HideWindow();
+                Helpers.BootLog.Write("close.tray-unavailable", "closing instead of hiding");
+                return; // Let the window close normally; the app exits cleanly.
             }
+
+            args.Cancel = true;
+            HideWindow();
         }
         catch
         {

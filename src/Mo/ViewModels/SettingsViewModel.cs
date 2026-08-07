@@ -60,6 +60,21 @@ public partial class SettingsViewModel : ObservableObject
             v => App.MainWindow?.ApplyTheme(v.ToString()));
     }
 
+    public bool ConfirmApply
+    {
+        get => _settings.Settings.ConfirmApply;
+        set => Set(_settings.Settings.ConfirmApply, value, v => _settings.Settings.ConfirmApply = v);
+    }
+
+    public int ApplyConfirmSeconds
+    {
+        get => _settings.Settings.ApplyConfirmSeconds;
+        // Clamped to the same range ApplyConfirmationDialog enforces, so the number in
+        // Settings always matches the countdown the user will actually see.
+        set => Set(_settings.Settings.ApplyConfirmSeconds, Math.Clamp(value, 5, 120),
+            v => _settings.Settings.ApplyConfirmSeconds = v);
+    }
+
     public bool AutoSwitchEnabled
     {
         get => _settings.Settings.AutoSwitchEnabled;

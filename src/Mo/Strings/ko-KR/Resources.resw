@@ -174,6 +174,12 @@ Delete 또는 Backspace로 삭제. Escape로 취소.</value></data>
   <data name="AutoSwitchCard.Description" xml:space="preserve"><value>모니터 구성 변경 시 자동으로 적절한 프로필을 적용합니다.</value></data>
   <data name="HotkeysCard.Header" xml:space="preserve"><value>전역 단축키</value></data>
   <data name="HotkeysCard.Description" xml:space="preserve"><value>시스템 전역 단축키로 프로필을 적용합니다.</value></data>
+  <data name="ConfirmApplyCard.Header" xml:space="preserve"><value>디스플레이 변경 유지 여부 확인</value></data>
+  <data name="ConfirmApplyCard.Description" xml:space="preserve"><value>프로필 적용 후 확인을 요청하고, 응답이 없으면 이전 구성으로 되돌립니다. 모니터가 검게 꺼지거나 화면 밖으로 나가는 배치로부터 보호합니다.</value></data>
+  <data name="ApplyConfirmSecondsCard.Header" xml:space="preserve"><value>되돌리기까지 대기 시간</value></data>
+  <data name="ApplyConfirmSecondsCard.Description" xml:space="preserve"><value>확인을 기다리는 초 (5~120).</value></data>
+  <data name="TrayUnavailableTitle" xml:space="preserve"><value>트레이 아이콘을 만들지 못했습니다</value></data>
+  <data name="TrayUnavailableDesc" xml:space="preserve"><value>Windows가 알림 영역 아이콘 생성을 거부해, Mo가 창을 계속 열어 둡니다. 그러지 않으면 앱에 접근할 방법이 없습니다. 이제 창을 닫으면 Mo가 종료됩니다. Windows 탐색기를 다시 시작하면 대개 해결됩니다.</value></data>
   <data name="RestoreOnStartupCard.Header" xml:space="preserve"><value>시작 시 마지막 프로필 복원</value></data>
   <data name="RestoreOnStartupCard.Description" xml:space="preserve"><value>Mo가 시작될 때 가장 최근에 적용한 프로필을 자동으로 다시 적용합니다.</value></data>
   <data name="RestoreColorCard.Header" xml:space="preserve"><value>시작 시 색상 설정 복원</value></data>

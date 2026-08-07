@@ -14,6 +14,13 @@ public sealed class AppSettings
     public RotationMethod RotationMethod { get; set; } = RotationMethod.Windows;
     public WindowPlacement? WindowPlacement { get; set; }
 
+    // After a profile is applied, show a countdown dialog and roll the displays back
+    // unless the user confirms. A bad layout can leave a monitor black or off-screen,
+    // and without this the user has no way to undo it from inside Mo. Windows itself
+    // guards its own display-settings changes the same way, so keep it on by default.
+    public bool ConfirmApply { get; set; } = true;
+    public int ApplyConfirmSeconds { get; set; } = 15;
+
     // Re-apply the last-applied profile on app startup so reboots don't lose the layout.
     public bool RestoreOnStartup { get; set; } = true;
     // Re-push DDC/CI brightness/contrast/RGB gain on startup (Windows doesn't persist these).

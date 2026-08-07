@@ -22,43 +22,66 @@ public sealed class TrayService : ITrayService
         };
     }
 
-    public void Initialize()
-    {
-        _trayIcon = new TaskbarIcon
-        {
-            ToolTipText = ResourceHelper.GetString("TrayTooltip"),
-            // PopupMenu is the most compatible mode — SecondWindow can fail on some
-            // session/elevated combinations, leaving right-click silently broken.
-            ContextMenuMode = ContextMenuMode.PopupMenu,
-        };
+    public bool IsAvailable { get; private set; }
 
-        // Load tray icon from file
+    public bool Initialize()
+    {
         try
         {
-            var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "TrayIcon.ico");
-            if (File.Exists(iconPath))
+            _trayIcon?.Dispose();
+            _trayIcon = new TaskbarIcon
             {
-                _trayIcon.Icon = new Icon(iconPath);
-            }
-            else
+                ToolTipText = ResourceHelper.GetString("TrayTooltip"),
+                // PopupMenu is the most compatible mode — SecondWindow can fail on some
+                // session/elevated combinations, leaving right-click silently broken.
+                ContextMenuMode = ContextMenuMode.PopupMenu,
+            };
+
+            // Load tray icon from file
+            try
             {
-                // Fallback to app icon
-                iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico");
+                var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "TrayIcon.ico");
                 if (File.Exists(iconPath))
+                {
                     _trayIcon.Icon = new Icon(iconPath);
+                }
+                else
+                {
+                    // Fallback to app icon
+                    iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico");
+                    if (File.Exists(iconPath))
+                        _trayIcon.Icon = new Icon(iconPath);
+                }
             }
+            catch
+            {
+                // Icon loading failed, tray will show default
+            }
+
+            // Only a double-click opens the window — matches Windows convention for
+            // secondary tray apps (OneDrive, Dropbox, etc.). Single-click does nothing.
+            _trayIcon.DoubleClickCommand = new SimpleCommand(ShowMainWindow);
+            UpdateContextMenu();
+            _trayIcon.ForceCreate();
+
+            IsAvailable = true;
         }
-        catch
+        catch (Exception ex)
         {
-            // Icon loading failed, tray will show default
+            // Shell_NotifyIcon can fail outright when Explorer is restarting, when the
+            // notification area is saturated, or under some elevated-session combos.
+            // Report it rather than swallowing: with MinimizeToTrayOnClose on, a silent
+            // failure here is what turns "close the window" into "lose the app".
+            Helpers.BootLog.WriteError("tray.initialize", ex);
+            try { _trayIcon?.Dispose(); } catch { }
+            _trayIcon = null;
+            IsAvailable = false;
         }
 
-        // Only a double-click opens the window — matches Windows convention for
-        // secondary tray apps (OneDrive, Dropbox, etc.). Single-click does nothing.
-        _trayIcon.DoubleClickCommand = new SimpleCommand(ShowMainWindow);
-        UpdateContextMenu();
-        _trayIcon.ForceCreate();
+        return IsAvailable;
     }
+
+    public bool EnsureCreated() => IsAvailable || Initialize();
 
     public void UpdateContextMenu()
     {
@@ -98,7 +121,9 @@ public sealed class TrayService : ITrayService
 
     public void Dispose()
     {
+        IsAvailable = false;
         _trayIcon?.Dispose();
+        _trayIcon = null;
     }
 
     private static void ShowMainWindow()
