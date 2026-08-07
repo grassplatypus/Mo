@@ -231,6 +231,22 @@ public sealed class DisplayService : IDisplayService
         }
         catch { }
 
+        // Radeon equivalent. Gated on the user having chosen the AMD backend, unlike
+        // the NVIDIA branch above: the ADL path could not be exercised on real Radeon
+        // hardware during development, so it is opt-in rather than the default.
+        try
+        {
+            if (TryApplyAmdFullProfile(profile, currentConfig, matchResult))
+            {
+                UnstickCursor();
+
+                return matchResult.UnmatchedProfile.Count > 0
+                    ? DisplayApplyResult.PartialMatch
+                    : DisplayApplyResult.Success;
+            }
+        }
+        catch { }
+
         // Fallback to CCD path
         // Phase 2: Determine if topology extend is needed
         int enabledProfileMonitors = profile.Monitors.Count(m => m.IsEnabled);
@@ -408,6 +424,92 @@ public sealed class DisplayService : IDisplayService
         return matchResult.UnmatchedProfile.Count > 0
             ? DisplayApplyResult.PartialMatch
             : DisplayApplyResult.Success;
+    }
+
+    /// <summary>
+    /// Applies a whole profile through the Radeon driver, verifying the result.
+    /// </summary>
+    /// <remarks>
+    /// The apply is checked by reading the configuration back and comparing it with the
+    /// profile. If it does not match, this reports failure so the caller falls through
+    /// to the CCD path, which then corrects whatever the driver did.
+    ///
+    /// That read-back exists because the ADL path is unverified against real Radeon
+    /// hardware — in particular whether ADL wants the panel's native resolution with a
+    /// separate orientation, which is the assumption ApplyOne encodes. A wrong guess
+    /// there would set the wrong resolution; with the check it becomes a brief detour
+    /// through CCD instead.
+    /// </remarks>
+    private bool TryApplyAmdFullProfile(
+        DisplayProfile profile,
+        List<MonitorInfo> currentConfig,
+        MonitorMatcher.MatchResult matchResult)
+    {
+        var settings = App.Services.GetRequiredService<ISettingsService>();
+        if (settings.Settings.RotationMethod != RotationMethod.AmdDriver) return false;
+
+        var amd = App.Services.GetRequiredService<AmdRotationService>();
+        if (!amd.IsAvailable) return false;
+
+        var targets = new List<AmdRotationService.DisplayTarget>();
+        foreach (var (profileIdx, currentIdx) in matchResult.Matches)
+        {
+            var wanted = profile.Monitors[profileIdx];
+            var actual = currentConfig[currentIdx];
+
+            if (!wanted.IsEnabled) return false;                     // ADL path cannot disable outputs.
+            if (string.IsNullOrEmpty(actual.GdiDeviceName)) return false;
+
+            targets.Add(new AmdRotationService.DisplayTarget(
+                actual.GdiDeviceName,
+                wanted.PositionX, wanted.PositionY,
+                wanted.Width, wanted.Height,
+                wanted.RefreshRateHz,
+                wanted.Rotation));
+        }
+
+        // Anything the driver cannot express — a monitor to switch off, a profile
+        // monitor with no attached counterpart — belongs to CCD.
+        if (targets.Count == 0 || targets.Count != profile.Monitors.Count(m => m.IsEnabled))
+            return false;
+
+        if (!amd.ApplyFullProfile(targets)) return false;
+
+        // Let the driver settle before reading back.
+        Thread.Sleep(500);
+        return AmdResultMatches(profile, matchResult);
+    }
+
+    private bool AmdResultMatches(DisplayProfile profile, MonitorMatcher.MatchResult matchResult)
+    {
+        var after = GetCurrentConfiguration();
+
+        foreach (var (profileIdx, _) in matchResult.Matches)
+        {
+            var wanted = profile.Monitors[profileIdx];
+
+            var landed = after.FirstOrDefault(m =>
+                (!string.IsNullOrEmpty(wanted.DevicePath) && m.DevicePath == wanted.DevicePath) ||
+                (wanted.EdidManufacturerId != 0 &&
+                 m.EdidManufacturerId == wanted.EdidManufacturerId &&
+                 m.EdidProductCodeId == wanted.EdidProductCodeId));
+
+            if (landed == null) return Reject("monitor missing after apply");
+            if (landed.PositionX != wanted.PositionX || landed.PositionY != wanted.PositionY)
+                return Reject($"position {landed.PositionX},{landed.PositionY} != {wanted.PositionX},{wanted.PositionY}");
+            if (landed.Width != wanted.Width || landed.Height != wanted.Height)
+                return Reject($"size {landed.Width}x{landed.Height} != {wanted.Width}x{wanted.Height}");
+            if (landed.Rotation != wanted.Rotation)
+                return Reject($"rotation {landed.Rotation} != {wanted.Rotation}");
+        }
+
+        return true;
+
+        static bool Reject(string why)
+        {
+            Helpers.BootLog.Write("amd.fullprofile.rejected", why + "; falling back to CCD");
+            return false;
+        }
     }
 
     public ProfileCompatibility CheckCompatibility(DisplayProfile profile) =>

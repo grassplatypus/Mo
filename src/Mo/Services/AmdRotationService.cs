@@ -45,6 +45,10 @@ public sealed class AmdRotationService : IDisposable
     [DllImport(AdlLib, CallingConvention = CallingConvention.Cdecl)]
     private static extern int ADL2_Display_Modes_Set(nint context, int adapterIndex, int displayIndex, int numModes, ref ADLMode modes);
 
+    // ADL's functions are __cdecl but the allocation callback is __stdcall
+    // (ADL_MAIN_MALLOC_CALLBACK in adl_sdk.h). Winapi resolves to StdCall on Windows,
+    // which is what the default would give — stated explicitly so it survives a move.
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     private delegate nint ADL_Main_Memory_Alloc(int size);
 
     // ADL allocates its out-buffers through this callback and hands ownership to us,
@@ -89,6 +93,112 @@ public sealed class AmdRotationService : IDisposable
         catch (DllNotFoundException) { IsAvailable = false; }   // No Radeon driver installed.
         catch (EntryPointNotFoundException) { IsAvailable = false; } // Driver too old for ADL2.
         catch { IsAvailable = false; }
+    }
+
+    /// <summary>One display's desired state, already matched to attached hardware.</summary>
+    /// <param name="GdiDeviceName">"\\.\DISPLAY1" — how the display is located in ADL.</param>
+    public readonly record struct DisplayTarget(
+        string GdiDeviceName,
+        int PositionX,
+        int PositionY,
+        int Width,
+        int Height,
+        double RefreshHz,
+        DisplayRotation Rotation);
+
+    /// <summary>
+    /// Applies position, size, refresh rate and rotation for every target in one pass,
+    /// driver-side. Returns false if any target could not be set, so the caller can fall
+    /// back to the CCD path.
+    /// </summary>
+    /// <remarks>
+    /// The Radeon counterpart to NvidiaRotationService.ApplyFullProfile. Going through
+    /// the driver avoids the cursor-coordinate bug that Windows' own rotation path has.
+    ///
+    /// This is all-or-nothing on purpose: a partial apply would leave the desktop in a
+    /// state that is neither the old layout nor the requested one. Any failure returns
+    /// false with nothing further attempted, and DisplayService then runs the CCD path
+    /// over the whole profile.
+    /// </remarks>
+    public bool ApplyFullProfile(IReadOnlyList<DisplayTarget> targets)
+    {
+        if (!IsAvailable || targets.Count == 0) return false;
+
+        lock (_gate)
+        {
+            if (_disposed || _context == 0) return false;
+
+            try
+            {
+                // Resolve every target before writing anything. If even one display
+                // cannot be located, the whole apply is abandoned untouched.
+                var resolved = new List<(DisplayTarget target, int adapter, int display)>(targets.Count);
+                foreach (var target in targets)
+                {
+                    var located = AdlDisplays.Resolve(_context, target.GdiDeviceName);
+                    if (located == null)
+                    {
+                        Helpers.BootLog.Write("amd.fullprofile.unresolved", target.GdiDeviceName);
+                        return false;
+                    }
+                    resolved.Add((target, located.Value.adapterIndex, located.Value.displayIndex));
+                }
+
+                foreach (var (target, adapter, display) in resolved)
+                {
+                    if (!ApplyOne(target, adapter, display)) return false;
+                }
+
+                Helpers.BootLog.Write("amd.fullprofile.applied", $"{resolved.Count} displays");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Helpers.BootLog.WriteError("amd.fullprofile", ex);
+                return false;
+            }
+        }
+    }
+
+    private bool ApplyOne(DisplayTarget target, int adapterIndex, int displayIndex)
+    {
+        // Read the current mode first and edit it, rather than building one from
+        // scratch: ModeFlag/ModeMask/ModeValue and colour depth carry driver state this
+        // code has no business inventing.
+        if (ADL2_Display_Modes_Get(_context, adapterIndex, displayIndex, out int numModes, out nint modesPtr) != ADL_OK
+            || numModes == 0 || modesPtr == 0)
+            return false;
+
+        ADLMode mode;
+        try { mode = Marshal.PtrToStructure<ADLMode>(modesPtr); }
+        finally { Marshal.FreeHGlobal(modesPtr); }
+
+        mode.XPos = target.PositionX;
+        mode.YPos = target.PositionY;
+
+        // Mo stores Width/Height already swapped for portrait rotations, but ADL wants
+        // the panel's own resolution with Orientation applied separately. Swap back so
+        // a 1440x2560 portrait entry is sent as a 2560x1440 panel rotated 90 degrees.
+        bool portrait = target.Rotation is DisplayRotation.Rotate90 or DisplayRotation.Rotate270;
+        mode.XRes = portrait ? target.Height : target.Width;
+        mode.YRes = portrait ? target.Width : target.Height;
+
+        if (target.RefreshHz > 0) mode.RefreshRate = (float)target.RefreshHz;
+
+        mode.Orientation = target.Rotation switch
+        {
+            DisplayRotation.Rotate90 => 90,
+            DisplayRotation.Rotate180 => 180,
+            DisplayRotation.Rotate270 => 270,
+            _ => 0,
+        };
+
+        if (ADL2_Display_Modes_Set(_context, adapterIndex, displayIndex, 1, ref mode) == ADL_OK)
+            return true;
+
+        Helpers.BootLog.Write("amd.fullprofile.setfailed",
+            $"adapter={adapterIndex} display={displayIndex} {mode.XRes}x{mode.YRes}@{mode.RefreshRate} rot={mode.Orientation}");
+        return false;
     }
 
     public bool ApplyRotation(MonitorInfo monitor, DisplayRotation rotation)

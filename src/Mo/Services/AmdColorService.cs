@@ -45,7 +45,12 @@ public sealed class AmdColorService : IDisposable
     private static extern int ADL2_Display_Color_Set(
         IntPtr context, int adapterIndex, int displayIndex, int type, int current);
 
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    // StdCall, not Cdecl. ADL's exported functions are __cdecl, but the allocation
+    // callback it invokes is declared __stdcall:
+    //   typedef void* ( __stdcall *ADL_MAIN_MALLOC_CALLBACK )( int );   [adl_sdk.h]
+    // Declaring it Cdecl leaves the caller cleaning a stack the callee already cleaned,
+    // which corrupts the stack every time ADL allocates through us.
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     private delegate IntPtr ADL_Main_Memory_Alloc(int size);
 
     private static IntPtr ADL_Alloc(int size) => Marshal.AllocHGlobal(size);
