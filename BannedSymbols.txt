@@ -1,0 +1,20 @@
+; Blocking a Task from the UI thread is what produced the bug in 0.20.2 where Mo
+; started, hung before creating its window, and left an invisible process holding the
+; single-instance key so every later launch also appeared to do nothing.
+;
+; Program.Main installs a DispatcherQueueSynchronizationContext, so an `await` without
+; ConfigureAwait(false) posts its continuation back to the UI thread. Blocking that
+; same thread on the task deadlocks. It is intermittent — file reads often complete
+; synchronously off the cache — which is exactly what made it so hard to pin down.
+;
+; The project's own .github/instructions/performance.instructions.md already forbade
+; these; this turns the rule into a build error instead of a convention.
+;
+; If a call genuinely must block (never on the UI thread), suppress RS0030 locally with
+; a comment saying which thread it runs on and why it cannot deadlock.
+
+M:System.Threading.Tasks.Task.Wait;await it, or use Wait(TimeSpan) off the UI thread
+M:System.Threading.Tasks.Task.Wait(System.Int32);pass a TimeSpan and only off the UI thread
+P:System.Threading.Tasks.Task`1.Result;await the task instead of blocking on Result
+M:System.Runtime.CompilerServices.TaskAwaiter.GetResult;await the task instead
+M:System.Runtime.CompilerServices.TaskAwaiter`1.GetResult;await the task instead

@@ -1,7 +1,28 @@
 <Project>
   <PropertyGroup>
-    <MoVersion>0.20.3</MoVersion>
+    <MoVersion>0.20.4</MoVersion>
     <MoVersionFull>$(MoVersion).0</MoVersionFull>
     <NoWarn>$(NoWarn);NETSDK1233</NoWarn>
+  </PropertyGroup>
+
+  <!--
+    Blocking a Task from the UI thread is not a style preference here: it is the exact
+    defect that made Mo start, hang before creating a window, and then look permanently
+    un-launchable (the hung process kept the single-instance key). The rule was already
+    written down in .github/instructions/performance.instructions.md and violated in
+    three places anyway, so it is enforced by the compiler now. See BannedSymbols.txt.
+  -->
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="4.14.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)BannedSymbols.txt" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <!-- RS0030 = "banned API used". An error, not a warning: a warning is what the
+         previous convention amounted to, and it did not stop the bug. -->
+    <WarningsAsErrors>$(WarningsAsErrors);RS0030</WarningsAsErrors>
   </PropertyGroup>
 </Project>

@@ -143,7 +143,14 @@ public static class Program
             Exception? redirectError = null;
             ThreadPool.QueueUserWorkItem(_ =>
             {
+                // RS0030 (no blocking on a task) guards the UI thread. This body is the
+                // one place the block is the point: it runs on a thread-pool thread
+                // precisely so the STA main thread stays free to pump COM messages in
+                // CoWaitForMultipleObjects below, which is what lets the redirect
+                // complete at all.
+#pragma warning disable RS0030
                 try { primary.RedirectActivationToAsync(activated).AsTask().GetAwaiter().GetResult(); }
+#pragma warning restore RS0030
                 catch (Exception ex) { redirectError = ex; }
                 finally { SetEvent(doneEvent); }
             });

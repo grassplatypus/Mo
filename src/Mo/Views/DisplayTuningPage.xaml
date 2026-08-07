@@ -109,7 +109,7 @@
                                 <Rectangle Width="10" Height="10" RadiusX="2" RadiusY="2" Fill="#E03A3A" />
                                 <TextBlock Text="R" FontWeight="SemiBold" />
                             </StackPanel>
-                            <Slider Grid.Column="1" x:Name="RedSlider" Minimum="0" Maximum="100" ValueChanged="Slider_ValueChanged" />
+                            <Slider Grid.Column="1" x:Name="RedSlider" Tag="rgb" Minimum="0" Maximum="100" ValueChanged="Slider_ValueChanged" />
                             <TextBlock Grid.Column="2" x:Name="RedValue" HorizontalAlignment="Right" VerticalAlignment="Center" />
                         </Grid>
 
@@ -121,7 +121,7 @@
                                 <Rectangle Width="10" Height="10" RadiusX="2" RadiusY="2" Fill="#2FA84F" />
                                 <TextBlock Text="G" FontWeight="SemiBold" />
                             </StackPanel>
-                            <Slider Grid.Column="1" x:Name="GreenSlider" Minimum="0" Maximum="100" ValueChanged="Slider_ValueChanged" />
+                            <Slider Grid.Column="1" x:Name="GreenSlider" Tag="rgb" Minimum="0" Maximum="100" ValueChanged="Slider_ValueChanged" />
                             <TextBlock Grid.Column="2" x:Name="GreenValue" HorizontalAlignment="Right" VerticalAlignment="Center" />
                         </Grid>
 
@@ -133,7 +133,7 @@
                                 <Rectangle Width="10" Height="10" RadiusX="2" RadiusY="2" Fill="#3A6FE0" />
                                 <TextBlock Text="B" FontWeight="SemiBold" />
                             </StackPanel>
-                            <Slider Grid.Column="1" x:Name="BlueSlider" Minimum="0" Maximum="100" ValueChanged="Slider_ValueChanged" />
+                            <Slider Grid.Column="1" x:Name="BlueSlider" Tag="rgb" Minimum="0" Maximum="100" ValueChanged="Slider_ValueChanged" />
                             <TextBlock Grid.Column="2" x:Name="BlueValue" HorizontalAlignment="Right" VerticalAlignment="Center" />
                         </Grid>
 

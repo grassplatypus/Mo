@@ -299,6 +299,9 @@ public sealed partial class DisplayTuningPage : Page
 
     // ── Change handlers ──
 
+    /// <summary>Tag on the red/green/blue gain sliders. Kept in sync with the XAML.</summary>
+    private const string RgbSliderTag = "rgb";
+
     private void Slider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
     {
         if (_loading || _selected < 0) return;
@@ -306,7 +309,11 @@ public sealed partial class DisplayTuningPage : Page
         // Most monitors lock RGB Drive when a non-User color preset is selected.
         // Switch to "User" (VCP 0x14 = 0x0B) on the first RGB touch so subsequent
         // SetRedGain/etc. calls actually take effect.
-        if (!_rgbDirty && (sender == RedSlider || sender == GreenSlider || sender == BlueSlider))
+        // Identified by Tag rather than by comparing `sender` against each slider:
+        // `sender` is typed `object`, so those three comparisons each raised CS0252
+        // (six warnings once the XAML compiler ran) even though the reference
+        // comparison was what was meant.
+        if (!_rgbDirty && sender is FrameworkElement { Tag: RgbSliderTag })
         {
             _rgbDirty = true;
             try
