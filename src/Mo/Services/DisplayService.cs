@@ -64,19 +64,14 @@ public sealed class DisplayService : IDisplayService
                 ref var mode = ref modes[path.sourceInfo.modeInfoIdx];
                 if (mode.infoType == DISPLAYCONFIG_MODE_INFO_TYPE.DISPLAYCONFIG_MODE_INFO_TYPE_SOURCE)
                 {
-                    monitor.Width = (int)mode.sourceMode.width;
-                    monitor.Height = (int)mode.sourceMode.height;
                     monitor.PositionX = mode.sourceMode.position.x;
                     monitor.PositionY = mode.sourceMode.position.y;
                     monitor.IsPrimary = mode.sourceMode.position.x == 0 && mode.sourceMode.position.y == 0;
 
-                    // Some drivers report native (unrotated) dimensions in source mode.
-                    // Ensure Width/Height reflect the logical (rotated) orientation.
-                    if (monitor.Rotation is Models.DisplayRotation.Rotate90 or Models.DisplayRotation.Rotate270)
-                    {
-                        if (monitor.Width > monitor.Height)
-                            (monitor.Width, monitor.Height) = (monitor.Height, monitor.Width);
-                    }
+                    // Source mode is the panel's own (unrotated) mode; MonitorInfo carries
+                    // the desktop extent.
+                    (monitor.Width, monitor.Height) = RotationGeometry.ToDesktop(
+                        (int)mode.sourceMode.width, (int)mode.sourceMode.height, (int)monitor.Rotation);
                 }
             }
 
@@ -155,6 +150,17 @@ public sealed class DisplayService : IDisplayService
             // Active iff the path's flag bit 0 (DISPLAYCONFIG_PATH_ACTIVE) is set.
             bool isActive = (path.flags & 0x1) != 0;
 
+            // Rotation has to come along with the dimensions: the source mode holds the
+            // panel's unrotated mode, so a rotated monitor listed without it would be
+            // offered to the editor as a landscape tile.
+            var rotation = MapRotation(path.targetInfo.rotation);
+            var (width, height) = isActive && path.sourceInfo.modeInfoIdx < mc
+                ? RotationGeometry.ToDesktop(
+                    (int)modes[path.sourceInfo.modeInfoIdx].sourceMode.width,
+                    (int)modes[path.sourceInfo.modeInfoIdx].sourceMode.height,
+                    (int)rotation)
+                : (1920, 1080);
+
             monitors.Add(new MonitorInfo
             {
                 AdapterId = path.targetInfo.adapterId.ToInt64(),
@@ -166,10 +172,9 @@ public sealed class DisplayService : IDisplayService
                 EdidProductCodeId = prod,
                 ConnectorInstance = connector,
                 IsEnabled = isActive,
-                Width = isActive && path.sourceInfo.modeInfoIdx < mc
-                    ? (int)modes[path.sourceInfo.modeInfoIdx].sourceMode.width : 1920,
-                Height = isActive && path.sourceInfo.modeInfoIdx < mc
-                    ? (int)modes[path.sourceInfo.modeInfoIdx].sourceMode.height : 1080,
+                Width = width,
+                Height = height,
+                Rotation = rotation,
                 RefreshRateNumerator = path.targetInfo.refreshRate.Numerator,
                 RefreshRateDenominator = path.targetInfo.refreshRate.Denominator,
             });
@@ -350,12 +355,8 @@ public sealed class DisplayService : IDisplayService
                     activeModes[srcIdx].sourceMode.position.x = profileMonitor.PositionX;
                     activeModes[srcIdx].sourceMode.position.y = profileMonitor.PositionY;
 
-                    var w = profileMonitor.Width;
-                    var h = profileMonitor.Height;
-                    if (profileMonitor.Rotation is Models.DisplayRotation.Rotate90 or Models.DisplayRotation.Rotate270)
-                    {
-                        if (w < h) (w, h) = (h, w);
-                    }
+                    var (w, h) = RotationGeometry.ToSource(
+                        profileMonitor.Width, profileMonitor.Height, (int)profileMonitor.Rotation);
                     activeModes[srcIdx].sourceMode.width = (uint)w;
                     activeModes[srcIdx].sourceMode.height = (uint)h;
                 }

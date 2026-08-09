@@ -96,10 +96,28 @@ SDC_VIRTUAL_MODE_AWARE | SDC_PATH_PERSIST_IF_REQUIRED` for Windows 10 1903+ to
 correctly persist DPI/rotation-aware layouts across reboots. Older builds reject
 VIRTUAL_MODE_AWARE — retry without it on failure.
 
+**Rotation mixes two coordinate systems in one structure.** CCD's
+`DISPLAYCONFIG_SOURCE_MODE` and NVAPI's `PathInfo.Resolution` are the *panel's own
+mode, before rotation*, while the position stored next to them is in *post-rotation
+desktop coordinates*. Measured on a 2560x1440 panel at 270°: CCD source 2560x1440 at
+(0,0), NVAPI Resolution 2560x1440, GDI desktop rectangle 1440x2560.
+`MonitorInfo.Width/Height` is the desktop extent everywhere in Mo — the layout canvas
+draws it directly — so every call across that boundary goes through
+`RotationGeometry.ToDesktop` / `ToSource` (Mo.Core). Swap unconditionally at 90/270:
+guarding on `width > height` looks safer but is a silent no-op for a natively portrait
+panel, which is the one case where guessing wrong writes a mode the panel lacks.
+
 **Profile apply flow** (DisplayService.ApplyProfile):
 1. Try NVAPI full profile (if NVIDIA GPU available)
 2. Fallback to CCD path (topology extend → SetDisplayConfig with persistence flags)
 3. Mouse unstick workaround (ClipCursor + SystemParametersInfo + SendInput)
+
+The NVAPI branch returns early on success, so it owns the *whole* apply — geometry
+included. `ApplyFullProfile` must set `path.Position`, `path.Resolution` and
+`path.IsGDIPrimary`, not only `target.Rotation`: rotating changes a display's desktop
+footprint, and if the positions never reach the driver it repacks the desktop on its
+own and the profile's arrangement is lost. Log every field it writes — `nvapi_debug.log`
+showing nothing but `Rotation:` lines is what identified this.
 
 **Reboot restore**: `App.RestoreLastAppliedProfileAsync` re-applies the profile
 recorded in `AppSettings.LastAppliedProfileId` after launch. Gated by

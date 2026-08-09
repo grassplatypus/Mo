@@ -6,6 +6,7 @@ using NvAPIWrapper;
 using NvAPIWrapper.Display;
 using NvAPIWrapper.GPU;
 using NvAPIWrapper.Native.Display;
+using NvAPIWrapper.Native.Display.Structures;
 using NvAPIWrapper.Native.GPU;
 
 namespace Mo.Services;
@@ -179,6 +180,12 @@ public sealed class NvidiaRotationService
             bool modified = false;
             var usedDisplayIds = new HashSet<uint>();
 
+            // NVAPI wants exactly one path flagged as the GDI primary. Prefer the
+            // profile's own flag, falling back to the monitor at the origin — the same
+            // rule GetCurrentConfiguration uses when it reads the flag back.
+            var primaryMonitor = profile.Monitors.FirstOrDefault(m => m.IsEnabled && m.IsPrimary)
+                ?? profile.Monitors.FirstOrDefault(m => m.IsEnabled && m.PositionX == 0 && m.PositionY == 0);
+
             foreach (var pm in profile.Monitors)
             {
                 if (!pm.IsEnabled) continue;
@@ -208,6 +215,8 @@ public sealed class NvidiaRotationService
                 // Find and modify the existing path for this display
                 foreach (var path in currentPaths)
                 {
+                    if (!path.TargetsInfo.Any(t => t.DisplayDevice.DisplayId == matchedNvapiId)) continue;
+
                     foreach (var target in path.TargetsInfo)
                     {
                         if (target.DisplayDevice.DisplayId != matchedNvapiId) continue;
@@ -221,7 +230,27 @@ public sealed class NvidiaRotationService
                         Log($"    Rotation: {target.Rotation} → {newRot}");
                         target.Rotation = newRot;
                         modified = true;
+
+                        if (pm.RefreshRateHz > 0)
+                        {
+                            var mHz = (uint)Math.Round(pm.RefreshRateHz * 1000);
+                            Log($"    Refresh: {target.RefreshRateInMillihertz} → {mHz} mHz");
+                            target.RefreshRateInMillihertz = mHz;
+                        }
                     }
+
+                    // Geometry lives on the path, not the target. Without it a rotation
+                    // changes the display's desktop footprint and the driver repacks the
+                    // remaining monitors however it likes, discarding the arrangement the
+                    // profile actually describes.
+                    var (srcW, srcH) = RotationGeometry.ToSource(pm.Width, pm.Height, (int)pm.Rotation);
+                    Log($"    Position: ({path.Position.X},{path.Position.Y}) → ({pm.PositionX},{pm.PositionY})");
+                    Log($"    Resolution: {path.Resolution.Width}x{path.Resolution.Height} → {srcW}x{srcH} (desktop {pm.Width}x{pm.Height})");
+                    path.Position = new Position(pm.PositionX, pm.PositionY);
+                    path.Resolution = new Resolution(srcW, srcH, path.Resolution.ColorDepth);
+
+                    if (primaryMonitor != null)
+                        path.IsGDIPrimary = ReferenceEquals(pm, primaryMonitor);
                 }
             }
 
