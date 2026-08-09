@@ -249,7 +249,7 @@ Delete 또는 Backspace로 삭제. Escape로 취소.</value></data>
   <!-- About -->
   <data name="AboutSection" xml:space="preserve"><value>정보</value></data>
   <data name="AboutName" xml:space="preserve"><value>Mo — 모니터 프로필 관리자</value></data>
-  <data name="AboutVersion" xml:space="preserve"><value>버전 0.21.1</value></data>
+  <data name="AboutVersion" xml:space="preserve"><value>버전 0.21.2</value></data>
   <data name="AboutDescription" xml:space="preserve"><value>다중 모니터 구성을 저장하고 원클릭으로 복원합니다.</value></data>
 
   <!-- Profile Editor -->

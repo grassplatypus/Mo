@@ -14,12 +14,28 @@
         <TextBlock
             x:Name="CountdownText"
             Style="{StaticResource BodyTextBlockStyle}"
+            AutomationProperties.LiveSetting="Polite"
             TextWrapping="Wrap" />
 
-        <ProgressBar
-            x:Name="CountdownProgress"
-            Minimum="0"
-            Maximum="15"
-            Value="15" />
+        <!-- Not a ProgressBar: its Value is a dependent (UI-thread) property, so a
+             countdown driven through it either steps once a second or costs a frame
+             callback. A ScaleTransform on a plain Border animates on the composition
+             thread instead, and filling left-to-right reads as time running out rather
+             than as progress being undone. -->
+        <Grid
+            Height="4"
+            CornerRadius="2"
+            Background="{ThemeResource ControlStrongStrokeColorDefaultBrush}"
+            AutomationProperties.AccessibilityView="Raw">
+            <Border
+                x:Name="CountdownFill"
+                CornerRadius="2"
+                Background="{ThemeResource AccentFillColorDefaultBrush}"
+                RenderTransformOrigin="0,0.5">
+                <Border.RenderTransform>
+                    <ScaleTransform x:Name="CountdownScale" ScaleX="0" />
+                </Border.RenderTransform>
+            </Border>
+        </Grid>
     </StackPanel>
 </ContentDialog>
