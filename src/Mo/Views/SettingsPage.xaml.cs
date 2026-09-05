@@ -14,12 +14,9 @@ public sealed partial class SettingsPage : Page
 {
     public SettingsViewModel ViewModel { get; }
 
-    // Static binding sources for the ComboBoxes.
-    //
-    // Themes carry a localized label rather than binding the bare enum: a raw
-    // ToString() put an English "Dark" in the middle of a Korean settings page.
-    // Same shape as LanguageOptions/RotationOptions so all three combos are wired
-    // identically (see the note below on why that wiring is manual).
+    // Static binding sources for the ComboBoxes. Themes carry a localized label rather
+    // than the bare enum — ToString() put an English "Dark" in a Korean page. Same shape
+    // as LanguageOptions/RotationOptions so all three wire identically.
     public IReadOnlyList<ThemeOption> ThemeOptions { get; } = new[]
     {
         new ThemeOption(AppTheme.System, ResourceHelper.GetString("ThemeSystem")),
@@ -27,7 +24,14 @@ public sealed partial class SettingsPage : Page
         new ThemeOption(AppTheme.Dark, ResourceHelper.GetString("ThemeDark")),
     };
 
-    public IReadOnlyList<RotationMethodOption> RotationOptions { get; }
+    private readonly ObservableCollection<RotationMethodOption> _rotationOptions = new();
+
+    /// <summary>Filled when the rotation combo is first realized, not at construction.
+    /// Naming a driver as available means loading and initialising it, and that ran on the
+    /// dispatcher to populate a control inside a collapsed expander.</summary>
+    /// <remarks>Typed as the read-only view so the XAML type generator keeps treating the
+    /// option record as data; against the concrete collection it wants settable members.</remarks>
+    public IReadOnlyList<RotationMethodOption> RotationOptions => _rotationOptions;
     public IReadOnlyList<LanguageOption> LanguageOptions { get; } = new[]
     {
         new LanguageOption(string.Empty, ResourceHelper.GetString("LanguageAuto")),
@@ -41,7 +45,6 @@ public sealed partial class SettingsPage : Page
     public SettingsPage()
     {
         ViewModel = App.Services.GetRequiredService<SettingsViewModel>();
-        RotationOptions = BuildRotationOptions();
         InitializeComponent();
         ApplyOneOffStrings();
         RefreshHotkeyLabels();
@@ -65,11 +68,8 @@ public sealed partial class SettingsPage : Page
     private void OnHotkeyConflictsChanged(object? sender, EventArgs e) =>
         DispatcherQueue.TryEnqueue(RefreshHotkeyConflicts);
 
-    /// <summary>
-    /// Lists any shortcut Windows refused. RegisterHotKey fails when another process
-    /// already owns the combination — Ctrl+Alt+digit collides often — and the binding
-    /// otherwise stays visible in the UI while doing nothing at all.
-    /// </summary>
+    /// <summary>Lists any shortcut Windows refused, so a binding that another process
+    /// already owns does not sit visibly in the UI doing nothing.</summary>
     private void RefreshHotkeyConflicts()
     {
         var conflicts = App.HotkeyConflicts;
@@ -87,17 +87,8 @@ public sealed partial class SettingsPage : Page
     }
 
     // ── ComboBox initial-selection wiring ──
-    //
-    // The previous x:Bind SelectedValue/SelectedValuePath approach is brittle in WinUI 3:
-    // when SelectedValue is evaluated before SelectedValuePath finishes binding, the
-    // initial lookup falls through to null. The combo renders blank AND the TwoWay
-    // listener pushes that null back into the source — fine for `string Language`,
-    // but a `RotationMethod` enum unbox of null throws NullReferenceException through
-    // CastHelpers.Unbox (this killed 0.20.1 first-launches for NVIDIA/AMD users).
-    //
-    // Wiring the selection manually in Loaded + writing back on SelectionChanged side-
-    // steps the entire binding race: by Loaded, both ItemsSource and the items are
-    // fully realized, so SelectedItem assignment is safe.
+    // Manual on purpose: x:Bind SelectedValue/SelectedValuePath loses a binding race in
+    // WinUI 3 and NREs on an enum. See .claude/rules/20-architecture.md.
 
     private bool _syncingLanguageCombo;
     private bool _syncingRotationCombo;
@@ -141,8 +132,10 @@ public sealed partial class SettingsPage : Page
             ViewModel.Language = opt.Tag;
     }
 
-    private void RotationMethodCombo_Loaded(object sender, RoutedEventArgs e)
+    private async void RotationMethodCombo_Loaded(object sender, RoutedEventArgs e)
     {
+        await FillRotationOptionsAsync();
+
         _syncingRotationCombo = true;
         try
         {
@@ -209,41 +202,73 @@ public sealed partial class SettingsPage : Page
     // Keeps the user from selecting a driver backend that isn't actually present.
     // The XAML ComboBox binds SelectedValuePath="Method" so unavailable rows still
     // appear (greyed-out via DisplayName), but selecting one falls back at apply time.
-    private static IReadOnlyList<RotationMethodOption> BuildRotationOptions()
+    /// <summary>Resolving either driver service constructs it, which loads nvapi64.dll or
+    /// atiadlxx.dll and enumerates adapters. Off the dispatcher, and only once the combo
+    /// that shows the result actually exists.</summary>
+    private async Task FillRotationOptionsAsync()
     {
-        bool nv = App.Services.GetRequiredService<NvidiaRotationService>().IsAvailable;
-        bool amd = App.Services.GetRequiredService<AmdRotationService>().IsAvailable;
-        bool intel = App.Services.GetRequiredService<IntelRotationService>().IsAvailable;
-        return new[]
+        if (RotationOptions.Count > 0) return;
+
+        var (nv, amd) = await Task.Run(() =>
         {
-            new RotationMethodOption(RotationMethod.Windows,      ResourceHelper.GetString("RotationWindows")),
-            new RotationMethodOption(RotationMethod.NvidiaDriver, ResourceHelper.GetString(nv ? "RotationNvidia" : "RotationNvidiaUnavailable")),
-            new RotationMethodOption(RotationMethod.AmdDriver,    ResourceHelper.GetString(amd ? "RotationAmd" : "RotationAmdUnavailable")),
-            new RotationMethodOption(RotationMethod.IntelDriver,  ResourceHelper.GetString(intel ? "RotationIntel" : "RotationIntelUnavailable")),
-        };
+            bool n = false, a = false;
+            try { n = App.Services.GetRequiredService<NvidiaRotationService>().IsAvailable; } catch { }
+            try { a = App.Services.GetRequiredService<AmdRotationService>().IsAvailable; } catch { }
+            return (n, a);
+        });
+
+        // No Intel entry: IGCL has no rotation API at all, so Windows is the only
+        // option there. See .claude/rules/30-display-apis.md.
+        _rotationOptions.Add(new(RotationMethod.Windows, ResourceHelper.GetString("RotationWindows")));
+        _rotationOptions.Add(new(RotationMethod.NvidiaDriver,
+            ResourceHelper.GetString(nv ? "RotationNvidia" : "RotationNvidiaUnavailable")));
+        _rotationOptions.Add(new(RotationMethod.AmdDriver,
+            ResourceHelper.GetString(amd ? "RotationAmd" : "RotationAmdUnavailable")));
     }
 
     private void ApplyOneOffStrings()
     {
         TitleText.Text = ResourceHelper.GetString("SettingsTitle");
+        // Hidden if it never arrives, so a failure leaves no blank square beside the name.
+        // 44px drawn, which reaches 132 at 300% scaling.
+        var icon = AppImages.AppIcon(decodePixelWidth: 132);
+        icon.ImageFailed += (_, _) => AboutIcon.Visibility = Visibility.Collapsed;
+        AboutIcon.Source = icon;
+
         AboutName.Text = ResourceHelper.GetString("AboutName");
-        AboutVersion.Text = $"Version {UpdateService.CurrentVersion}";
+        AboutVersion.Text = ResourceHelper.GetString("AboutVersionFormat", UpdateService.CurrentVersion);
         AboutDesc.Text = ResourceHelper.GetString("AboutDescription");
+
+        SysSectionTitle.Text = ResourceHelper.GetString("SysSectionTitle");
+        SysMonitorsTitle.Text = ResourceHelper.GetString("SysMonitorsTitle");
+        SysDiagnosticsTitle.Text = ResourceHelper.GetString("SysDiagnosticsTitle");
+        SysOsLabel.Text = ResourceHelper.GetString("SysLabelOs");
+        SysCpuLabel.Text = ResourceHelper.GetString("SysLabelCpu");
+        SysRamLabel.Text = ResourceHelper.GetString("SysLabelRam");
+        SysGpuLabel.Text = ResourceHelper.GetString("SysLabelGpu");
     }
 
     private async Task LoadSystemInfoAsync()
     {
         var info = await App.Services.GetRequiredService<ISystemInfoService>().LoadAsync();
 
-        SysOsText.Text = $"OS: {info.Os}";
-        SysCpuText.Text = $"CPU: {info.Cpu}";
-        SysRamText.Text = $"RAM: {info.Ram}";
-        SysGpuText.Text = $"GPU: {info.Gpu}";
+        // Values only; the labels are in the grid's first column and are localized.
+        SysOsText.Text = info.Os;
+        SysCpuText.Text = info.Cpu;
+        SysRamText.Text = info.Ram;
+        SysGpuText.Text = info.Gpu;
 
         Monitors.Clear();
         foreach (var m in info.Monitors) Monitors.Add(m);
+    }
 
-        _debugReport = info.DebugReport;
+    /// <summary>Built on demand and kept, so the second press is instant.</summary>
+    private async Task<string> DebugReportAsync()
+    {
+        if (_debugReport.Length == 0)
+            _debugReport = await App.Services.GetRequiredService<ISystemInfoService>().GetDebugReportAsync();
+
+        return _debugReport;
     }
 
     private async void CheckNowButton_Click(object sender, RoutedEventArgs e)
@@ -269,7 +294,7 @@ public sealed partial class SettingsPage : Page
                     DefaultButton = ContentDialogButton.Primary,
                     XamlRoot = this.XamlRoot,
                 };
-                if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+                if (await dialog.ShowThemedAsync() == ContentDialogResult.Primary)
                     await Windows.System.Launcher.LaunchUriAsync(new Uri(url));
             }
         }
@@ -283,19 +308,30 @@ public sealed partial class SettingsPage : Page
         }
     }
 
-    private void CopySystemInfo_Click(object sender, RoutedEventArgs e)
+    private async void CopySystemInfo_Click(object sender, RoutedEventArgs e)
     {
-        var dp = new DataPackage();
-        dp.SetText(_debugReport);
-        Clipboard.SetContent(dp);
-        if (CopySystemInfoBtn.Content is TextBlock t) t.Text = ResourceHelper.GetString("Copied");
+        CopySystemInfoBtn.IsEnabled = false;
+        try
+        {
+            var dp = new DataPackage();
+            dp.SetText(await DebugReportAsync());
+            Clipboard.SetContent(dp);
+            if (CopySystemInfoBtn.Content is TextBlock t) t.Text = ResourceHelper.GetString("Copied");
+        }
+        finally { CopySystemInfoBtn.IsEnabled = true; }
     }
 
-    private void ShowDebugInfo_Click(object sender, RoutedEventArgs e)
+    private async void ShowDebugInfo_Click(object sender, RoutedEventArgs e)
     {
-        bool show = SystemInfoBox.Visibility == Visibility.Collapsed;
-        SystemInfoBox.Text = show ? _debugReport : SystemInfoBox.Text;
-        SystemInfoBox.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        bool show = SystemInfoBorder.Visibility == Visibility.Collapsed;
+        if (show)
+        {
+            ShowDebugBtn.IsEnabled = false;
+            try { SystemInfoBox.Text = await DebugReportAsync(); }
+            finally { ShowDebugBtn.IsEnabled = true; }
+        }
+
+        SystemInfoBorder.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
         if (ShowDebugBtn.Content is TextBlock t)
             t.Text = ResourceHelper.GetString(show ? "HideDebugInfo" : "ShowDebugInfo");
     }
@@ -311,10 +347,8 @@ public sealed partial class SettingsPage : Page
         catch { }
     }
 
-    /// <summary>
-    /// Deletes Mo's user data and auto-start entry, then closes the app — the state it
-    /// would be in after a proper uninstall.
-    /// </summary>
+    /// <summary>Deletes Mo's user data and auto-start entry, then closes the app — the
+    /// state it would be in after a proper uninstall.</summary>
     private async void RemoveData_Click(object sender, RoutedEventArgs e)
     {
         var items = AppDataCleanup.Preview();
@@ -327,7 +361,7 @@ public sealed partial class SettingsPage : Page
         {
             Title = ResourceHelper.GetString("RemoveDataTitle"),
             Content = new TextBlock { Text = body, TextWrapping = TextWrapping.Wrap },
-            PrimaryButtonText = ResourceHelper.GetString("RemoveDataButton"),
+            PrimaryButtonText = ResourceHelper.GetString("RemoveDataButton.Text"),
             CloseButtonText = ResourceHelper.GetString("Cancel"),
             DefaultButton = ContentDialogButton.Close,
             XamlRoot = XamlRoot,
@@ -337,11 +371,11 @@ public sealed partial class SettingsPage : Page
         {
             confirm.PrimaryButtonText = null;
             confirm.CloseButtonText = ResourceHelper.GetString("OK");
-            await confirm.ShowAsync();
+            await confirm.ShowThemedAsync();
             return;
         }
 
-        if (await confirm.ShowAsync() != ContentDialogResult.Primary) return;
+        if (await confirm.ShowThemedAsync() != ContentDialogResult.Primary) return;
 
         var result = AppDataCleanup.Run();
 
@@ -360,7 +394,7 @@ public sealed partial class SettingsPage : Page
             CloseButtonText = ResourceHelper.GetString("ExitApp"),
             XamlRoot = XamlRoot,
         };
-        await done.ShowAsync();
+        await done.ShowThemedAsync();
 
         App.MainWindow?.ForceClose();
     }

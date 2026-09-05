@@ -91,10 +91,8 @@ public static class AppDataCleanup
         catch { return false; }
     }
 
-    /// <summary>
-    /// %LOCALAPPDATA%\Mo. Resolved directly, not via ApplicationData.Current, which
-    /// for a packaged process points at the container.
-    /// </summary>
+    /// <summary>%LOCALAPPDATA%\Mo. Resolved directly, not via ApplicationData.Current,
+    /// which points at the container for a packaged process.</summary>
     public static string UnpackagedDataDirectory() => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Mo");
 }

@@ -24,10 +24,9 @@ public class RotationGeometryTests
         Assert.Equal((2560, 1440), RotationGeometry.ToSource(1440, 2560, degrees));
     }
 
-    // The regression this class exists for: an aspect-ratio guard ("only swap when
-    // width > height") is a no-op on a natively portrait panel, so the desktop extent
-    // stayed portrait and the source mode was written back as landscape — a mode the
-    // panel does not have.
+    // The regression this class exists for: a "swap only when width > height" guard is a
+    // no-op on a natively portrait panel, writing back a landscape source mode the panel
+    // does not have. See .claude/rules/30-display-apis.md.
     [Theory]
     [InlineData(90)]
     [InlineData(270)]

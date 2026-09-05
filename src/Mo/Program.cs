@@ -4,20 +4,9 @@ using Microsoft.UI.Xaml;
 
 namespace Mo;
 
-// Explicit Main so we can wrap process startup in try/catch and surface failures to a
-// crash log file plus a message box. The XAML-generated Main runs after
-// XamlCheckProcessRequirements / WinRT init, by which point a corrupted PRI or
-// settings file would have already killed the process with no diagnostic trail.
-//
-// Diagnostics deliberately stay inside %LOCALAPPDATA%\Mo\logs. Earlier builds also
-// wrote to the Windows event log, which creates a source under
-// HKLM\SYSTEM\CurrentControlSet\Services\EventLog\Application\Mo — machine-wide state
-// that needs admin to create, needs admin to remove, and survives uninstalling the app.
-// BootLog covers the same ground without leaving anything behind.
-//
-// Activated by <DefineConstants>DISABLE_XAML_GENERATED_MAIN</DefineConstants> in
-// the .csproj; without that define WinUI3 source-generates its own Main and refuses
-// to compile a second one.
+// Explicit Main (DISABLE_XAML_GENERATED_MAIN in the .csproj) so startup is wrapped in
+// try/catch: the generated Main runs after WinRT init, too late to catch a corrupt PRI.
+// Diagnostics stay in %LOCALAPPDATA%\Mo\logs — .claude/rules/40-safety-invariants.md.
 public static class Program
 {
     [STAThread]
@@ -33,12 +22,9 @@ public static class Program
 
         try
         {
-            // If a previous launch corrupted the user data files (settings.json,
-            // profiles/*.json), they will throw deserialization exceptions during
-            // service init and kill the process with no UI surface. Quarantine
-            // bad files BEFORE handing control to WinUI so the next launch starts
-            // clean. The bad files are renamed, never deleted, so the user can
-            // recover manually.
+            // Corrupt settings.json / profiles/*.json throw during service init and kill
+            // the process with no UI. Quarantine before handing control to WinUI; bad
+            // files are renamed, never deleted, so the user can recover them.
             Helpers.BootLog.Write("quarantine.begin");
             QuarantineCorruptUserData();
             Helpers.BootLog.Write("quarantine.end");
@@ -46,10 +32,9 @@ public static class Program
             global::WinRT.ComWrappersSupport.InitializeComWrappers();
             Helpers.BootLog.Write("comwrappers.ok");
 
-            // Single-instance redirect. Without this every Start-menu / shell:AppsFolder
-            // activation spawns a new Mo.exe; the first survives invisibly (start-minimized
-            // + tray icon collision) and the user sees nothing happen. Must run BEFORE
-            // Application.Start so secondary instances never spin up the dispatcher.
+            // Single-instance redirect: without it every activation spawns a new Mo.exe
+            // and the first survives invisibly. Must run BEFORE Application.Start so
+            // secondary instances never spin up the dispatcher.
             var primary = Microsoft.Windows.AppLifecycle.AppInstance.FindOrRegisterForKey("Mo.SingleInstance");
             Helpers.BootLog.Write("singleinstance.registered", $"IsCurrent={primary.IsCurrent}");
             if (!primary.IsCurrent)
@@ -57,15 +42,19 @@ public static class Program
                 if (RedirectToPrimary(primary))
                     return 0;
 
-                // Primary is wedged (hung UI thread, windowless zombie, or blocked by
-                // an elevation mismatch). Rather than exiting silently — which is what
-                // made Mo look permanently "un-launchable" — offer to end it and take
-                // over as the primary instance ourselves.
+                // Primary is wedged (hung UI thread, windowless zombie, elevation
+                // mismatch). Exiting silently is what made Mo look permanently
+                // un-launchable, so offer to end it and take over instead.
                 Helpers.BootLog.Write("redirect.timeout", "prompting user to recover");
                 if (!OfferToKillWedgedPrimary())
                     return 0;
                 Helpers.BootLog.Write("redirect.recovered", "continuing as primary");
             }
+
+            // Before the window, deliberately. A launch that dies inside OnLaunched
+            // leaves a live process with nothing to close, and that is exactly the one
+            // an installer most needs to be able to shut down.
+            Services.ShutdownSignal.Start();
 
             Helpers.BootLog.Write("application.start.begin");
             Application.Start(p =>
@@ -87,10 +76,8 @@ public static class Program
         }
     }
 
-    /// <summary>
-    /// Deletes Mo's user data and auto-start entry, then exits. Add <c>--quiet</c> to
-    /// suppress the summary dialog when running from an uninstaller.
-    /// </summary>
+    /// <summary>Deletes Mo's user data and auto-start entry, then exits. <c>--quiet</c>
+    /// suppresses the summary dialog when running from an uninstaller.</summary>
     private static int RunCleanup(string[] args)
     {
         bool quiet = args.Any(a => string.Equals(a, "--quiet", StringComparison.OrdinalIgnoreCase));
@@ -133,20 +120,9 @@ public static class Program
     [System.Runtime.InteropServices.DllImport("user32.dll")]
     private static extern bool AllowSetForegroundWindow(int dwProcessId);
 
-    /// <summary>
-    /// Hands this activation to the already-running instance.
-    /// Returns false if the primary did not accept it within the timeout.
-    /// </summary>
-    /// <remarks>
-    /// <c>RedirectActivationToAsync</c> must NOT be waited on with
-    /// <c>.GetAwaiter().GetResult()</c>: Main is <c>[STAThread]</c>, the call completes
-    /// via a COM cross-apartment callback, and a plain block starves the message pump
-    /// that callback needs — the secondary process then hangs forever, invisible, and
-    /// each further launch attempt piles up another hung Mo.exe. The redirect therefore
-    /// runs on a thread-pool thread while this thread waits inside
-    /// <c>CoWaitForMultipleObjects</c>, which keeps pumping COM messages. This is the
-    /// pattern from Microsoft's own AppLifecycle instancing sample.
-    /// </remarks>
+    /// <summary>Hands this activation to the already-running instance; false if the
+    /// primary did not accept in time. The STA thread waits in CoWaitForMultipleObjects,
+    /// never on the operation itself — see .claude/rules/10-code-style.md.</summary>
     private static bool RedirectToPrimary(Microsoft.Windows.AppLifecycle.AppInstance primary)
     {
         const uint CWMO_DEFAULT = 0;
@@ -178,19 +154,17 @@ public static class Program
             }
 
             Exception? redirectError = null;
-            ThreadPool.QueueUserWorkItem(_ =>
+
+            // WinRT's own completion callback, not a Task: nothing blocks, no thread-pool
+            // hop, and no RS0030 exemption. The STA thread goes straight into
+            // CoWaitForMultipleObjects, which pumps the COM call that completes this.
+            var redirect = primary.RedirectActivationToAsync(activated);
+            redirect.Completed = (info, status) =>
             {
-                // RS0030 (no blocking on a task) guards the UI thread. This body is the
-                // one place the block is the point: it runs on a thread-pool thread
-                // precisely so the STA main thread stays free to pump COM messages in
-                // CoWaitForMultipleObjects below, which is what lets the redirect
-                // complete at all.
-#pragma warning disable RS0030
-                try { primary.RedirectActivationToAsync(activated).AsTask().GetAwaiter().GetResult(); }
-#pragma warning restore RS0030
-                catch (Exception ex) { redirectError = ex; }
-                finally { SetEvent(doneEvent); }
-            });
+                if (status != Windows.Foundation.AsyncStatus.Completed)
+                    redirectError = info.ErrorCode ?? new InvalidOperationException($"redirect {status}");
+                SetEvent(doneEvent);
+            };
 
             int hr = CoWaitForMultipleObjects(CWMO_DEFAULT, TimeoutMs, 1, [doneEvent], out uint index);
             bool signalled = hr == 0 && index == WAIT_OBJECT_0;
@@ -223,10 +197,8 @@ public static class Program
         }
     }
 
-    /// <summary>
-    /// Asks the user whether to terminate an unresponsive Mo instance so this launch
-    /// can proceed. Returns true if the field is now clear.
-    /// </summary>
+    /// <summary>Asks whether to terminate an unresponsive Mo instance so this launch can
+    /// proceed. Returns true if the field is now clear.</summary>
     private static bool OfferToKillWedgedPrimary()
     {
         const uint MB_YESNO = 0x4, MB_ICONWARNING = 0x30, MB_SETFOREGROUND = 0x10000;

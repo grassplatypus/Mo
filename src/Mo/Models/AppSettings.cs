@@ -14,17 +14,20 @@ public sealed class AppSettings
     public RotationMethod RotationMethod { get; set; } = RotationMethod.Windows;
     public WindowPlacement? WindowPlacement { get; set; }
 
-    // After a profile is applied, show a countdown dialog and roll the displays back
-    // unless the user confirms. A bad layout can leave a monitor black or off-screen,
-    // and without this the user has no way to undo it from inside Mo. Windows itself
-    // guards its own display-settings changes the same way, so keep it on by default.
+    // Countdown dialog after an apply, rolling back unless confirmed. On by default: a
+    // bad layout can leave a monitor black with no way to undo it from inside Mo.
+    // See .claude/rules/40-safety-invariants.md.
     public bool ConfirmApply { get; set; } = true;
-    public int ApplyConfirmSeconds { get; set; } = 15;
 
     // Re-apply the last-applied profile on app startup so reboots don't lose the layout.
     public bool RestoreOnStartup { get; set; } = true;
     // Re-push DDC/CI brightness/contrast/RGB gain on startup (Windows doesn't persist these).
     public bool RestoreColorOnStartup { get; set; } = true;
+
+    // Blank and wake the panels after the user applies a rotation, so the GPU reseats
+    // the cursor plane. Off by default: it was measured on one NVIDIA machine and the
+    // cost is a full blackout. See .claude/rules/30-display-apis.md.
+    public bool ResetCursorAfterRotation { get; set; }
 
     // Flipped to true the first time the app detects an NVIDIA or AMD GPU and offers
     // to switch the rotation backend. Prevents the prompt from nagging on every launch.
@@ -49,6 +52,9 @@ public enum RotationMethod
     Windows,
     NvidiaDriver,
     AmdDriver,
+
+    // Kept only so a settings.json written before the Intel path was removed still
+    // deserializes. Nothing offers or handles it, so it falls through to CCD.
     IntelDriver,
 }
 

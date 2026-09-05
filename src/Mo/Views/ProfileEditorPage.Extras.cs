@@ -16,10 +16,8 @@ namespace Mo.Views;
 // default audio device, wallpaper, night light and the auto-switch / schedule rules.
 public sealed partial class ProfileEditorPage
 {
-    // LoadAudioDevices() used to live here: it called IAudioService.GetAudioDevices()
-    // straight from the UI thread, and that method blocks on WinRT device enumeration.
-    // Nothing called it any more — LoadProfileDeferredAsync does the same work inside
-    // Task.Run — so it was the last UI-thread caller of a blocking path and is gone.
+    // LoadAudioDevices() was removed: it enumerated audio endpoints straight from the UI
+    // thread, and LoadProfileDeferredAsync already does that work off it.
 
     private void LoadScheduleDays(ScheduleConfig? sched)
     {

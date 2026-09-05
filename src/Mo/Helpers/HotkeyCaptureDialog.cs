@@ -70,7 +70,7 @@ public static class HotkeyCaptureDialog
         }
 
         dialog.KeyDown += OnKeyDown;
-        var result = await dialog.ShowAsync();
+        var result = await dialog.ShowThemedAsync();
         dialog.KeyDown -= OnKeyDown;
 
         return result switch

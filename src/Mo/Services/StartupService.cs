@@ -44,7 +44,9 @@ public sealed class StartupService : IStartupService
             var exePath = Environment.ProcessPath;
             if (string.IsNullOrEmpty(exePath)) return;
             using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: true);
-            key?.SetValue(RunValueName, $"\"{exePath}\"");
+            // Tagged so OnLaunched can tell a logon launch from the user opening Mo.
+            // "Start minimized" applies to the first and must not apply to the second.
+            key?.SetValue(RunValueName, $"\"{exePath}\" {App.StartupLaunchArgument}");
         }
         catch { }
     }
@@ -80,5 +82,27 @@ public sealed class StartupService : IStartupService
             return key?.GetValue(RunValueName) != null;
         }
         catch { return false; }
+    }
+
+    /// <summary>Rewrites an entry an older build left without the startup argument, and
+    /// one left pointing at a previous install location. Both make Mo behave as if it
+    /// had been opened by hand at every logon.</summary>
+    public void RepairRegistryEntry()
+    {
+        try
+        {
+            var exePath = Environment.ProcessPath;
+            if (string.IsNullOrEmpty(exePath)) return;
+
+            using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: true);
+            if (key?.GetValue(RunValueName) is not string current) return;
+
+            var expected = $"\"{exePath}\" {App.StartupLaunchArgument}";
+            if (string.Equals(current, expected, StringComparison.OrdinalIgnoreCase)) return;
+
+            key.SetValue(RunValueName, expected);
+            Helpers.BootLog.Write("startup.run-entry.repaired", expected);
+        }
+        catch (Exception ex) { Helpers.BootLog.WriteError("startup.run-entry.repair", ex); }
     }
 }

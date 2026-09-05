@@ -28,18 +28,16 @@ public sealed class ScheduleService : IScheduleService
         // Timer already checks every minute, no special reconfiguration needed
     }
 
-    // Occurrence (profile id → local date + time) already acted on. The ±30s window is
-    // checked by a timer with a 60s period, so ordinary drift can put two consecutive
-    // ticks inside the same window and fire a schedule twice; a clock or DST change can
-    // do the same. Recording what already ran makes the trigger idempotent.
+    // Occurrences already acted on. A 60s timer checking a ±30s window can put two
+    // consecutive ticks inside the same window — as can a clock or DST change — so
+    // recording what ran is what makes the trigger idempotent.
     private readonly Dictionary<string, DateTime> _lastFired = new();
 
     private void CheckSchedules(object? state)
     {
-        // Marshalled to the UI thread as a whole. IProfileService.Profiles is an
-        // ObservableCollection mutated on the UI thread, and enumerating it from the
-        // timer thread throws "collection was modified" — which the outer catch then
-        // swallowed, silently skipping that minute's schedules.
+        // Marshalled to the UI thread as a whole: Profiles is an ObservableCollection
+        // mutated there, so enumerating from the timer thread throws "collection was
+        // modified" — swallowed by the outer catch, skipping that minute's schedules.
         App.MainWindow?.DispatcherQueue.TryEnqueue(async () =>
         {
             try { await EvaluateSchedulesAsync(); }
@@ -68,11 +66,9 @@ public sealed class ScheduleService : IScheduleService
                 continue;
             _lastFired[profile.Id] = occurrence;
 
-            // A schedule fires whether or not anyone is at the machine, so an
-            // unanswered countdown would revert every scheduled switch and make
-            // the feature useless. Confirm only when the hardware no longer
-            // matches what the profile expects — that is the case that can
-            // strand a user who *is* sitting there.
+            // A schedule fires with nobody at the machine, so an unanswered countdown
+            // would revert every scheduled switch. Confirm only on a partial match —
+            // the case that can strand a user who *is* sitting there.
             bool? confirm = _displayService.CheckCompatibility(profile).IsFullMatch ? false : null;
             await _profileService.ApplyProfileAsync(profile.Id, trigger: ApplyTrigger.Schedule, confirm: confirm);
         }

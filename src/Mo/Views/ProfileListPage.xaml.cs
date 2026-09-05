@@ -56,6 +56,8 @@ public sealed partial class ProfileListPage : Page
         SaveCurrentText.Text = ResourceHelper.GetString("SaveCurrent");
         NewLayoutText.Text = ResourceHelper.GetString("NewLayout");
         ImportText.Text = ResourceHelper.GetString("Import");
+        LoadingText.Text = ResourceHelper.GetString("LoadingProfiles");
+        ApplyingText.Text = ResourceHelper.GetString("ApplyingProfile");
         EmptyTitleText.Text = ResourceHelper.GetString("EmptyTitle");
         EmptyDescText.Text = ResourceHelper.GetString("EmptyDescription");
         EmptyCtaText.Text = ResourceHelper.GetString("SaveCurrent");
@@ -84,7 +86,8 @@ public sealed partial class ProfileListPage : Page
         // Profile summary
         confirmContent.Children.Add(new TextBlock
         {
-            Text = $"{profile.Monitors.Count(m => m.IsEnabled)} {ResourceHelper.GetString("MonitorsSuffix")}",
+            Text = ResourceHelper.GetString(
+                "MonitorsCountFormat", profile.Monitors.Count(m => m.IsEnabled)),
             Opacity = 0.7,
         });
 
@@ -104,7 +107,7 @@ public sealed partial class ProfileListPage : Page
                 Message = string.Join("\n", compat.Warnings),
                 IsOpen = true, IsClosable = false,
             });
-        if (compat.ExtraMonitors.Count > 0 && profile.UnmatchedAction == UnmatchedMonitorAction.Disable)
+        if (compat.ExtraMonitors.Count > 0)
             confirmContent.Children.Add(new InfoBar
             {
                 Severity = InfoBarSeverity.Warning,
@@ -122,14 +125,12 @@ public sealed partial class ProfileListPage : Page
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = this.XamlRoot,
         };
-        if (await confirmDialog.ShowAsync() != ContentDialogResult.Primary)
+        if (await confirmDialog.ShowThemedAsync() != ContentDialogResult.Primary)
             return;
 
-        // The snapshot + countdown + revert now lives in ApplyGuardService, wired into
-        // ProfileService.ApplyProfileAsync so every trigger gets it — not just this
-        // button. The previous version here also round-tripped a throwaway "_revert"
-        // profile through disk, which briefly published it to the profile list, the
-        // tray menu and the hotkey registration.
+        // Snapshot, countdown and revert live in ApplyGuardService now, wired into
+        // ApplyProfileAsync so every trigger gets it. The old code here also published a
+        // throwaway "_revert" profile to the list, tray menu and hotkeys.
         await ViewModel.ApplyProfileCommand.ExecuteAsync(profileId);
 
         var result = ViewModel.LastApplyResult;
@@ -147,7 +148,7 @@ public sealed partial class ProfileListPage : Page
                 CloseButtonText = ResourceHelper.GetString("OK"),
                 XamlRoot = this.XamlRoot,
             };
-            await errorDialog.ShowAsync();
+            await errorDialog.ShowThemedAsync();
         }
     }
 
@@ -169,7 +170,7 @@ public sealed partial class ProfileListPage : Page
             XamlRoot = this.XamlRoot,
         };
 
-        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        if (await dialog.ShowThemedAsync() == ContentDialogResult.Primary)
         {
             var hotkeyService = App.Services.GetRequiredService<IHotkeyService>();
             hotkeyService.UnregisterProfileHotkey(profileId);
@@ -211,7 +212,7 @@ public sealed partial class ProfileListPage : Page
             XamlRoot = this.XamlRoot,
         };
 
-        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        if (await dialog.ShowThemedAsync() == ContentDialogResult.Primary)
         {
             profile.Hotkey = picker.CurrentBinding;
             profile.ModifiedAt = DateTime.UtcNow;
@@ -294,7 +295,7 @@ public sealed partial class ProfileListPage : Page
             XamlRoot = this.XamlRoot,
         };
 
-        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        if (await dialog.ShowThemedAsync() == ContentDialogResult.Primary)
         {
             var newName = nameBox.Text?.Trim();
             if (!string.IsNullOrEmpty(newName))
@@ -381,7 +382,7 @@ public sealed partial class ProfileListPage : Page
             XamlRoot = this.XamlRoot,
         };
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+        if (await dialog.ShowThemedAsync() != ContentDialogResult.Primary) return;
 
         var profileName = string.IsNullOrWhiteSpace(nameBox.Text) ? $"Profile {ViewModel.Profiles.Count + 1}" : nameBox.Text.Trim();
 
@@ -400,7 +401,7 @@ public sealed partial class ProfileListPage : Page
             },
             XamlRoot = this.XamlRoot,
         };
-        _ = loadingDialog.ShowAsync();
+        _ = loadingDialog.ShowThemedAsync();
 
         var profileService = App.Services.GetRequiredService<IProfileService>();
         var profile = await profileService.CaptureCurrentAsync(profileName);
@@ -455,10 +456,9 @@ public sealed partial class ProfileListPage : Page
         var file = await picker.PickSingleFileAsync();
         if (file == null) return;
 
-        // A file the user picked can be anything. Reading and parsing it used to run
-        // bare: a malformed file threw out of this async void handler into the global
-        // handler's generic error dialog, and a file that parsed to nothing was
-        // swallowed so the import simply appeared to do nothing.
+        // A picked file can be anything. This used to run bare: a malformed file threw
+        // out of an async void handler into the generic error dialog, and a file that
+        // parsed to nothing was swallowed so the import appeared to do nothing.
         var service = App.Services.GetRequiredService<ExportImportService>();
         ExportImportService.ImportResult result;
         try
@@ -493,7 +493,7 @@ public sealed partial class ProfileListPage : Page
             },
             CloseButtonText = ResourceHelper.GetString("OK"),
             XamlRoot = XamlRoot,
-        }.ShowAsync();
+        }.ShowThemedAsync();
     }
 
     private void ProfileGrid_ItemClick(object sender, ItemClickEventArgs e)
@@ -520,18 +520,13 @@ public sealed partial class ProfileListPage : Page
     public static Visibility UnavailableVisibility(bool isAvailable)
         => isAvailable ? Visibility.Collapsed : Visibility.Visible;
 
-    /// <summary>
-    /// Dims the plan view of a profile that cannot be applied right now. Dimmed rather
-    /// than disabled: the profile is still editable, exportable and worth looking at —
-    /// it just is not something you can switch to at this moment.
-    /// </summary>
+    /// <summary>Dims the plan view of a profile that cannot be applied right now. Dimmed,
+    /// not disabled — it is still editable, exportable and worth looking at.</summary>
     public static double UnavailableOpacity(bool isAvailable) => isAvailable ? 1.0 : 0.4;
 
     // ── Slot badge ──
-    //
     // App.RegisterAllHotkeys binds <modifier>+0..9 to Profiles[0..9], so a profile's
-    // position in the list *is* its shortcut. The badge states that rather than
-    // decorating the card with an index.
+    // position in the list *is* its shortcut; the badge states that.
 
     /// <summary>Slots exist for the first nine profiles only.</summary>
     public static Visibility SlotVisibility(int sortOrder)
@@ -570,20 +565,14 @@ public sealed partial class ProfileListPage : Page
 
     public static Thickness CardBorderThickness(bool isActive) => new(isActive ? 2 : 1);
 
-    /// <summary>
-    /// The card's single caption line: monitor count, when it last changed, and the
-    /// shortcut if one is assigned.
-    /// </summary>
-    /// <remarks>
-    /// These were three separate elements. The count in particular restated in words
-    /// what the plan view above it already draws, so they are folded into one quiet
-    /// line and the drawing is left to carry the card.
-    /// </remarks>
+    /// <summary>The card's single caption line: monitor count, when it last changed, and
+    /// the shortcut if assigned. Folded from three elements into one quiet line so the
+    /// plan view carries the card.</summary>
     public static string CardCaption(int monitorCount, DateTime modifiedUtc, HotkeyBinding? hotkey)
     {
         var parts = new List<string>
         {
-            $"{monitorCount} {ResourceHelper.GetString("MonitorsSuffix")}",
+            ResourceHelper.GetString("MonitorsCountFormat", monitorCount),
             RelativeTimeText.Format(modifiedUtc),
         };
 
@@ -593,10 +582,8 @@ public sealed partial class ProfileListPage : Page
     }
 
     // ── Profile card menu ──
-    //
-    // The right-click menu and the "..." button menu are the same list of actions, and
-    // were previously two identical 30-line MenuFlyout blocks in the DataTemplate.
-    // Building it once here means the two can no longer drift apart.
+    // Right-click and the "..." button are the same list of actions, once two identical
+    // 30-line MenuFlyout blocks. Building it here means they cannot drift apart.
 
     private void ProfileCard_Loaded(object sender, RoutedEventArgs e)
     {
@@ -641,10 +628,9 @@ public sealed partial class ProfileListPage : Page
         flyout.Items.Add(MenuItem("Duplicate", "", profile.Id, Duplicate_Click));
         flyout.Items.Add(new MenuFlyoutSeparator());
 
-        // Reordering needs a path that is not a mouse gesture. Dragging a card competes
-        // with clicking it to open the editor, and it offers nothing to a keyboard or
-        // screen-reader user — while the order decides which profile each Ctrl+Alt+N
-        // shortcut applies, so it has to be reachable by everyone.
+        // Reordering needs a non-mouse path: dragging competes with click-to-open and
+        // gives keyboard users nothing, while the order decides which profile each
+        // Ctrl+Alt+N applies. See .claude/rules/50-persistence.md.
         int index = ViewModel.Profiles.IndexOf(profile);
 
         var moveUp = MenuItem("MoveUp", "", profile.Id, MoveUp_Click);
@@ -686,10 +672,8 @@ public sealed partial class ProfileListPage : Page
         }
     }
 
-    /// <summary>
-    /// Copies a profile so a variant can be built without rebuilding it from scratch —
-    /// the same desk with one monitor rotated, say.
-    /// </summary>
+    /// <summary>Copies a profile so a variant can be built without starting over — the
+    /// same desk with one monitor rotated, say.</summary>
     private async void Duplicate_Click(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.Tag is not string profileId) return;
@@ -752,14 +736,9 @@ public sealed partial class ProfileListPage : Page
         catch (Exception ex) { Helpers.BootLog.WriteError("profile.move", ex); }
     }
 
-    /// <summary>
-    /// Persists the new order after a drag.
-    /// </summary>
-    /// <remarks>
-    /// The GridView has already reordered the bound collection by this point — it is
-    /// the same ObservableCollection the service owns — so all that is left is writing
-    /// SortOrder back out and re-pointing the slot hotkeys, which index into this list.
-    /// </remarks>
+    /// <summary>Persists the new order after a drag. The GridView has already reordered
+    /// the service's own collection, so this only writes SortOrder back out and
+    /// re-points the slot hotkeys that index into it.</summary>
     private async void ProfileGrid_DragItemsCompleted(ListViewBase sender, DragItemsCompletedEventArgs args)
     {
         if (args.DropResult != DataPackageOperation.Move) return;
@@ -777,11 +756,9 @@ public sealed partial class ProfileListPage : Page
     /// <summary>Smallest width at which a card still reads well.</summary>
     private const double MinCardWidth = 260;
 
-    /// <summary>
-    /// Divides the row evenly between as many cards as fit, so they stretch to fill
-    /// the window instead of leaving a growing empty gutter on the right. GridView's
-    /// wrap grid sizes items from the template, which is why this has to be computed.
-    /// </summary>
+    /// <summary>Divides the row evenly between as many cards as fit, so they fill the
+    /// window instead of leaving a gutter. GridView's wrap grid sizes items from the
+    /// template, which is why this is computed.</summary>
     private void ProfileGrid_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         if (ProfileGrid.ItemsPanelRoot is not ItemsWrapGrid panel) return;

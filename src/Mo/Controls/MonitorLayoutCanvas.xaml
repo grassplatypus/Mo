@@ -6,7 +6,8 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    SizeChanged="UserControl_SizeChanged">
+    SizeChanged="UserControl_SizeChanged"
+    PreviewKeyDown="MonitorLayoutCanvas_KeyDown">
 
     <Grid
         Background="{ThemeResource LayerOnMicaBaseAltFillColorDefaultBrush}"
@@ -18,7 +19,7 @@
         <!-- No monitors message -->
         <TextBlock
             x:Name="EmptyText"
-            Text="No monitors detected"
+            x:Uid="LayoutCanvasEmpty"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             Opacity="0.3"

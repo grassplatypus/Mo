@@ -96,4 +96,43 @@ public class MonitorMatcherTests
         Assert.Empty(result.UnmatchedProfile);
         Assert.Empty(result.UnmatchedCurrent);
     }
+
+    [Fact]
+    public void IsSameMonitor_DevicePathWins_RegardlessOfCase()
+    {
+        var a = new MonitorIdentity("\\\\?\\DISPLAY#DEL1234#1", 0x10AC, 0x1234, 1, "DELL");
+        var b = new MonitorIdentity("\\\\?\\display#del1234#1", 0, 0, 9, "Something else");
+
+        Assert.True(IsSameMonitor(a, b));
+    }
+
+    /// <summary>Windows renumbers device paths, so the EDID triple has to carry the
+    /// match on its own. This is the fallback the colour push depends on.</summary>
+    [Fact]
+    public void IsSameMonitor_FallsBackToEdidTriple()
+    {
+        var a = new MonitorIdentity("\\\\?\\DISPLAY#DEL1234#1", 0x10AC, 0x1234, 1, "DELL");
+        var b = new MonitorIdentity("\\\\?\\DISPLAY#DEL1234#7", 0x10AC, 0x1234, 1, "DELL");
+
+        Assert.True(IsSameMonitor(a, b));
+    }
+
+    [Fact]
+    public void IsSameMonitor_SameModelOnAnotherConnector_IsADifferentMonitor()
+    {
+        var a = new MonitorIdentity("", 0x10AC, 0x1234, 1, "DELL");
+        var b = new MonitorIdentity("", 0x10AC, 0x1234, 2, "DELL");
+
+        Assert.False(IsSameMonitor(a, b));
+    }
+
+    /// <summary>A blank EDID must not make every unknown monitor the same monitor.</summary>
+    [Fact]
+    public void IsSameMonitor_NoIdentifyingInformation_IsNotAMatch()
+    {
+        var a = new MonitorIdentity("", 0, 0, 0, "Generic PnP Monitor");
+        var b = new MonitorIdentity("", 0, 0, 0, "Generic PnP Monitor");
+
+        Assert.False(IsSameMonitor(a, b));
+    }
 }

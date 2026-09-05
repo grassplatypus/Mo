@@ -16,10 +16,28 @@ public sealed class TrayService : ITrayService
         _profileService = profileService;
         // Refresh menu when profiles are added / renamed / removed so right-click
         // never shows a stale list.
-        _profileService.Profiles.CollectionChanged += (_, _) =>
+        _profileService.Profiles.CollectionChanged += (_, _) => QueueMenuRefresh();
+    }
+
+    private bool _menuRefreshQueued;
+
+    /// <summary>Collapses a burst into one rebuild. Loading raises CollectionChanged once
+    /// per profile, and each rebuild throws away the whole flyout and makes another.</summary>
+    private void QueueMenuRefresh()
+    {
+        try
         {
-            try { App.MainWindow?.DispatcherQueue?.TryEnqueue(UpdateContextMenu); } catch { }
-        };
+            var queue = App.MainWindow?.DispatcherQueue;
+            if (queue == null || _menuRefreshQueued) return;
+
+            _menuRefreshQueued = true;
+            queue.TryEnqueue(() =>
+            {
+                _menuRefreshQueued = false;
+                UpdateContextMenu();
+            });
+        }
+        catch { }
     }
 
     public bool IsAvailable { get; private set; }
@@ -68,10 +86,9 @@ public sealed class TrayService : ITrayService
         }
         catch (Exception ex)
         {
-            // Shell_NotifyIcon can fail outright when Explorer is restarting, when the
-            // notification area is saturated, or under some elevated-session combos.
-            // Report it rather than swallowing: with MinimizeToTrayOnClose on, a silent
-            // failure here is what turns "close the window" into "lose the app".
+            // Shell_NotifyIcon fails outright during an Explorer restart, on a saturated
+            // notification area, or under some elevated sessions. Report rather than
+            // swallow: with MinimizeToTrayOnClose, silence turns close into lose.
             Helpers.BootLog.WriteError("tray.initialize", ex);
             try { _trayIcon?.Dispose(); } catch { }
             _trayIcon = null;
@@ -140,15 +157,9 @@ public sealed class TrayService : ITrayService
         App.MainWindow?.ShowAndActivate();
     }
 
-    /// <summary>
-    /// Captures the current display arrangement as a new profile, then shows the window
-    /// on it so the user can name it.
-    /// </summary>
-    /// <remarks>
-    /// Marshalled onto the UI thread: the tray command runs on whatever thread
-    /// H.NotifyIcon dispatches from, while capture touches the profile collection that
-    /// the list is bound to.
-    /// </remarks>
+    /// <summary>Captures the current arrangement as a new profile and shows the window so
+    /// the user can name it. Marshalled to the UI thread — the tray command runs on
+    /// whatever thread H.NotifyIcon dispatches from.</summary>
     private void SaveCurrentConfiguration()
     {
         var queue = App.MainWindow?.DispatcherQueue;
@@ -170,12 +181,7 @@ public sealed class TrayService : ITrayService
         });
     }
 
-    private void ExitApp()
-    {
-        _trayIcon?.Dispose();
-        _trayIcon = null;
-        App.MainWindow?.ForceClose();
-    }
+    private void ExitApp() => App.RequestExit();
 
     private sealed class SimpleCommand : System.Windows.Input.ICommand
     {

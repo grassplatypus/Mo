@@ -2,11 +2,8 @@ using Mo.Core.Formatting;
 
 namespace Mo.Helpers;
 
-/// <summary>
-/// Localized wording for <see cref="RelativeTime"/> buckets. The bucketing lives in
-/// Mo.Core so it can be unit-tested without a resource loader; only the phrasing is
-/// here.
-/// </summary>
+/// <summary>Localized wording for <see cref="RelativeTime"/> buckets. The bucketing
+/// lives in Mo.Core so it is testable without a resource loader.</summary>
 public static class RelativeTimeText
 {
     public static string Format(DateTime whenUtc) => Format(whenUtc, DateTime.UtcNow);

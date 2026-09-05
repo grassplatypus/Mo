@@ -4,8 +4,8 @@ using Mo.Models;
 namespace Mo.Services;
 
 // Driver-level rotation for Radeon GPUs via ADL2, used when the user picks
-// RotationMethod.AmdDriver — Windows' own CCD rotation has a cursor-coordinate bug.
-// Displays must be resolved by GDI name; see CLAUDE.md "Radeon (ADL) rules".
+// RotationMethod.AmdDriver. Radeon rotates without stranding the cursor, so this path
+// exists for reliability, not for that. See .claude/rules/30-display-apis.md.
 public sealed class AmdRotationService : IDisposable
 {
     private const string AdlLib = "atiadlxx.dll";
@@ -90,11 +90,9 @@ public sealed class AmdRotationService : IDisposable
         double RefreshHz,
         DisplayRotation Rotation);
 
-    /// <summary>
-    /// Applies position, size, refresh and rotation for every target in one pass.
-    /// All-or-nothing: any failure returns false and DisplayService runs CCD over the
-    /// whole profile, rather than leaving a half-applied desktop.
-    /// </summary>
+    /// <summary>Applies position, size, refresh and rotation for every target. ADL has
+    /// no transaction: a failure part-way leaves earlier displays changed, and CCD then
+    /// re-applies the whole profile over the top.</summary>
     public bool ApplyFullProfile(IReadOnlyList<DisplayTarget> targets)
     {
         if (!IsAvailable || targets.Count == 0) return false;
@@ -149,12 +147,13 @@ public sealed class AmdRotationService : IDisposable
         mode.XPos = target.PositionX;
         mode.YPos = target.PositionY;
 
-        // Mo stores Width/Height pre-swapped for portrait; ADL wants the panel's own
+        // Mo stores Width/Height as the desktop extent; ADL wants the panel's own
         // resolution with Orientation separate. Verified only by the read-back check in
-        // DisplayService — ADL does not document which it expects.
-        bool portrait = target.Rotation is DisplayRotation.Rotate90 or DisplayRotation.Rotate270;
-        mode.XRes = portrait ? target.Height : target.Width;
-        mode.YRes = portrait ? target.Width : target.Height;
+        // DisplayService, since ADL does not document which it expects.
+        var (xres, yres) = Mo.Core.DisplayConfiguration.RotationGeometry.ToSource(
+            target.Width, target.Height, (int)target.Rotation);
+        mode.XRes = xres;
+        mode.YRes = yres;
 
         if (target.RefreshHz > 0) mode.RefreshRate = (float)target.RefreshHz;
 

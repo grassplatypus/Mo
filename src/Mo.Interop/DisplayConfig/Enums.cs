@@ -118,4 +118,9 @@ public enum DISPLAYCONFIG_DEVICE_INFO_TYPE : uint
     DISPLAYCONFIG_DEVICE_INFO_GET_ADVANCED_COLOR_INFO = 9,
     DISPLAYCONFIG_DEVICE_INFO_SET_ADVANCED_COLOR_STATE = 10,
     DISPLAYCONFIG_DEVICE_INFO_GET_SDR_WHITE_LEVEL = 11,
+
+    // Per-monitor scaling. Undocumented but stable since Windows 10 1607, and the only
+    // way to read or write it: Settings uses these two and nothing else exposes them.
+    DISPLAYCONFIG_DEVICE_INFO_GET_DPI_SCALE = 0xFFFFFFFD,
+    DISPLAYCONFIG_DEVICE_INFO_SET_DPI_SCALE = 0xFFFFFFFC,
 }

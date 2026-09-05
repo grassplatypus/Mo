@@ -23,13 +23,40 @@ public sealed partial class MainWindow : Window
     [DllImport("user32.dll")]
     private static extern uint GetDpiForWindow(nint hWnd);
 
+    /// <summary>Icon for the task bar and alt-tab. `SetIcon` resolves a relative path
+    /// against the working directory, which is wherever the shortcut launched from, so
+    /// this passes the full one and logs when the file is not where it should be.</summary>
+    private void SetWindowIcon()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico");
+        if (!File.Exists(path))
+        {
+            BootLog.Write("window.icon.missing", path);
+            return;
+        }
+
+        try { AppWindow.SetIcon(path); }
+        catch (Exception ex) { BootLog.WriteError("window.icon", ex); }
+    }
+
     public MainWindow()
     {
         InitializeComponent();
 
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
-        AppWindow.SetIcon("Assets/AppIcon.ico");
+        SetWindowIcon();
+        AppTitleBar.Subtitle = ResourceHelper.GetString("AppSubtitle");
+        AppTitleBar.IconSource = new Microsoft.UI.Xaml.Controls.ImageIconSource
+        {
+            // 16px drawn, which reaches 48 at 300% scaling.
+            ImageSource = AppImages.AppIcon(decodePixelWidth: 48),
+        };
+
+        // Follows both a change of setting and the system flipping under "Default".
+        RootGrid.ActualThemeChanged += (s, _) =>
+            ThemeHelper.ApplyCaptionButtonColors(AppWindow, s.ActualTheme);
+        ThemeHelper.ApplyCaptionButtonColors(AppWindow, RootGrid.ActualTheme);
 
         ApplySizeConstraints();
         RestorePlacement();
@@ -100,10 +127,8 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    /// <summary>
-    /// Restores the last window position and size. The stored rectangle is validated
-    /// first — the display it sat on may be gone.
-    /// </summary>
+    /// <summary>Restores the last window position and size; the stored rectangle is
+    /// validated first, because the display it sat on may be gone.</summary>
     private void RestorePlacement()
     {
         double scale = ScaleFactor;
@@ -230,10 +255,9 @@ public sealed partial class MainWindow : Window
         // Capture before hiding: once hidden the reported rect is no longer meaningful.
         SavePlacement();
 
-        // AppWindow.Hide() works before the first Activate() call (Win32 ShowWindow does
-        // not), so use it as the primary hide path. ShowWindow remains as a belt-and-
-        // suspenders fallback for environments where AppWindow.Hide is a no-op (e.g.
-        // some Win10 builds).
+        // AppWindow.Hide() works before the first Activate() (Win32 ShowWindow does not),
+        // so it is the primary hide path. ShowWindow stays as a fallback for builds where
+        // AppWindow.Hide is a no-op.
         try { AppWindow?.Hide(); } catch { }
         try
         {
@@ -261,9 +285,9 @@ public sealed partial class MainWindow : Window
 
     public void ApplyTheme(string theme)
     {
-        if (RootGrid != null)
-        {
-            ThemeHelper.ApplyTheme(RootGrid, theme);
-        }
+        if (RootGrid == null) return;
+
+        ThemeHelper.ApplyTheme(RootGrid, theme);
+        ThemeHelper.ApplyCaptionButtonColors(AppWindow, RootGrid.ActualTheme);
     }
 }

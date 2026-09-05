@@ -30,9 +30,13 @@ public sealed class AutoSwitchService : IAutoSwitchService
         if (_started) return;
         _started = true;
 
-        _lastConfigHash = GetConfigHash();
         _debounceTimer = new Timer(CheckForChanges, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
         SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
+
+        // The baseline read is a CCD round trip and Start() is called from startup on the
+        // dispatcher. Nothing is compared against it until the first change event, so it
+        // can settle in the background.
+        _ = Task.Run(() => _lastConfigHash = GetConfigHash());
     }
 
     public void Stop()

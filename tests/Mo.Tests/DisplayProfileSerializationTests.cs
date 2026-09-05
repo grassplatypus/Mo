@@ -4,21 +4,9 @@ using Mo.Models;
 
 namespace Mo.Tests;
 
-/// <summary>
-/// Guards the JSON contract for saved profiles.
-/// </summary>
-/// <remarks>
-/// MoJsonContext is a System.Text.Json source generator, so the contract is fixed at
-/// compile time from what that generator can see on <see cref="DisplayProfile"/>. A
-/// member it cannot see silently vanishes from the contract and every save overwrites
-/// a good file with a blank one.
-///
-/// That is not hypothetical: converting DisplayProfile to use CommunityToolkit's
-/// <c>[ObservableProperty]</c> did exactly this, because the MVVM generator emits its
-/// properties from the same original compilation that STJ already read — STJ saw only
-/// the private fields. Profiles loaded empty. ProfileService.EnsureRoundTrips catches
-/// it at runtime; these tests catch it at build time.
-/// </remarks>
+/// <summary>Guards the JSON contract for saved profiles: a member MoJsonContext cannot
+/// see vanishes from the contract and every save blanks a good file. These catch it at
+/// build time; EnsureRoundTrips catches it at runtime. .claude/rules/10-code-style.md.</summary>
 public class DisplayProfileSerializationTests
 {
     private static DisplayProfile RoundTrip(DisplayProfile profile)
@@ -29,6 +17,40 @@ public class DisplayProfileSerializationTests
         return back!;
     }
 
+    /// <summary>A profile written before Mo captured scaling has no schemaVersion and a
+    /// dpiScale of 100 that nobody chose. It has to deserialize that way, because that is
+    /// what the load-time migration keys off before the apply would enforce 100%.</summary>
+    [Fact]
+    public void APreScalingProfileDeserializesAtSchemaVersionZero()
+    {
+        const string legacy = """
+            {"id":"old","name":"Work","schemaVersionAbsent":true,
+             "monitors":[{"devicePath":"\\\\?\\DISPLAY#X","dpiScale":100,"isEnabled":true}]}
+            """;
+
+        var profile = JsonSerializer.Deserialize(legacy, MoJsonContext.Default.DisplayProfile);
+
+        Assert.NotNull(profile);
+        Assert.Equal(0, profile!.SchemaVersion);
+        Assert.Equal(100, profile.Monitors[0].DpiScale);
+    }
+
+    /// <summary>An unknown member from a newer or older build is ignored rather than
+    /// throwing, which is what lets a removed field like unmatchedAction stay in old
+    /// files harmlessly.</summary>
+    [Fact]
+    public void AnUnknownMemberDoesNotBreakTheLoad()
+    {
+        const string withRemovedField = """
+            {"id":"old","name":"Work","unmatchedAction":"Keep","schemaVersion":1}
+            """;
+
+        var profile = JsonSerializer.Deserialize(withRemovedField, MoJsonContext.Default.DisplayProfile);
+
+        Assert.NotNull(profile);
+        Assert.Equal("Work", profile!.Name);
+    }
+
     private static DisplayProfile Populated() => new()
     {
         Id = "abc123",
@@ -36,7 +58,6 @@ public class DisplayProfileSerializationTests
         Description = "left monitor rotated",
         SortOrder = 3,
         AutoSwitch = true,
-        UnmatchedAction = UnmatchedMonitorAction.Disable,
         AudioDeviceId = "audio-id",
         AudioDeviceName = "Speakers",
         WallpaperPath = @"C:\wall.jpg",
@@ -74,7 +95,6 @@ public class DisplayProfileSerializationTests
         Assert.Equal(original.Description, back.Description);
         Assert.Equal(original.SortOrder, back.SortOrder);
         Assert.Equal(original.AutoSwitch, back.AutoSwitch);
-        Assert.Equal(original.UnmatchedAction, back.UnmatchedAction);
         Assert.Equal(original.AudioDeviceId, back.AudioDeviceId);
         Assert.Equal(original.AudioDeviceName, back.AudioDeviceName);
         Assert.Equal(original.WallpaperPath, back.WallpaperPath);
@@ -180,7 +200,6 @@ public class DisplayProfileSerializationTests
             CheckForUpdates = false,
             RotationMethod = RotationMethod.AmdDriver,
             ConfirmApply = false,
-            ApplyConfirmSeconds = 30,
             RestoreOnStartup = false,
             RestoreColorOnStartup = false,
             Language = "ko-KR",
@@ -199,7 +218,6 @@ public class DisplayProfileSerializationTests
         Assert.Equal("profile-1", back.LastAppliedProfileId);
         Assert.Equal(RotationMethod.AmdDriver, back.RotationMethod);
         Assert.False(back.ConfirmApply);
-        Assert.Equal(30, back.ApplyConfirmSeconds);
         Assert.Equal("ko-KR", back.Language);
         Assert.NotNull(back.WindowPlacement);
         Assert.Equal(900, back.WindowPlacement!.Width);

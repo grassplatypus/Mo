@@ -87,11 +87,9 @@
 
             <GridView.ItemTemplate>
                 <DataTemplate x:DataType="models:DisplayProfile">
-                    <!-- No fixed Width: ProfileGrid_SizeChanged divides each row into
-                         equal columns for the current window size, so cards grow to use
-                         a narrow window instead of leaving a fixed 280px column and a
-                         ragged edge. The active profile takes an accent border so
-                         "which one am I on right now" is answerable at a glance. -->
+                    <!-- No fixed Width: ProfileGrid_SizeChanged divides each row into equal
+                         columns, so cards fill a narrow window instead of leaving a ragged
+                         edge. The active profile takes an accent border. -->
                     <!-- The right-click menu and the "..." menu were two byte-identical
                          30-line MenuFlyout blocks; every menu change had to be made
                          twice. Both are now built once per card by BuildProfileMenu. -->
@@ -182,11 +180,9 @@
                             </Button>
                         </Grid>
 
-                        <!-- The plan view is the card. The arrangement is what
-                             distinguishes one profile from another, so it takes the
-                             space and everything else becomes caption. The monitor
-                             count that used to sit above it said, in words, exactly
-                             what the drawing now says. -->
+                        <!-- The plan view is the card: the arrangement is what tells one
+                             profile from another, so it takes the space and everything
+                             else becomes caption. -->
                         <controls:MonitorLayoutThumbnail
                             Grid.Row="1"
                             Monitors="{x:Bind Monitors, Mode=OneWay}"
@@ -231,6 +227,22 @@
             </GridView.ItemTemplate>
         </GridView>
 
+        <!-- Loading State. Shown until the first load finishes, so the empty state
+             below never claims there are no profiles before we know. -->
+        <StackPanel
+            Grid.Row="1"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Spacing="12"
+            Visibility="{x:Bind ViewModel.IsBusy, Mode=OneWay}">
+
+            <ProgressRing IsActive="True" Width="32" Height="32" />
+            <TextBlock
+                x:Name="LoadingText"
+                Opacity="0.5"
+                HorizontalAlignment="Center" />
+        </StackPanel>
+
         <!-- Empty State -->
         <StackPanel
             Grid.Row="1"
@@ -265,5 +277,22 @@
                 </StackPanel>
             </Button>
         </StackPanel>
+
+        <!-- Applying overlay. Covers both rows so the list cannot be clicked again while
+             the hardware is being driven, which is what people do when nothing moves. -->
+        <Border
+            Grid.RowSpan="2"
+            Margin="-24"
+            Background="{ThemeResource SystemControlPageBackgroundMediumAltMediumBrush}"
+            Visibility="{x:Bind ViewModel.IsApplying, Mode=OneWay}">
+
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+                <ProgressRing IsActive="True" Width="40" Height="40" />
+                <TextBlock
+                    x:Name="ApplyingText"
+                    Style="{StaticResource SubtitleTextBlockStyle}"
+                    HorizontalAlignment="Center" />
+            </StackPanel>
+        </Border>
     </Grid>
 </Page>

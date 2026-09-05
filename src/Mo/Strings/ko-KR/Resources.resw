@@ -33,22 +33,25 @@
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
 
   <!-- App -->
-  <data name="AppDisplayName" xml:space="preserve"><value>Mo — 모니터 프로필 관리자</value></data>
   <data name="AppTitleBar" xml:space="preserve"><value>Mo</value></data>
 
   <!-- Navigation -->
   <data name="NavProfiles" xml:space="preserve"><value>프로필</value></data>
-  <data name="NavSettings" xml:space="preserve"><value>설정</value></data>
 
   <!-- Profile List -->
   <data name="ProfilesTitle" xml:space="preserve"><value>프로필</value></data>
   <data name="SaveCurrent" xml:space="preserve"><value>현재 구성 저장</value></data>
-  <data name="CapturingProfile" xml:space="preserve"><value>디스플레이 구성을 캡처하는 중...</value></data>
+  <data name="CapturingProfile" xml:space="preserve"><value>현재 구성을 저장하는 중...</value></data>
   <data name="NewLayout" xml:space="preserve"><value>새 레이아웃</value></data>
-  <data name="MonitorsSuffix" xml:space="preserve"><value>개 모니터</value></data>
+  <data name="MonitorsCountFormat" xml:space="preserve"><value>모니터 {0}개</value></data>
   <data name="Apply" xml:space="preserve"><value>적용</value></data>
+  <data name="LoadingProfiles" xml:space="preserve"><value>프로필을 불러오는 중...</value></data>
+  <data name="LoadingGeneric" xml:space="preserve"><value>불러오는 중...</value></data>
+  <data name="AppSubtitle" xml:space="preserve"><value>모니터 프로필</value></data>
+  <data name="LayoutCanvasEmpty.Text" xml:space="preserve"><value>모니터를 찾지 못했습니다</value></data>
+  <data name="ApplyingProfile" xml:space="preserve"><value>디스플레이를 설정하는 중...</value></data>
   <data name="EmptyTitle" xml:space="preserve"><value>저장된 프로필이 없습니다</value></data>
-  <data name="EmptyDescription" xml:space="preserve"><value>'현재 구성 저장'을 클릭하여 모니터 구성을 저장하세요</value></data>
+  <data name="EmptyDescription" xml:space="preserve"><value>'현재 구성 저장'을 눌러 첫 프로필을 만들어 보세요.</value></data>
 
   <!-- Profile Actions -->
   <data name="SetHotkey" xml:space="preserve"><value>단축키 설정</value></data>
@@ -62,156 +65,115 @@
   <data name="Export" xml:space="preserve"><value>내보내기...</value></data>
   <data name="Import" xml:space="preserve"><value>가져오기</value></data>
   <data name="Rename" xml:space="preserve"><value>이름 변경</value></data>
-  <data name="UnmatchedMonitors" xml:space="preserve"><value>미등록 모니터</value></data>
-  <data name="UnmatchedMonitorsDesc" xml:space="preserve"><value>이 프로필에 포함되지 않은 모니터를 어떻게 처리할지 선택합니다</value></data>
   <data name="ImportCurrent" xml:space="preserve"><value>현재 레이아웃 가져오기</value></data>
   <data name="AlignHorizontal" xml:space="preserve"><value>가로로 정렬</value></data>
-  <data name="SetPrimary" xml:space="preserve"><value>기본 모니터로</value></data>
+  <data name="SetPrimary" xml:space="preserve"><value>주 디스플레이로</value></data>
   <data name="UnsavedChangesTitle" xml:space="preserve"><value>저장되지 않은 변경</value></data>
   <data name="UnsavedChangesContent" xml:space="preserve"><value>저장되지 않은 변경이 있습니다. 나가기 전에 저장하시겠습니까?</value></data>
   <data name="Discard" xml:space="preserve"><value>버리기</value></data>
   <data name="GpuPromptTitle" xml:space="preserve"><value>드라이버 기반 회전으로 전환할까요?</value></data>
-  <data name="GpuPromptContent" xml:space="preserve"><value>{0} GPU가 감지되었습니다. {0} 드라이버로 회전을 적용하면 Windows 커서 좌표 버그를 피하고, 재부팅 후에도 설정이 유지됩니다. 설정 → 고급에서 언제든 변경할 수 있습니다.</value></data>
+  <data name="GpuPromptContent" xml:space="preserve"><value>{0} 그래픽 카드를 찾았습니다. 디스플레이 변경을 Windows 대신 {0} 드라이버로 적용할 수 있습니다. 설정의 고급에서 언제든 바꿀 수 있습니다.</value></data>
   <data name="GpuPromptUseDriver" xml:space="preserve"><value>{0} 드라이버 사용</value></data>
   <data name="GpuPromptKeepWindows" xml:space="preserve"><value>Windows 기본 유지</value></data>
   <data name="Saturation" xml:space="preserve"><value>채도</value></data>
   <data name="Hue" xml:space="preserve"><value>색조</value></data>
   <data name="AmdColorSection" xml:space="preserve"><value>AMD 색상 조정</value></data>
   <data name="AvailableMonitors" xml:space="preserve"><value>추가 가능한 모니터</value></data>
-  <data name="AvailableMonitorsDesc" xml:space="preserve"><value>연결된 모든 디스플레이. +를 누르면 이 프로필에 추가되고, ✓는 이미 프로필에 포함되어 있음을 의미합니다.</value></data>
-  <data name="RestoreOnStartup" xml:space="preserve"><value>시작 시 마지막 프로파일 복원</value></data>
-  <data name="RestoreOnStartupDesc" xml:space="preserve"><value>앱 시작 시 가장 최근에 적용한 프로파일을 자동으로 다시 적용합니다.</value></data>
-  <data name="RestoreColorOnStartup" xml:space="preserve"><value>시작 시 색상 설정 복원</value></data>
-  <data name="RestoreColorOnStartupDesc" xml:space="preserve"><value>Windows는 DDC/CI 밝기·대비를 재부팅 후 유지하지 않습니다. 시작 시 다시 전송합니다.</value></data>
-  <data name="HotkeysEnabled" xml:space="preserve"><value>전역 단축키</value></data>
-  <data name="HotkeysEnabledDesc" xml:space="preserve"><value>시스템 전역 단축키로 프로파일을 실행합니다.</value></data>
-  <data name="AppearanceSection" xml:space="preserve"><value>모양</value></data>
-  <data name="ProfilesSection" xml:space="preserve"><value>프로파일</value></data>
-  <data name="UpdatesSection" xml:space="preserve"><value>업데이트</value></data>
-  <data name="AdvancedSection" xml:space="preserve"><value>고급</value></data>
+  <data name="AvailableMonitorsDesc" xml:space="preserve"><value>연결된 모든 디스플레이입니다. +를 누르면 프로필에 추가되고, ✓는 이미 들어 있다는 표시입니다.</value></data>
   <data name="NavDisplayTuning" xml:space="preserve"><value>디스플레이 조정</value></data>
+  <data name="NavSettings" xml:space="preserve"><value>설정</value></data>
   <data name="DisplayTuningTitle" xml:space="preserve"><value>디스플레이 조정</value></data>
   <data name="DisplayTuningSubtitle" xml:space="preserve"><value>선택한 모니터의 밝기·대비·색상을 실시간으로 조정합니다.</value></data>
+  <data name="DisplayTuningLoading" xml:space="preserve"><value>모니터가 어떤 조정을 지원하는지 확인하고 있습니다</value></data>
+  <data name="DisplayTuningNoMonitors" xml:space="preserve"><value>모니터를 찾지 못했습니다.</value></data>
   <data name="Refresh" xml:space="preserve"><value>새로고침</value></data>
   <data name="DdcCiSection" xml:space="preserve"><value>밝기·색상</value></data>
-  <data name="DdcCiUnsupported" xml:space="preserve"><value>이 모니터는 DDC/CI 제어를 지원하지 않습니다.</value></data>
+  <data name="DdcCiUnsupported" xml:space="preserve"><value>이 모니터는 소프트웨어로 밝기와 색상을 조절할 수 없습니다.</value></data>
   <data name="ResetDefaults" xml:space="preserve"><value>초기화</value></data>
   <data name="ColorPreset" xml:space="preserve"><value>색 프리셋</value></data>
-  <data name="ColorPresetDesc" xml:space="preserve"><value>sRGB, 색온도(5000K/6500K 등), 사용자 정의 프리셋 간 전환합니다.</value></data>
+  <data name="ColorPresetDesc" xml:space="preserve"><value>sRGB, 색온도, 직접 맞춘 설정 중에서 고릅니다.</value></data>
   <data name="PresetNative" xml:space="preserve"><value>기본</value></data>
   <data name="PresetUser" xml:space="preserve"><value>사용자</value></data>
   <data name="Hdr" xml:space="preserve"><value>HDR</value></data>
-  <data name="HdrDesc" xml:space="preserve"><value>이 디스플레이의 Windows 고급 색상(HDR)을 켜고 끕니다.</value></data>
-  <data name="UnmatchedKeep" xml:space="preserve"><value>현재 상태 유지</value></data>
-  <data name="UnmatchedDisable" xml:space="preserve"><value>끄기</value></data>
+  <data name="HdrDesc" xml:space="preserve"><value>이 모니터에서 HDR을 켜고 끕니다.</value></data>
   <data name="AutoSwitch" xml:space="preserve"><value>자동 전환</value></data>
-  <data name="AutoSwitchDesc" xml:space="preserve"><value>해당 모니터가 감지되면 자동으로 적용</value></data>
+  <data name="AutoSwitchDesc" xml:space="preserve"><value>이 모니터들이 연결되면 자동으로 적용합니다.</value></data>
 
   <!-- Apply Confirmation -->
   <data name="KeepChanges" xml:space="preserve"><value>변경 유지</value></data>
   <data name="Revert" xml:space="preserve"><value>되돌리기</value></data>
-  <data name="ConfirmTitle" xml:space="preserve"><value>이 디스플레이 구성을 유지하시겠습니까?</value></data>
-  <data name="RevertingIn" xml:space="preserve"><value>{0}초 후 되돌립니다...</value></data>
   <data name="ApplyConfirmTitle" xml:space="preserve"><value>이 디스플레이 구성을 유지하시겠습니까?</value></data>
   <data name="ApplyConfirmCountdown" xml:space="preserve"><value>{0}초 후 되돌립니다...</value></data>
 
   <!-- Rename Dialog -->
-  <data name="RenameTitle" xml:space="preserve"><value>프로필 이름 변경</value></data>
-  <data name="RenameLabel" xml:space="preserve"><value>프로필 이름</value></data>
   <data name="RenameProfileTitle" xml:space="preserve"><value>프로필 이름 변경</value></data>
   <data name="RenameProfilePrompt" xml:space="preserve"><value>"{0}"의 새 이름을 입력하세요:</value></data>
   <data name="NewName" xml:space="preserve"><value>새 이름</value></data>
 
   <!-- Export/Import -->
-  <data name="ExportSuccess" xml:space="preserve"><value>프로필을 내보냈습니다.</value></data>
-  <data name="ImportSuccess" xml:space="preserve"><value>프로필을 가져왔습니다.</value></data>
-  <data name="ImportFailed" xml:space="preserve"><value>프로필 가져오기에 실패했습니다.</value></data>
-  <data name="MoProfileFileType" xml:space="preserve"><value>Mo 프로필</value></data>
   <data name="ExportProfileType" xml:space="preserve"><value>Mo 프로필</value></data>
-  <data name="ImportProfileType" xml:space="preserve"><value>Mo 프로필</value></data>
 
   <!-- Hotkey Dialog -->
-  <data name="HotkeyDialogTitle" xml:space="preserve"><value>단축키 설정 — {0}</value></data>
+  <data name="HotkeyDialogTitle" xml:space="preserve"><value>단축키 설정: {0}</value></data>
   <data name="HotkeyDialogDescription" xml:space="preserve"><value>아래 상자를 클릭하고 키 조합을 누르세요 (예: Ctrl+Alt+1).
-Delete 또는 Backspace로 삭제. Escape로 취소.</value></data>
-  <data name="HotkeyPlaceholder" xml:space="preserve"><value>클릭하여 단축키 설정</value></data>
-  <data name="HotkeyCapturing" xml:space="preserve"><value>키 조합을 누르세요...</value></data>
+Delete나 Backspace를 누르면 지워지고, Escape를 누르면 취소됩니다.</value></data>
 
   <!-- Settings -->
   <data name="SettingsTitle" xml:space="preserve"><value>설정</value></data>
   <data name="GeneralSection" xml:space="preserve"><value>일반</value></data>
-  <data name="LaunchAtStartup" xml:space="preserve"><value>시작 시 실행</value></data>
-  <data name="LaunchAtStartupDesc" xml:space="preserve"><value>Windows에 로그인할 때 Mo를 시작합니다</value></data>
-  <data name="MinimizeToTray" xml:space="preserve"><value>닫을 때 트레이로 최소화</value></data>
-  <data name="MinimizeToTrayDesc" xml:space="preserve"><value>Mo를 시스템 트레이에서 계속 실행합니다</value></data>
-  <data name="StartMinimized" xml:space="preserve"><value>최소화 상태로 시작</value></data>
-  <data name="StartMinimizedDesc" xml:space="preserve"><value>창 대신 시스템 트레이에서 시작합니다</value></data>
-  <data name="Theme" xml:space="preserve"><value>테마</value></data>
-  <data name="ThemeDesc" xml:space="preserve"><value>원하는 외관을 선택하세요</value></data>
   <data name="ThemeSystem" xml:space="preserve"><value>Windows 기본값 사용</value></data>
   <data name="ThemeLight" xml:space="preserve"><value>밝게</value></data>
   <data name="ThemeDark" xml:space="preserve"><value>어둡게</value></data>
-  <data name="AutoSwitchSetting" xml:space="preserve"><value>프로필 자동 전환</value></data>
-  <data name="AutoSwitchSettingDesc" xml:space="preserve"><value>모니터 구성이 변경되면 프로필을 자동으로 적용</value></data>
-  <data name="CheckForUpdates" xml:space="preserve"><value>업데이트 확인</value></data>
-  <data name="CheckForUpdatesDesc" xml:space="preserve"><value>정기적으로 새 버전을 확인</value></data>
-  <data name="CheckNow" xml:space="preserve"><value>지금 확인</value></data>
-  <data name="UpToDate" xml:space="preserve"><value>최신 버전입니다!</value></data>
-  <data name="UpdateAvailable" xml:space="preserve"><value>버전 {0}을 사용할 수 있습니다</value></data>
-  <data name="MultiUser" xml:space="preserve"><value>사용자별 프로필</value></data>
-  <data name="MultiUserDesc" xml:space="preserve"><value>각 Windows 사용자별로 별도 프로필 유지</value></data>
+  <data name="UpToDate" xml:space="preserve"><value>최신 버전입니다.</value></data>
+  <data name="UpdateAvailable" xml:space="preserve"><value>새 버전이 나왔습니다: {0}</value></data>
 
-  <!-- SettingsCard x:Uid 바인딩 — *.Header / *.Description 이 컨트롤 속성으로 매핑됨. -->
+  <!-- SettingsCard x:Uid 바인딩: *.Header / *.Description 이 컨트롤 속성으로 매핑됨. -->
   <data name="LaunchAtStartupCard.Header" xml:space="preserve"><value>시작 시 실행</value></data>
-  <data name="LaunchAtStartupCard.Description" xml:space="preserve"><value>Windows에 로그인할 때 Mo를 자동으로 시작합니다.</value></data>
+  <data name="LaunchAtStartupCard.Description" xml:space="preserve"><value>Windows에 로그인하면 Mo를 자동으로 실행합니다.</value></data>
   <data name="MinimizeToTrayCard.Header" xml:space="preserve"><value>닫을 때 트레이로 최소화</value></data>
-  <data name="MinimizeToTrayCard.Description" xml:space="preserve"><value>창을 닫아도 Mo를 시스템 트레이에서 계속 실행합니다.</value></data>
+  <data name="MinimizeToTrayCard.Description" xml:space="preserve"><value>창을 닫아도 트레이에서 계속 실행합니다.</value></data>
   <data name="StartMinimizedCard.Header" xml:space="preserve"><value>최소화 상태로 시작</value></data>
-  <data name="StartMinimizedCard.Description" xml:space="preserve"><value>창을 표시하지 않고 시스템 트레이에서 시작합니다.</value></data>
+  <data name="StartMinimizedCard.Description" xml:space="preserve"><value>Windows에 로그인할 때만 창 없이 트레이에서 시작합니다.</value></data>
   <data name="ThemeCard.Header" xml:space="preserve"><value>테마</value></data>
-  <data name="ThemeCard.Description" xml:space="preserve"><value>선호하는 모양을 선택합니다.</value></data>
-  <data name="AutoSwitchCard.Header" xml:space="preserve"><value>자동 프로필 전환</value></data>
-  <data name="AutoSwitchCard.Description" xml:space="preserve"><value>모니터 구성 변경 시 자동으로 적절한 프로필을 적용합니다.</value></data>
+  <data name="ThemeCard.Description" xml:space="preserve"><value>앱 모양을 고릅니다.</value></data>
+  <data name="AutoSwitchCard.Header" xml:space="preserve"><value>프로필 자동 전환</value></data>
+  <data name="AutoSwitchCard.Description" xml:space="preserve"><value>모니터 구성이 바뀌면 맞는 프로필을 자동으로 적용합니다.</value></data>
   <data name="HotkeysCard.Header" xml:space="preserve"><value>전역 단축키</value></data>
-  <data name="HotkeysCard.Description" xml:space="preserve"><value>시스템 전역 단축키로 프로필을 적용합니다.</value></data>
-  <data name="ConfirmApplyCard.Header" xml:space="preserve"><value>디스플레이 변경 유지 여부 확인</value></data>
-  <data name="ConfirmApplyCard.Description" xml:space="preserve"><value>프로필 적용 후 확인을 요청하고, 응답이 없으면 이전 구성으로 되돌립니다. 모니터가 검게 꺼지거나 화면 밖으로 나가는 배치로부터 보호합니다.</value></data>
-  <data name="ApplyConfirmSecondsCard.Header" xml:space="preserve"><value>되돌리기까지 대기 시간</value></data>
-  <data name="ApplyConfirmSecondsCard.Description" xml:space="preserve"><value>확인을 기다리는 초 (5~120).</value></data>
+  <data name="HotkeysCard.Description" xml:space="preserve"><value>Mo가 트레이에서 실행 중이면 단축키로 프로필을 적용합니다.</value></data>
+  <data name="ConfirmApplyCard.Header" xml:space="preserve"><value>적용한 뒤 확인 받기</value></data>
+  <data name="ConfirmApplyCard.Description" xml:space="preserve"><value>15초 안에 답이 없으면 이전 구성으로 되돌립니다.</value></data>
   <data name="TrayUnavailableTitle" xml:space="preserve"><value>트레이 아이콘을 만들지 못했습니다</value></data>
-  <data name="TrayUnavailableDesc" xml:space="preserve"><value>Windows가 알림 영역 아이콘 생성을 거부해, Mo가 창을 계속 열어 둡니다. 그러지 않으면 앱에 접근할 방법이 없습니다. 이제 창을 닫으면 Mo가 종료됩니다. Windows 탐색기를 다시 시작하면 대개 해결됩니다.</value></data>
+  <data name="TrayUnavailableDesc" xml:space="preserve"><value>Windows가 알림 영역 아이콘을 만들어 주지 않아 창을 계속 열어 둡니다. 이제 창을 닫으면 Mo가 종료됩니다. Windows 탐색기를 다시 시작하면 대개 해결됩니다.</value></data>
   <data name="TimeJustNow" xml:space="preserve"><value>방금</value></data>
   <data name="TimeMinutesAgo" xml:space="preserve"><value>{0}분 전</value></data>
   <data name="TimeHoursAgo" xml:space="preserve"><value>{0}시간 전</value></data>
   <data name="TimeYesterday" xml:space="preserve"><value>어제</value></data>
   <data name="TimeDaysAgo" xml:space="preserve"><value>{0}일 전</value></data>
-  <data name="ModifiedPrefix" xml:space="preserve"><value>{0} 수정</value></data>
   <data name="ChannelRed" xml:space="preserve"><value>빨강 게인</value></data>
   <data name="ChannelGreen" xml:space="preserve"><value>초록 게인</value></data>
   <data name="ChannelBlue" xml:space="preserve"><value>파랑 게인</value></data>
   <data name="ActiveProfile" xml:space="preserve"><value>사용 중</value></data>
   <data name="TooltipImportCurrent" xml:space="preserve"><value>현재 연결된 모니터로 이 레이아웃을 교체합니다</value></data>
-  <data name="TooltipAlignHorizontal" xml:space="preserve"><value>모니터를 위쪽 가장자리에 맞춰 가로로 정렬합니다</value></data>
+  <data name="TooltipAlignHorizontal" xml:space="preserve"><value>모니터를 옆으로 나란히 놓고 세로 가운데를 맞춥니다</value></data>
   <data name="TooltipSetPrimary" xml:space="preserve"><value>선택한 모니터를 주 디스플레이로 지정합니다</value></data>
-  <data name="TooltipRemoveMonitor" xml:space="preserve"><value>이 모니터를 프로필에서 제거합니다</value></data>
+  <data name="TooltipRemoveMonitor" xml:space="preserve"><value>프로필에서 뺍니다. 적용하면 이 모니터는 꺼집니다</value></data>
   <data name="TooltipBack" xml:space="preserve"><value>프로필 목록으로</value></data>
   <data name="TooltipAddMonitor" xml:space="preserve"><value>{0}을(를) 이 프로필에 추가</value></data>
-  <data name="TooltipMonitorInProfile" xml:space="preserve"><value>{0}은(는) 이미 프로필에 있습니다 — 레이아웃에서 선택</value></data>
+  <data name="TooltipMonitorInProfile" xml:space="preserve"><value>{0}은(는) 이미 프로필에 있습니다. 레이아웃에서 선택하세요.</value></data>
   <data name="MoreActions" xml:space="preserve"><value>추가 작업</value></data>
   <data name="HotkeyConflictTitle" xml:space="preserve"><value>일부 단축키를 사용할 수 없습니다</value></data>
-  <data name="HotkeyConflictMessage" xml:space="preserve"><value>Windows가 다른 프로그램에 할당한 조합이라 Mo에서 동작하지 않습니다: {0}. 다른 조합을 지정하세요.</value></data>
+  <data name="HotkeyConflictMessage" xml:space="preserve"><value>다른 프로그램이 이미 쓰고 있어 Mo에서 동작하지 않습니다: {0}. 다른 조합을 지정하세요.</value></data>
   <data name="RemoveDataCard.Header" xml:space="preserve"><value>Mo 데이터 삭제</value></data>
-  <data name="RemoveDataCard.Description" xml:space="preserve"><value>저장된 프로필·설정·로그를 지우고 시작 프로그램 등록을 해제합니다. 앱 폴더를 지우기 전에 실행하세요 — 제거만으로는 이 항목들이 정리되지 않습니다.</value></data>
-  <data name="RemoveDataButton" xml:space="preserve"><value>데이터 삭제</value></data>
+  <data name="RemoveDataCard.Description" xml:space="preserve"><value>저장된 프로필과 설정, 로그를 지우고 시작 프로그램 등록을 해제합니다. 앱만 지우면 이 항목들이 남으니 앱 폴더를 지우기 전에 실행하세요.</value></data>
+  <data name="RemoveDataButton.Text" xml:space="preserve"><value>데이터 삭제</value></data>
   <data name="RemoveDataTitle" xml:space="preserve"><value>Mo 데이터 삭제</value></data>
   <data name="RemoveDataConfirm" xml:space="preserve"><value>다음 항목을 영구히 삭제합니다. 저장된 프로필은 복구할 수 없습니다.</value></data>
-  <data name="RemoveDataNothing" xml:space="preserve"><value>삭제할 항목이 없습니다 — 저장된 데이터나 시작 프로그램 등록을 찾지 못했습니다.</value></data>
+  <data name="RemoveDataNothing" xml:space="preserve"><value>지울 데이터가 없습니다.</value></data>
   <data name="RemoveDataDone" xml:space="preserve"><value>삭제했습니다. Mo를 종료합니다.</value></data>
   <data name="RemoveDataPartial" xml:space="preserve"><value>일부 항목을 삭제하지 못했습니다. Mo를 종료한 뒤 직접 지워 주세요.</value></data>
-  <data name="OpenLogFolderText" xml:space="preserve"><value>로그 폴더</value></data>
-  <data name="SlotShortcut" xml:space="preserve"><value>{0} 로 적용</value></data>
-  <data name="SlotNoShortcut" xml:space="preserve"><value>목록에서의 순서입니다. 설정에서 슬롯 단축키를 지정하면 키보드로 적용할 수 있습니다.</value></data>
-  <data name="ReorderHint" xml:space="preserve"><value>카드를 끌어 순서를 바꿉니다. 번호가 키보드 슬롯입니다.</value></data>
+  <data name="OpenLogFolderText.Text" xml:space="preserve"><value>로그 폴더</value></data>
+  <data name="SlotShortcut" xml:space="preserve"><value>{0} 키로 적용</value></data>
+  <data name="SlotNoShortcut" xml:space="preserve"><value>목록 순서입니다. 설정에서 슬롯 단축키를 지정하면 키보드로도 적용할 수 있습니다.</value></data>
   <data name="MoveUp" xml:space="preserve"><value>앞으로 이동</value></data>
   <data name="MoveDown" xml:space="preserve"><value>뒤로 이동</value></data>
   <data name="Duplicate" xml:space="preserve"><value>복제</value></data>
@@ -219,51 +181,60 @@ Delete 또는 Backspace로 삭제. Escape로 취소.</value></data>
   <data name="ProfileUnavailable" xml:space="preserve"><value>이 프로필의 일부 모니터가 현재 연결되어 있지 않습니다.</value></data>
   <data name="TraySaveCurrent" xml:space="preserve"><value>현재 배치 저장</value></data>
   <data name="TraySavedNameFormat" xml:space="preserve"><value>레이아웃 {0}</value></data>
-  <data name="CompatDisabledMonitors" xml:space="preserve"><value>현재 꺼져 있으며 적용 시 다시 켜집니다: {0}</value></data>
+  <data name="CompatDisabledMonitors" xml:space="preserve"><value>지금 꺼져 있어 적용하면 다시 켜집니다: {0}</value></data>
   <data name="ImportFailedTitle" xml:space="preserve"><value>파일을 가져오지 못했습니다</value></data>
   <data name="ImportFailedNotValidJson" xml:space="preserve"><value>Mo 프로필로 읽을 수 없는 파일입니다. 손상되었거나 다른 프로그램에서 내보낸 파일일 수 있습니다.</value></data>
-  <data name="ImportFailedNotAProfile" xml:space="preserve"><value>올바른 JSON이지만 디스플레이 프로필이 들어 있지 않습니다.</value></data>
+  <data name="ImportFailedNotAProfile" xml:space="preserve"><value>이 파일에는 디스플레이 프로필이 들어 있지 않습니다.</value></data>
   <data name="ImportFailedSave" xml:space="preserve"><value>프로필을 읽었으나 저장하지 못했습니다. Mo가 데이터 폴더에 쓸 수 있는지 확인하세요.</value></data>
   <data name="ImportedProfileFallbackName" xml:space="preserve"><value>가져온 프로필</value></data>
-  <data name="RestoreOnStartupCard.Header" xml:space="preserve"><value>시작 시 마지막 프로필 복원</value></data>
-  <data name="RestoreOnStartupCard.Description" xml:space="preserve"><value>Mo가 시작될 때 가장 최근에 적용한 프로필을 자동으로 다시 적용합니다.</value></data>
-  <data name="RestoreColorCard.Header" xml:space="preserve"><value>시작 시 색상 설정 복원</value></data>
-  <data name="RestoreColorCard.Description" xml:space="preserve"><value>Windows는 DDC/CI 밝기·대비를 재부팅 후 보존하지 않으므로, 시작 시 다시 보냅니다.</value></data>
-  <data name="UpdateCheckCard.Header" xml:space="preserve"><value>업데이트 확인</value></data>
-  <data name="UpdateCheckCard.Description" xml:space="preserve"><value>새 버전이 있을 때 알려줍니다.</value></data>
-  <data name="RotationMethodCard.Header" xml:space="preserve"><value>회전 방식</value></data>
-  <data name="RotationMethodCard.Description" xml:space="preserve"><value>GPU 제조사 드라이버로 화면 회전을 적용합니다. 회전 후 Windows 커서 좌표 버그를 방지합니다.</value></data>
-  <data name="GeneralExpander.Header" xml:space="preserve"><value>일반</value></data>
+  <data name="RestoreOnStartupCard.Header" xml:space="preserve"><value>시작할 때 마지막 프로필 복원</value></data>
+  <data name="RestoreOnStartupCard.Description" xml:space="preserve"><value>Mo를 켜면 마지막에 쓰던 프로필을 다시 적용합니다.</value></data>
+  <data name="RestoreColorCard.Header" xml:space="preserve"><value>밝기와 색상도 함께 복원</value></data>
+  <data name="RestoreColorCard.Description" xml:space="preserve"><value>프로필에 저장해 둔 밝기, 대비, 색상까지 되돌립니다.</value></data>
+  <data name="ResetCursorAfterRotationCard.Header" xml:space="preserve"><value>회전 후 마우스 포인터 맞추기</value></data>
+  <data name="ResetCursorAfterRotationCard.Description" xml:space="preserve"><value>회전을 적용할 때마다 화면이 몇 초간 꺼집니다.</value></data>
   <data name="AppearanceExpander.Header" xml:space="preserve"><value>모양</value></data>
-  <data name="ProfilesExpander.Header" xml:space="preserve"><value>프로필</value></data>
   <data name="UpdatesExpander.Header" xml:space="preserve"><value>업데이트</value></data>
+  <data name="UpdateCheckCard.Header" xml:space="preserve"><value>자동으로 확인</value></data>
+  <data name="UpdateCheckCard.Description" xml:space="preserve"><value>새 버전이 있을 때 알려줍니다.</value></data>
+  <data name="UpdateCheckNowCard.Header" xml:space="preserve"><value>지금 확인</value></data>
+  <data name="UpdateCheckNowCard.Description" xml:space="preserve"><value>새 버전이 있는지 바로 확인합니다.</value></data>
+  <data name="RotationMethodCard.Header" xml:space="preserve"><value>회전 방식</value></data>
+  <data name="RotationMethodCard.Description" xml:space="preserve"><value>Windows가 모니터를 다시 켜지 못할 때 더 안정적입니다.</value></data>
+  <data name="GeneralExpander.Header" xml:space="preserve"><value>일반</value></data>
+  <data name="ProfilesExpander.Header" xml:space="preserve"><value>프로필</value></data>
   <data name="AdvancedExpander.Header" xml:space="preserve"><value>고급</value></data>
-  <data name="AboutExpander.Header" xml:space="preserve"><value>정보 및 시스템 정보</value></data>
+  <data name="AboutExpander.Header" xml:space="preserve"><value>앱 정보와 시스템 정보</value></data>
   <data name="CheckNowText.Text" xml:space="preserve"><value>지금 확인</value></data>
   <data name="CopyDebugText.Text" xml:space="preserve"><value>디버그 정보 복사</value></data>
   <data name="ShowDebugText.Text" xml:space="preserve"><value>디버그 정보 표시</value></data>
   <data name="LanguageCard.Header" xml:space="preserve"><value>언어</value></data>
-  <data name="LanguageCard.Description" xml:space="preserve"><value>표시 언어를 덮어씁니다. 적용하려면 Mo를 다시 시작하세요.</value></data>
+  <data name="LanguageCard.Description" xml:space="preserve"><value>Mo를 다시 시작하면 바뀝니다.</value></data>
   <data name="LanguageAuto" xml:space="preserve"><value>Windows 기본값 사용</value></data>
 
   <!-- About -->
-  <data name="AboutSection" xml:space="preserve"><value>정보</value></data>
-  <data name="AboutName" xml:space="preserve"><value>Mo — 모니터 프로필 관리자</value></data>
-  <data name="AboutVersion" xml:space="preserve"><value>버전 0.21.2</value></data>
-  <data name="AboutDescription" xml:space="preserve"><value>다중 모니터 구성을 저장하고 원클릭으로 복원합니다.</value></data>
+  <data name="AboutName" xml:space="preserve"><value>Mo: 모니터 프로필 관리자</value></data>
+  <data name="AboutVersionFormat" xml:space="preserve"><value>버전 {0}</value></data>
+  <data name="MonitorPrimaryBadge.Text" xml:space="preserve"><value>주 모니터</value></data>
+  <data name="SysSectionTitle" xml:space="preserve"><value>이 PC</value></data>
+  <data name="SysMonitorsTitle" xml:space="preserve"><value>모니터</value></data>
+  <data name="SysDiagnosticsTitle" xml:space="preserve"><value>문제 보고</value></data>
+  <data name="SysLabelOs" xml:space="preserve"><value>Windows</value></data>
+  <data name="SysLabelCpu" xml:space="preserve"><value>프로세서</value></data>
+  <data name="SysLabelRam" xml:space="preserve"><value>메모리</value></data>
+  <data name="SysLabelGpu" xml:space="preserve"><value>그래픽</value></data>
+  <data name="AboutDescription" xml:space="preserve"><value>여러 모니터 구성을 저장해 두고 한 번에 되돌립니다.</value></data>
 
   <!-- Profile Editor -->
   <data name="ProfileNamePlaceholder" xml:space="preserve"><value>프로필 이름</value></data>
-  <data name="DescriptionPlaceholder" xml:space="preserve"><value>설명 (선택사항)</value></data>
+  <data name="DescriptionPlaceholder" xml:space="preserve"><value>설명 (선택 사항)</value></data>
   <data name="Resolution" xml:space="preserve"><value>해상도</value></data>
   <data name="RefreshRate" xml:space="preserve"><value>주사율</value></data>
   <data name="Rotation" xml:space="preserve"><value>회전</value></data>
-  <data name="Position" xml:space="preserve"><value>위치</value></data>
-  <data name="RotationNone" xml:space="preserve"><value>없음</value></data>
-  <data name="NoMonitorsDetected" xml:space="preserve"><value>감지된 모니터가 없습니다</value></data>
+  <data name="DisplayScale" xml:space="preserve"><value>배율</value></data>
 
   <!-- Monitor Color -->
-  <data name="MonitorColor" xml:space="preserve"><value>밝기 및 색감</value></data>
+  <data name="MonitorColor" xml:space="preserve"><value>밝기와 색감</value></data>
   <data name="Brightness" xml:space="preserve"><value>밝기</value></data>
   <data name="Contrast" xml:space="preserve"><value>대비</value></data>
 
@@ -272,29 +243,24 @@ Delete 또는 Backspace로 삭제. Escape로 취소.</value></data>
 
   <!-- Audio -->
   <data name="AudioDevice" xml:space="preserve"><value>오디오 출력</value></data>
-  <data name="AudioDeviceDesc" xml:space="preserve"><value>이 프로필의 기본 오디오 출력 장치</value></data>
-  <data name="AudioNone" xml:space="preserve"><value>없음 (변경하지 않음)</value></data>
+  <data name="AudioDeviceDesc" xml:space="preserve"><value>이 프로필을 적용하면 이 장치로 소리를 내보냅니다.</value></data>
+  <data name="AudioNone" xml:space="preserve"><value>바꾸지 않음</value></data>
 
   <!-- Wallpaper -->
   <data name="Wallpaper" xml:space="preserve"><value>배경화면</value></data>
-  <data name="WallpaperDesc" xml:space="preserve"><value>이 프로필의 바탕화면 배경</value></data>
   <data name="WallpaperBrowse" xml:space="preserve"><value>찾아보기...</value></data>
   <data name="WallpaperClear" xml:space="preserve"><value>지우기</value></data>
 
-  <!-- HDR -->
-  <data name="HdrStatus" xml:space="preserve"><value>HDR</value></data>
-
   <!-- Night Light -->
   <data name="NightLight" xml:space="preserve"><value>야간 모드</value></data>
-  <data name="NightLightDesc" xml:space="preserve"><value>야간 모드 활성화 또는 비활성화</value></data>
+  <data name="NightLightDesc" xml:space="preserve"><value>이 프로필을 적용할 때 야간 모드를 켜거나 끕니다.</value></data>
   <data name="NightLightOn" xml:space="preserve"><value>켜기</value></data>
   <data name="NightLightOff" xml:space="preserve"><value>끄기</value></data>
   <data name="NightLightUnchanged" xml:space="preserve"><value>변경하지 않음</value></data>
 
   <!-- Schedule -->
   <data name="ScheduleSection" xml:space="preserve"><value>예약</value></data>
-  <data name="ScheduleDesc" xml:space="preserve"><value>특정 시간에 이 프로필을 자동으로 적용</value></data>
-  <data name="ScheduleEnabled" xml:space="preserve"><value>예약 활성화</value></data>
+  <data name="ScheduleDesc" xml:space="preserve"><value>정해진 시간에 이 프로필을 자동으로 적용합니다.</value></data>
   <data name="ScheduleTime" xml:space="preserve"><value>시간</value></data>
   <data name="ScheduleDays" xml:space="preserve"><value>요일</value></data>
   <data name="Monday" xml:space="preserve"><value>월</value></data>
@@ -308,62 +274,48 @@ Delete 또는 Backspace로 삭제. Escape로 취소.</value></data>
   <!-- Tray -->
   <data name="TrayOpen" xml:space="preserve"><value>Mo 열기</value></data>
   <data name="TrayExit" xml:space="preserve"><value>종료</value></data>
-  <data name="TrayTooltip" xml:space="preserve"><value>Mo — 모니터 프로필 관리자</value></data>
+  <data name="TrayTooltip" xml:space="preserve"><value>Mo: 모니터 프로필 관리자</value></data>
 
   <!-- Update Notification -->
   <data name="UpdateAvailableTitle" xml:space="preserve"><value>업데이트 가능</value></data>
   <data name="DownloadUpdate" xml:space="preserve"><value>다운로드</value></data>
   <data name="Later" xml:space="preserve"><value>나중에</value></data>
 
-  <!-- Experimental -->
-  <data name="ExperimentalSection" xml:space="preserve"><value>실험적 기능</value></data>
-  <data name="ExperimentalWarning" xml:space="preserve"><value>이 기능은 실험적이며 모든 시스템에서 올바르게 작동하지 않을 수 있습니다.</value></data>
-  <data name="RotationMethod" xml:space="preserve"><value>회전 방식</value></data>
-  <data name="RotationMethodDesc" xml:space="preserve"><value>NVIDIA 드라이버 회전은 회전된 디스플레이에서 발생하는 Windows 마우스 커서 버그를 회피합니다.</value></data>
-  <data name="RotationWindows" xml:space="preserve"><value>Windows (CCD API)</value></data>
-  <data name="RotationNvidia" xml:space="preserve"><value>NVIDIA 드라이버 (NVAPI)</value></data>
+  <!-- Rotation method -->
+  <data name="RotationWindows" xml:space="preserve"><value>Windows</value></data>
+  <data name="RotationNvidia" xml:space="preserve"><value>NVIDIA 드라이버</value></data>
   <data name="RotationNvidiaUnavailable" xml:space="preserve"><value>NVIDIA 드라이버 (사용 불가)</value></data>
-  <data name="RotationAmd" xml:space="preserve"><value>AMD 드라이버 (ADL)</value></data>
+  <data name="RotationAmd" xml:space="preserve"><value>AMD 드라이버</value></data>
   <data name="RotationAmdUnavailable" xml:space="preserve"><value>AMD 드라이버 (사용 불가)</value></data>
-  <data name="RotationIntel" xml:space="preserve"><value>Intel 드라이버 (IGCL)</value></data>
-  <data name="RotationIntelUnavailable" xml:space="preserve"><value>Intel 드라이버 (사용 불가)</value></data>
 
   <!-- System Info -->
-  <data name="SystemInfoSection" xml:space="preserve"><value>시스템</value></data>
-  <data name="MonitorSection" xml:space="preserve"><value>모니터</value></data>
-  <data name="DebugInfoSection" xml:space="preserve"><value>디버그 정보</value></data>
-  <data name="DebugInfoDesc" xml:space="preserve"><value>버그 보고 또는 문제 해결을 위한 디버그 정보를 복사합니다.</value></data>
-  <data name="CopyDebugInfo" xml:space="preserve"><value>디버그 정보 복사</value></data>
   <data name="ShowDebugInfo" xml:space="preserve"><value>상세 보기</value></data>
   <data name="HideDebugInfo" xml:space="preserve"><value>상세 숨기기</value></data>
 
   <!-- Rotation Warning -->
-  <data name="RotationWarning" xml:space="preserve"><value>Windows CCD API를 통한 회전 적용 시 마우스 포인터 좌표 문제가 발생할 수 있습니다. 이는 Windows 알려진 제한 사항입니다. 커서가 비정상적으로 동작하면 PC를 잠금/해제(Win+L)하세요.</value></data>
+  <data name="RotationWarning" xml:space="preserve"><value>회전한 뒤에 마우스 포인터가 엉뚱한 방향을 가리킬 수 있습니다. 설정에서 '회전 후 마우스 포인터 맞추기'를 켜면 해결됩니다.</value></data>
 
   <!-- Apply Error -->
-  <data name="CompatWarningTitle" xml:space="preserve"><value>모니터 불일치</value></data>
   <data name="MissingMonitors" xml:space="preserve"><value>연결되지 않음</value></data>
-  <data name="ExtraMonitors" xml:space="preserve"><value>프로필에 없음</value></data>
-  <data name="ApplyAnyway" xml:space="preserve"><value>그래도 적용</value></data>
-  <data name="ExtraMonitorsWillDisable" xml:space="preserve"><value>비활성화됨</value></data>
+  <data name="ExtraMonitorsWillDisable" xml:space="preserve"><value>꺼짐</value></data>
   <data name="ApplyErrorTitle" xml:space="preserve"><value>프로필 적용 실패</value></data>
   <data name="ApplyFailed" xml:space="preserve"><value>디스플레이 구성을 적용할 수 없습니다. 일부 모니터가 연결되지 않았거나 구성이 호환되지 않을 수 있습니다.</value></data>
-  <data name="ApplyValidationError" xml:space="preserve"><value>현재 하드웨어 구성에 유효하지 않은 디스플레이 설정입니다. 모니터 연결 상태와 프로필 설정을 확인하세요.</value></data>
+  <data name="ApplyValidationError" xml:space="preserve"><value>지금 연결된 모니터로는 적용할 수 없는 설정입니다. 모니터 연결과 프로필을 확인하세요.</value></data>
   <data name="OK" xml:space="preserve"><value>확인</value></data>
 
   <!-- Error Dialog -->
   <data name="UnhandledErrorTitle" xml:space="preserve"><value>예기치 않은 오류가 발생했습니다</value></data>
-  <data name="UnhandledErrorDesc" xml:space="preserve"><value>Mo에서 처리되지 않은 오류가 발생했습니다. 아래 정보를 복사하여 버그 보고에 활용할 수 있습니다.</value></data>
+  <data name="UnhandledErrorDesc" xml:space="preserve"><value>Mo에 오류가 생겼습니다. 아래 정보를 복사해 알려 주세요.</value></data>
   <data name="CopyErrorInfo" xml:space="preserve"><value>클립보드에 복사</value></data>
-  <data name="Copied" xml:space="preserve"><value>복사됨!</value></data>
+  <data name="Copied" xml:space="preserve"><value>복사했습니다.</value></data>
   <data name="ContinueRunning" xml:space="preserve"><value>계속 실행</value></data>
   <data name="ExitApp" xml:space="preserve"><value>Mo 종료</value></data>
 
   <!-- 단축키 UI -->
   <data name="NextProfileHotkeyCard.Header" xml:space="preserve"><value>다음 프로필</value></data>
-  <data name="NextProfileHotkeyCard.Description" xml:space="preserve"><value>저장된 다음 프로필로 전환합니다.</value></data>
+  <data name="NextProfileHotkeyCard.Description" xml:space="preserve"><value>목록 순서대로 넘어갑니다.</value></data>
   <data name="PrevProfileHotkeyCard.Header" xml:space="preserve"><value>이전 프로필</value></data>
-  <data name="PrevProfileHotkeyCard.Description" xml:space="preserve"><value>저장된 이전 프로필로 전환합니다.</value></data>
+  <data name="PrevProfileHotkeyCard.Description" xml:space="preserve"><value>목록 순서를 거꾸로 넘어갑니다.</value></data>
   <data name="ProfileSlotHotkeyCard.Header" xml:space="preserve"><value>프로필 슬롯 0–9</value></data>
   <data name="ProfileSlotHotkeyCard.Description" xml:space="preserve"><value>수식키 + 0–9 키로 목록 순서대로 프로필을 적용합니다.</value></data>
   <data name="HotkeyChangeBtn.Text" xml:space="preserve"><value>변경…</value></data>

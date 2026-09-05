@@ -64,10 +64,15 @@ public sealed partial class ProfileEditorPage : Page
     {
         if (_profile == null) return;
 
+        // A monitor the profile does not mention is left out of it on purpose: the
+        // unmatched-monitor setting governs that display. It shows in the inventory with
+        // an add button, and adding it is the user's call, not ours.
+        var connected = ReadConnectedMonitors();
+
         ProfileNameBox.Text = _profile.Name;
         DescriptionBox.Text = _profile.Description;
         LayoutCanvas.SetMonitors(_profile.Monitors);
-        RefreshAvailableMonitors();
+        RefreshAvailableMonitors(connected);
 
         // Wallpaper (immediate — no I/O)
         WallpaperPathText.Text = string.IsNullOrEmpty(_profile.WallpaperPath)
@@ -101,9 +106,6 @@ public sealed partial class ProfileEditorPage : Page
             LiveWallpaperCard.Visibility = Visibility.Collapsed;
         }
 
-        // Unmatched monitor action
-        UnmatchedCombo.SelectedIndex = (int)_profile.UnmatchedAction;
-
         // Auto-switch
         AutoSwitchToggle.IsOn = _profile.AutoSwitch;
 
@@ -126,8 +128,13 @@ public sealed partial class ProfileEditorPage : Page
     {
         if (_profile == null) return;
 
+        // An empty dropdown reads as "no audio devices", which is a different claim from
+        // "still asking". See .claude/rules/80-ui-responsiveness.md.
+        AudioCombo.IsEnabled = false;
+        AudioCombo.PlaceholderText = ResourceHelper.GetString("LoadingGeneric");
+
         // Run slow I/O off the UI thread
-        var (colorCaps, audioDevices) = await Task.Run(() =>
+        var (colorCaps, audioDevices) = await Task.Run(async () =>
         {
             List<MonitorColorCapabilities> caps;
             try
@@ -141,7 +148,7 @@ public sealed partial class ProfileEditorPage : Page
             try
             {
                 var audioService = App.Services.GetRequiredService<IAudioService>();
-                audio = audioService.GetAudioDevices();
+                audio = await audioService.GetAudioDevicesAsync();
             }
             catch { audio = []; }
 
@@ -162,12 +169,16 @@ public sealed partial class ProfileEditorPage : Page
                 selectedIndex = i + 1;
         }
         AudioCombo.SelectedIndex = selectedIndex;
+        AudioCombo.IsEnabled = true;
+
+        // Colour capabilities only arrive now. A monitor picked while they were still
+        // loading was judged against an empty list and lost its colour controls for good.
+        if (_selectedMonitor != null)
+            LayoutCanvas_MonitorSelected(this, _selectedMonitor);
     }
 
-    /// <summary>
-    /// Sets a control's tooltip and its accessible name from the same resource, so an
-    /// icon-only button reads the same way to a mouse user and to a screen reader.
-    /// </summary>
+    /// <summary>Sets a control's tooltip and accessible name from the same resource, so an
+    /// icon-only button reads the same to a mouse user and a screen reader.</summary>
     private static void SetHint(Microsoft.UI.Xaml.FrameworkElement element, string resourceKey)
     {
         var text = ResourceHelper.GetString(resourceKey);
@@ -182,6 +193,7 @@ public sealed partial class ProfileEditorPage : Page
         ResLabel.Text = ResourceHelper.GetString("Resolution");
         RefreshLabel.Text = ResourceHelper.GetString("RefreshRate");
         RotLabel.Text = ResourceHelper.GetString("Rotation");
+        ScaleLabel.Text = ResourceHelper.GetString("DisplayScale");
         // Position is now editable via drag in canvas
         ExtrasTitle.Text = ResourceHelper.GetString("GeneralSection");
         AudioLabel.Text = ResourceHelper.GetString("AudioDevice");
@@ -191,8 +203,6 @@ public sealed partial class ProfileEditorPage : Page
         WallpaperClearBtn.Content = ResourceHelper.GetString("WallpaperClear");
         NightLightLabel.Text = ResourceHelper.GetString("NightLight");
         NightLightDesc.Text = ResourceHelper.GetString("NightLightDesc");
-        UnmatchedLabel.Text = ResourceHelper.GetString("UnmatchedMonitors");
-        UnmatchedDesc.Text = ResourceHelper.GetString("UnmatchedMonitorsDesc");
         ImportCurrentLabel.Text = ResourceHelper.GetString("ImportCurrent");
         AlignHorizontalLabel.Text = ResourceHelper.GetString("AlignHorizontal");
         SetPrimaryLabel.Text = ResourceHelper.GetString("SetPrimary");
@@ -207,9 +217,6 @@ public sealed partial class ProfileEditorPage : Page
         SetHint(BackBtn, "TooltipBack");
         AvailableMonitorsTitle.Text = ResourceHelper.GetString("AvailableMonitors");
         AvailableMonitorsDesc.Text = ResourceHelper.GetString("AvailableMonitorsDesc");
-        UnmatchedCombo.Items.Clear();
-        UnmatchedCombo.Items.Add(ResourceHelper.GetString("UnmatchedKeep"));
-        UnmatchedCombo.Items.Add(ResourceHelper.GetString("UnmatchedDisable"));
         AutoSwitchLabel.Text = ResourceHelper.GetString("AutoSwitch");
         AutoSwitchDescText.Text = ResourceHelper.GetString("AutoSwitchDesc");
         ScheduleLabel.Text = ResourceHelper.GetString("ScheduleSection");
@@ -266,10 +273,8 @@ public sealed class AvailableMonitorItem
     public Visibility AddIconVisibility => InProfile ? Visibility.Collapsed : Visibility.Visible;
     public Visibility CheckIconVisibility => InProfile ? Visibility.Visible : Visibility.Collapsed;
 
-    /// <summary>
-    /// Tooltip and accessible name for the row's single icon button, whose glyph flips
-    /// between "+" and "✓". The icon alone carried the entire meaning of the action.
-    /// </summary>
+    /// <summary>Tooltip and accessible name for the row's icon button, whose glyph flips
+    /// between "+" and "✓" — the icon alone carried the whole meaning.</summary>
     public string ActionHint => ResourceHelper.GetString(
         InProfile ? "TooltipMonitorInProfile" : "TooltipAddMonitor", Title);
 }

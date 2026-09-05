@@ -45,9 +45,22 @@
             </Button>
         </Grid>
 
-        <!-- Monitor list -->
+        <!-- Monitor list. Reading DDC/CI capabilities takes seconds on some panels, so
+             the list shows it is working rather than looking like there is nothing. -->
         <ListView Grid.Row="1" x:Name="MonitorList" SelectionChanged="MonitorList_SelectionChanged"
                   VerticalAlignment="Top" />
+
+        <StackPanel Grid.Row="1" x:Name="MonitorListBusy" Orientation="Horizontal" Spacing="10"
+                    HorizontalAlignment="Center" Margin="0,24,0,0">
+            <ProgressRing IsActive="True" Width="20" Height="20" />
+            <TextBlock x:Name="MonitorListBusyText" VerticalAlignment="Center" Opacity="0.7"
+                       Style="{StaticResource CaptionTextBlockStyle}" />
+        </StackPanel>
+
+        <TextBlock Grid.Row="1" x:Name="MonitorListEmpty" Visibility="Collapsed"
+                   HorizontalAlignment="Center" Margin="0,24,0,0" Opacity="0.7"
+                   TextWrapping="Wrap" TextAlignment="Center"
+                   Style="{StaticResource CaptionTextBlockStyle}" />
 
         <!-- Detail panel. Bottom padding so the last card doesn't butt against the
              window edge when scrolled to the end. -->
@@ -79,7 +92,9 @@
                             <Button Grid.Column="1" x:Name="ResetBtn" Click="ResetBtn_Click" />
                         </Grid>
 
-                        <Grid>
+                        <!-- Whole rows are hidden when the panel does not support them,
+                             label and value included, so nothing is left dangling. -->
+                        <Grid x:Name="BrightnessRow">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="80" /><ColumnDefinition Width="*" /><ColumnDefinition Width="48" />
                             </Grid.ColumnDefinitions>
@@ -88,7 +103,7 @@
                             <TextBlock Grid.Column="2" x:Name="BrightnessValue" HorizontalAlignment="Right" VerticalAlignment="Center" />
                         </Grid>
 
-                        <Grid>
+                        <Grid x:Name="ContrastRow">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="80" /><ColumnDefinition Width="*" /><ColumnDefinition Width="48" />
                             </Grid.ColumnDefinitions>
@@ -97,14 +112,13 @@
                             <TextBlock Grid.Column="2" x:Name="ContrastValue" HorizontalAlignment="Right" VerticalAlignment="Center" />
                         </Grid>
 
-                        <Grid>
+                        <Grid x:Name="RedRow">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="80" /><ColumnDefinition Width="*" /><ColumnDefinition Width="48" />
                             </Grid.ColumnDefinitions>
-                            <!-- The colour lives in the swatch, not in the glyph. A tinted
-                                 letter on its own failed contrast outright in the light
-                                 theme (#44BB44 on white is about 2.2:1) and made the
-                                 channel unreadable for anyone who can't separate the hues. -->
+                            <!-- Colour lives in the swatch, not the glyph: a tinted letter
+                                 alone fails contrast in the light theme (#44BB44 on white
+                                 is ~2.2:1) and is unreadable without hue perception. -->
                             <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                 <Rectangle Width="10" Height="10" RadiusX="2" RadiusY="2" Fill="#E03A3A" />
                                 <TextBlock Text="R" FontWeight="SemiBold" />
@@ -113,7 +127,7 @@
                             <TextBlock Grid.Column="2" x:Name="RedValue" HorizontalAlignment="Right" VerticalAlignment="Center" />
                         </Grid>
 
-                        <Grid>
+                        <Grid x:Name="GreenRow">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="80" /><ColumnDefinition Width="*" /><ColumnDefinition Width="48" />
                             </Grid.ColumnDefinitions>
@@ -125,7 +139,7 @@
                             <TextBlock Grid.Column="2" x:Name="GreenValue" HorizontalAlignment="Right" VerticalAlignment="Center" />
                         </Grid>
 
-                        <Grid>
+                        <Grid x:Name="BlueRow">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="80" /><ColumnDefinition Width="*" /><ColumnDefinition Width="48" />
                             </Grid.ColumnDefinitions>
@@ -180,7 +194,7 @@
                       BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
                     <StackPanel Spacing="10">
                         <TextBlock x:Name="AmdTitle" Style="{StaticResource BodyStrongTextBlockStyle}" />
-                        <Grid>
+                        <Grid x:Name="AmdSaturationRow">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="80" /><ColumnDefinition Width="*" /><ColumnDefinition Width="48" />
                             </Grid.ColumnDefinitions>
@@ -188,7 +202,7 @@
                             <Slider Grid.Column="1" x:Name="AmdSaturationSlider" ValueChanged="AmdSlider_ValueChanged" />
                             <TextBlock Grid.Column="2" x:Name="AmdSaturationValue" HorizontalAlignment="Right" VerticalAlignment="Center" />
                         </Grid>
-                        <Grid>
+                        <Grid x:Name="AmdHueRow">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="80" /><ColumnDefinition Width="*" /><ColumnDefinition Width="48" />
                             </Grid.ColumnDefinitions>

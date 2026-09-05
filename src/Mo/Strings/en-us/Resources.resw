@@ -33,22 +33,25 @@
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
 
   <!-- App -->
-  <data name="AppDisplayName" xml:space="preserve"><value>Mo — Monitor Profile Manager</value></data>
   <data name="AppTitleBar" xml:space="preserve"><value>Mo</value></data>
 
   <!-- Navigation -->
   <data name="NavProfiles" xml:space="preserve"><value>Profiles</value></data>
-  <data name="NavSettings" xml:space="preserve"><value>Settings</value></data>
 
   <!-- Profile List -->
   <data name="ProfilesTitle" xml:space="preserve"><value>Profiles</value></data>
   <data name="SaveCurrent" xml:space="preserve"><value>Save Current</value></data>
   <data name="CapturingProfile" xml:space="preserve"><value>Capturing display configuration...</value></data>
   <data name="NewLayout" xml:space="preserve"><value>New Layout</value></data>
-  <data name="MonitorsSuffix" xml:space="preserve"><value>monitors</value></data>
+  <data name="MonitorsCountFormat" xml:space="preserve"><value>{0} monitors</value></data>
   <data name="Apply" xml:space="preserve"><value>Apply</value></data>
+  <data name="LoadingProfiles" xml:space="preserve"><value>Loading your profiles...</value></data>
+  <data name="LoadingGeneric" xml:space="preserve"><value>Loading...</value></data>
+  <data name="AppSubtitle" xml:space="preserve"><value>Monitor profiles</value></data>
+  <data name="LayoutCanvasEmpty.Text" xml:space="preserve"><value>No monitors detected</value></data>
+  <data name="ApplyingProfile" xml:space="preserve"><value>Setting up your displays...</value></data>
   <data name="EmptyTitle" xml:space="preserve"><value>No profiles saved yet</value></data>
-  <data name="EmptyDescription" xml:space="preserve"><value>Click 'Save Current' to save your monitor configuration</value></data>
+  <data name="EmptyDescription" xml:space="preserve"><value>Select 'Save Current' to create your first profile.</value></data>
 
   <!-- Profile Actions -->
   <data name="SetHotkey" xml:space="preserve"><value>Set Hotkey</value></data>
@@ -62,8 +65,6 @@
   <data name="Export" xml:space="preserve"><value>Export...</value></data>
   <data name="Import" xml:space="preserve"><value>Import</value></data>
   <data name="Rename" xml:space="preserve"><value>Rename</value></data>
-  <data name="UnmatchedMonitors" xml:space="preserve"><value>Unlisted Monitors</value></data>
-  <data name="UnmatchedMonitorsDesc" xml:space="preserve"><value>What to do with monitors not listed in this profile</value></data>
   <data name="ImportCurrent" xml:space="preserve"><value>Import current</value></data>
   <data name="AlignHorizontal" xml:space="preserve"><value>Align horizontal</value></data>
   <data name="SetPrimary" xml:space="preserve"><value>Set primary</value></data>
@@ -71,7 +72,7 @@
   <data name="UnsavedChangesContent" xml:space="preserve"><value>You have unsaved changes. Save before leaving?</value></data>
   <data name="Discard" xml:space="preserve"><value>Discard</value></data>
   <data name="GpuPromptTitle" xml:space="preserve"><value>Switch to driver-level rotation?</value></data>
-  <data name="GpuPromptContent" xml:space="preserve"><value>A {0} GPU was detected. Using the {0} driver to apply rotation avoids a Windows cursor-coordinate bug and keeps settings persistent after reboot. You can change this anytime under Settings → Advanced.</value></data>
+  <data name="GpuPromptContent" xml:space="preserve"><value>Mo found a {0} graphics card. It can apply display changes through the {0} driver instead of through Windows. You can change this later in Settings, under Advanced.</value></data>
   <data name="GpuPromptUseDriver" xml:space="preserve"><value>Use {0} driver</value></data>
   <data name="GpuPromptKeepWindows" xml:space="preserve"><value>Keep Windows default</value></data>
   <data name="Saturation" xml:space="preserve"><value>Saturation</value></data>
@@ -79,139 +80,100 @@
   <data name="AmdColorSection" xml:space="preserve"><value>AMD color controls</value></data>
   <data name="AvailableMonitors" xml:space="preserve"><value>Available Monitors</value></data>
   <data name="AvailableMonitorsDesc" xml:space="preserve"><value>All connected displays. + adds the monitor to this profile; ✓ means it's already in the profile.</value></data>
-  <data name="RestoreOnStartup" xml:space="preserve"><value>Restore last profile on startup</value></data>
-  <data name="RestoreOnStartupDesc" xml:space="preserve"><value>Automatically re-apply the most recently used profile when the app launches.</value></data>
-  <data name="RestoreColorOnStartup" xml:space="preserve"><value>Restore color settings on startup</value></data>
-  <data name="RestoreColorOnStartupDesc" xml:space="preserve"><value>Windows doesn't persist DDC/CI brightness or contrast across reboots. Re-push them on launch.</value></data>
-  <data name="HotkeysEnabled" xml:space="preserve"><value>Global hotkeys</value></data>
-  <data name="HotkeysEnabledDesc" xml:space="preserve"><value>Trigger profiles with your system-wide shortcuts.</value></data>
-  <data name="AppearanceSection" xml:space="preserve"><value>Appearance</value></data>
-  <data name="ProfilesSection" xml:space="preserve"><value>Profiles</value></data>
-  <data name="UpdatesSection" xml:space="preserve"><value>Updates</value></data>
-  <data name="AdvancedSection" xml:space="preserve"><value>Advanced</value></data>
   <data name="NavDisplayTuning" xml:space="preserve"><value>Display Tuning</value></data>
+  <data name="NavSettings" xml:space="preserve"><value>Settings</value></data>
   <data name="DisplayTuningTitle" xml:space="preserve"><value>Display Tuning</value></data>
   <data name="DisplayTuningSubtitle" xml:space="preserve"><value>Real-time brightness, contrast, and color controls for the selected monitor.</value></data>
+  <data name="DisplayTuningLoading" xml:space="preserve"><value>Checking what your monitors support</value></data>
+  <data name="DisplayTuningNoMonitors" xml:space="preserve"><value>No monitors found.</value></data>
   <data name="Refresh" xml:space="preserve"><value>Refresh</value></data>
   <data name="DdcCiSection" xml:space="preserve"><value>Brightness &amp; Color</value></data>
-  <data name="DdcCiUnsupported" xml:space="preserve"><value>This monitor doesn't expose DDC/CI controls.</value></data>
+  <data name="DdcCiUnsupported" xml:space="preserve"><value>This monitor cannot be adjusted from software.</value></data>
   <data name="ResetDefaults" xml:space="preserve"><value>Reset</value></data>
   <data name="ColorPreset" xml:space="preserve"><value>Color preset</value></data>
   <data name="ColorPresetDesc" xml:space="preserve"><value>Switch between sRGB, warm/cool color temperatures, and your custom preset.</value></data>
   <data name="PresetNative" xml:space="preserve"><value>Native</value></data>
   <data name="PresetUser" xml:space="preserve"><value>User</value></data>
   <data name="Hdr" xml:space="preserve"><value>HDR</value></data>
-  <data name="HdrDesc" xml:space="preserve"><value>Toggle Windows advanced color (HDR) for this display.</value></data>
-  <data name="UnmatchedKeep" xml:space="preserve"><value>Keep current state</value></data>
-  <data name="UnmatchedDisable" xml:space="preserve"><value>Turn off</value></data>
+  <data name="HdrDesc" xml:space="preserve"><value>Turn HDR on or off for this monitor.</value></data>
   <data name="AutoSwitch" xml:space="preserve"><value>Auto-switch</value></data>
-  <data name="AutoSwitchDesc" xml:space="preserve"><value>Automatically apply when these monitors are detected</value></data>
+  <data name="AutoSwitchDesc" xml:space="preserve"><value>Apply automatically when these monitors are connected.</value></data>
 
   <!-- Apply Confirmation -->
   <data name="KeepChanges" xml:space="preserve"><value>Keep Changes</value></data>
   <data name="Revert" xml:space="preserve"><value>Revert</value></data>
-  <data name="ConfirmTitle" xml:space="preserve"><value>Keep this display configuration?</value></data>
-  <data name="RevertingIn" xml:space="preserve"><value>Reverting in {0} seconds...</value></data>
   <data name="ApplyConfirmTitle" xml:space="preserve"><value>Keep this display configuration?</value></data>
   <data name="ApplyConfirmCountdown" xml:space="preserve"><value>Reverting in {0} seconds...</value></data>
 
   <!-- Rename Dialog -->
-  <data name="RenameTitle" xml:space="preserve"><value>Rename Profile</value></data>
-  <data name="RenameLabel" xml:space="preserve"><value>Profile name</value></data>
   <data name="RenameProfileTitle" xml:space="preserve"><value>Rename Profile</value></data>
   <data name="RenameProfilePrompt" xml:space="preserve"><value>Enter a new name for "{0}":</value></data>
   <data name="NewName" xml:space="preserve"><value>New name</value></data>
 
   <!-- Export/Import -->
-  <data name="ExportSuccess" xml:space="preserve"><value>Profile exported successfully.</value></data>
-  <data name="ImportSuccess" xml:space="preserve"><value>Profile imported successfully.</value></data>
-  <data name="ImportFailed" xml:space="preserve"><value>Failed to import profile.</value></data>
-  <data name="MoProfileFileType" xml:space="preserve"><value>Mo Profile</value></data>
   <data name="ExportProfileType" xml:space="preserve"><value>Mo Profile</value></data>
-  <data name="ImportProfileType" xml:space="preserve"><value>Mo Profile</value></data>
 
   <!-- Hotkey Dialog -->
-  <data name="HotkeyDialogTitle" xml:space="preserve"><value>Set Hotkey — {0}</value></data>
+  <data name="HotkeyDialogTitle" xml:space="preserve"><value>Set Hotkey: {0}</value></data>
   <data name="HotkeyDialogDescription" xml:space="preserve"><value>Click the box below and press a key combination (e.g. Ctrl+Alt+1).
 Press Delete or Backspace to clear. Escape to cancel.</value></data>
-  <data name="HotkeyPlaceholder" xml:space="preserve"><value>Click to set hotkey</value></data>
-  <data name="HotkeyCapturing" xml:space="preserve"><value>Press a key combination...</value></data>
 
   <!-- Settings -->
   <data name="SettingsTitle" xml:space="preserve"><value>Settings</value></data>
   <data name="GeneralSection" xml:space="preserve"><value>General</value></data>
-  <data name="LaunchAtStartup" xml:space="preserve"><value>Launch at startup</value></data>
-  <data name="LaunchAtStartupDesc" xml:space="preserve"><value>Start Mo when you sign in to Windows</value></data>
-  <data name="MinimizeToTray" xml:space="preserve"><value>Minimize to tray on close</value></data>
-  <data name="MinimizeToTrayDesc" xml:space="preserve"><value>Keep Mo running in the system tray</value></data>
-  <data name="StartMinimized" xml:space="preserve"><value>Start minimized</value></data>
-  <data name="StartMinimizedDesc" xml:space="preserve"><value>Start in the system tray instead of showing the window</value></data>
-  <data name="Theme" xml:space="preserve"><value>Theme</value></data>
-  <data name="ThemeDesc" xml:space="preserve"><value>Choose your preferred appearance</value></data>
   <data name="ThemeSystem" xml:space="preserve"><value>Use system setting</value></data>
   <data name="ThemeLight" xml:space="preserve"><value>Light</value></data>
   <data name="ThemeDark" xml:space="preserve"><value>Dark</value></data>
-  <data name="AutoSwitchSetting" xml:space="preserve"><value>Auto-switch profiles</value></data>
-  <data name="AutoSwitchSettingDesc" xml:space="preserve"><value>Automatically apply profiles when monitor configuration changes</value></data>
-  <data name="CheckForUpdates" xml:space="preserve"><value>Check for updates</value></data>
-  <data name="CheckForUpdatesDesc" xml:space="preserve"><value>Periodically check for new versions</value></data>
-  <data name="CheckNow" xml:space="preserve"><value>Check Now</value></data>
-  <data name="UpToDate" xml:space="preserve"><value>You're up to date!</value></data>
-  <data name="UpdateAvailable" xml:space="preserve"><value>Version {0} is available</value></data>
-  <data name="MultiUser" xml:space="preserve"><value>Per-user profiles</value></data>
-  <data name="MultiUserDesc" xml:space="preserve"><value>Keep separate profiles for each Windows user</value></data>
+  <data name="UpToDate" xml:space="preserve"><value>You're up to date.</value></data>
+  <data name="UpdateAvailable" xml:space="preserve"><value>New version available: {0}</value></data>
 
-  <!-- SettingsCard x:Uid bindings — *.Header and *.Description map to control props. -->
+  <!-- SettingsCard x:Uid bindings: *.Header and *.Description map to control props. -->
   <data name="LaunchAtStartupCard.Header" xml:space="preserve"><value>Launch at startup</value></data>
   <data name="LaunchAtStartupCard.Description" xml:space="preserve"><value>Start Mo when you sign in to Windows.</value></data>
   <data name="MinimizeToTrayCard.Header" xml:space="preserve"><value>Minimize to tray on close</value></data>
   <data name="MinimizeToTrayCard.Description" xml:space="preserve"><value>Keep Mo running in the system tray.</value></data>
   <data name="StartMinimizedCard.Header" xml:space="preserve"><value>Start minimized</value></data>
-  <data name="StartMinimizedCard.Description" xml:space="preserve"><value>Start in the system tray instead of showing the window.</value></data>
+  <data name="StartMinimizedCard.Description" xml:space="preserve"><value>At sign-in only, start in the notification area instead of showing the window.</value></data>
   <data name="ThemeCard.Header" xml:space="preserve"><value>Theme</value></data>
-  <data name="ThemeCard.Description" xml:space="preserve"><value>Choose your preferred appearance.</value></data>
+  <data name="ThemeCard.Description" xml:space="preserve"><value>Choose how the app looks.</value></data>
   <data name="AutoSwitchCard.Header" xml:space="preserve"><value>Auto-switch profiles</value></data>
-  <data name="AutoSwitchCard.Description" xml:space="preserve"><value>Automatically apply profiles when monitor configuration changes.</value></data>
+  <data name="AutoSwitchCard.Description" xml:space="preserve"><value>Apply the matching profile when your monitors change.</value></data>
   <data name="HotkeysCard.Header" xml:space="preserve"><value>Global hotkeys</value></data>
-  <data name="HotkeysCard.Description" xml:space="preserve"><value>Trigger profiles with system-wide shortcuts.</value></data>
-  <data name="ConfirmApplyCard.Header" xml:space="preserve"><value>Confirm before keeping a display change</value></data>
-  <data name="ConfirmApplyCard.Description" xml:space="preserve"><value>After a profile is applied, ask for confirmation and roll the displays back if there is no answer. Protects against a layout that leaves a monitor black or off-screen.</value></data>
-  <data name="ApplyConfirmSecondsCard.Header" xml:space="preserve"><value>Countdown before reverting</value></data>
-  <data name="ApplyConfirmSecondsCard.Description" xml:space="preserve"><value>Seconds to wait for confirmation (5-120).</value></data>
+  <data name="HotkeysCard.Description" xml:space="preserve"><value>Apply a profile with a shortcut while Mo runs in the tray.</value></data>
+  <data name="ConfirmApplyCard.Header" xml:space="preserve"><value>Confirm after applying</value></data>
+  <data name="ConfirmApplyCard.Description" xml:space="preserve"><value>Rolls the displays back if you do not answer within 15 seconds.</value></data>
   <data name="TrayUnavailableTitle" xml:space="preserve"><value>Mo could not create a tray icon</value></data>
-  <data name="TrayUnavailableDesc" xml:space="preserve"><value>Windows refused the notification-area icon, so Mo is keeping its window open — otherwise you would have no way to reach it. Closing the window will now exit Mo. Restarting Windows Explorer usually fixes this.</value></data>
+  <data name="TrayUnavailableDesc" xml:space="preserve"><value>Windows refused the notification area icon, so Mo is keeping its window open. Closing the window will now exit Mo. Restarting Windows Explorer usually fixes this.</value></data>
   <data name="TimeJustNow" xml:space="preserve"><value>just now</value></data>
   <data name="TimeMinutesAgo" xml:space="preserve"><value>{0} min ago</value></data>
   <data name="TimeHoursAgo" xml:space="preserve"><value>{0} hr ago</value></data>
   <data name="TimeYesterday" xml:space="preserve"><value>yesterday</value></data>
   <data name="TimeDaysAgo" xml:space="preserve"><value>{0} days ago</value></data>
-  <data name="ModifiedPrefix" xml:space="preserve"><value>Updated {0}</value></data>
   <data name="ChannelRed" xml:space="preserve"><value>Red gain</value></data>
   <data name="ChannelGreen" xml:space="preserve"><value>Green gain</value></data>
   <data name="ChannelBlue" xml:space="preserve"><value>Blue gain</value></data>
   <data name="ActiveProfile" xml:space="preserve"><value>Active</value></data>
   <data name="TooltipImportCurrent" xml:space="preserve"><value>Replace this layout with the monitors currently connected</value></data>
-  <data name="TooltipAlignHorizontal" xml:space="preserve"><value>Line the monitors up side by side, top edges aligned</value></data>
+  <data name="TooltipAlignHorizontal" xml:space="preserve"><value>Line the monitors up side by side, centred on each other</value></data>
   <data name="TooltipSetPrimary" xml:space="preserve"><value>Make the selected monitor the primary display</value></data>
-  <data name="TooltipRemoveMonitor" xml:space="preserve"><value>Remove this monitor from the profile</value></data>
+  <data name="TooltipRemoveMonitor" xml:space="preserve"><value>Take out of this profile, so applying it turns this monitor off</value></data>
   <data name="TooltipBack" xml:space="preserve"><value>Back to profiles</value></data>
   <data name="TooltipAddMonitor" xml:space="preserve"><value>Add {0} to this profile</value></data>
-  <data name="TooltipMonitorInProfile" xml:space="preserve"><value>{0} is already in this profile — select it in the layout</value></data>
+  <data name="TooltipMonitorInProfile" xml:space="preserve"><value>{0} is already in this profile. Select it in the layout.</value></data>
   <data name="MoreActions" xml:space="preserve"><value>More actions</value></data>
   <data name="HotkeyConflictTitle" xml:space="preserve"><value>Some shortcuts are unavailable</value></data>
   <data name="HotkeyConflictMessage" xml:space="preserve"><value>Windows gave these to another program, so they will not trigger Mo: {0}. Pick a different combination.</value></data>
   <data name="RemoveDataCard.Header" xml:space="preserve"><value>Remove Mo's data</value></data>
-  <data name="RemoveDataCard.Description" xml:space="preserve"><value>Deletes saved profiles, settings and logs, and removes the auto-start entry. Do this before deleting the app folder — uninstalling does not clean these up.</value></data>
-  <data name="RemoveDataButton" xml:space="preserve"><value>Remove data</value></data>
+  <data name="RemoveDataCard.Description" xml:space="preserve"><value>Deletes saved profiles, settings and logs, and removes the auto-start entry. Do this before deleting the app folder, because uninstalling leaves them behind.</value></data>
+  <data name="RemoveDataButton.Text" xml:space="preserve"><value>Remove data</value></data>
   <data name="RemoveDataTitle" xml:space="preserve"><value>Remove Mo's data</value></data>
   <data name="RemoveDataConfirm" xml:space="preserve"><value>This permanently deletes the following. Saved profiles cannot be recovered.</value></data>
-  <data name="RemoveDataNothing" xml:space="preserve"><value>There is nothing to remove — no saved data or auto-start entry was found.</value></data>
+  <data name="RemoveDataNothing" xml:space="preserve"><value>There is nothing to remove.</value></data>
   <data name="RemoveDataDone" xml:space="preserve"><value>Removed. Mo will close now.</value></data>
   <data name="RemoveDataPartial" xml:space="preserve"><value>Some items could not be removed. Close Mo and delete them manually.</value></data>
-  <data name="OpenLogFolderText" xml:space="preserve"><value>Open logs</value></data>
+  <data name="OpenLogFolderText.Text" xml:space="preserve"><value>Open logs</value></data>
   <data name="SlotShortcut" xml:space="preserve"><value>Apply with {0}</value></data>
   <data name="SlotNoShortcut" xml:space="preserve"><value>Position in your order. Assign a slot shortcut in Settings to apply this with the keyboard.</value></data>
-  <data name="ReorderHint" xml:space="preserve"><value>Drag cards to reorder. The number is the keyboard slot.</value></data>
   <data name="MoveUp" xml:space="preserve"><value>Move up</value></data>
   <data name="MoveDown" xml:space="preserve"><value>Move down</value></data>
   <data name="Duplicate" xml:space="preserve"><value>Duplicate</value></data>
@@ -222,34 +184,45 @@ Press Delete or Backspace to clear. Escape to cancel.</value></data>
   <data name="CompatDisabledMonitors" xml:space="preserve"><value>Currently switched off and will be turned back on: {0}</value></data>
   <data name="ImportFailedTitle" xml:space="preserve"><value>Could not import that file</value></data>
   <data name="ImportFailedNotValidJson" xml:space="preserve"><value>The file is not readable as a Mo profile. It may be damaged or exported by a different program.</value></data>
-  <data name="ImportFailedNotAProfile" xml:space="preserve"><value>The file is valid JSON but does not contain a display profile.</value></data>
+  <data name="ImportFailedNotAProfile" xml:space="preserve"><value>This file does not contain a display profile.</value></data>
   <data name="ImportFailedSave" xml:space="preserve"><value>The profile was read but could not be saved. Check that Mo can write to its data folder.</value></data>
   <data name="ImportedProfileFallbackName" xml:space="preserve"><value>Imported profile</value></data>
   <data name="RestoreOnStartupCard.Header" xml:space="preserve"><value>Restore last profile on startup</value></data>
   <data name="RestoreOnStartupCard.Description" xml:space="preserve"><value>Re-apply the most recently used profile when Mo launches.</value></data>
-  <data name="RestoreColorCard.Header" xml:space="preserve"><value>Restore color settings on startup</value></data>
-  <data name="RestoreColorCard.Description" xml:space="preserve"><value>Windows doesn't persist DDC/CI brightness or contrast across reboots — re-push them on launch.</value></data>
-  <data name="UpdateCheckCard.Header" xml:space="preserve"><value>Check for updates</value></data>
-  <data name="UpdateCheckCard.Description" xml:space="preserve"><value>Notify me when a new version is available.</value></data>
-  <data name="RotationMethodCard.Header" xml:space="preserve"><value>Rotation method</value></data>
-  <data name="RotationMethodCard.Description" xml:space="preserve"><value>Use the GPU vendor's driver to apply rotation. Avoids the Windows cursor coordinate bug after rotating.</value></data>
-  <data name="GeneralExpander.Header" xml:space="preserve"><value>General</value></data>
+  <data name="RestoreColorCard.Header" xml:space="preserve"><value>Restore brightness and color too</value></data>
+  <data name="RestoreColorCard.Description" xml:space="preserve"><value>Also puts back the brightness, contrast and color saved in the profile.</value></data>
+  <data name="ResetCursorAfterRotationCard.Header" xml:space="preserve"><value>Fix the pointer after rotating</value></data>
+  <data name="ResetCursorAfterRotationCard.Description" xml:space="preserve"><value>The screen goes black for a few seconds each time you apply a rotation.</value></data>
   <data name="AppearanceExpander.Header" xml:space="preserve"><value>Appearance</value></data>
-  <data name="ProfilesExpander.Header" xml:space="preserve"><value>Profiles</value></data>
   <data name="UpdatesExpander.Header" xml:space="preserve"><value>Updates</value></data>
+  <data name="UpdateCheckCard.Header" xml:space="preserve"><value>Check automatically</value></data>
+  <data name="UpdateCheckCard.Description" xml:space="preserve"><value>Notify me when a new version is available.</value></data>
+  <data name="UpdateCheckNowCard.Header" xml:space="preserve"><value>Check now</value></data>
+  <data name="UpdateCheckNowCard.Description" xml:space="preserve"><value>Looks for a new version straight away.</value></data>
+  <data name="RotationMethodCard.Header" xml:space="preserve"><value>Rotation method</value></data>
+  <data name="RotationMethodCard.Description" xml:space="preserve"><value>More reliable when Windows fails to turn a monitor back on.</value></data>
+  <data name="GeneralExpander.Header" xml:space="preserve"><value>General</value></data>
+  <data name="ProfilesExpander.Header" xml:space="preserve"><value>Profiles</value></data>
   <data name="AdvancedExpander.Header" xml:space="preserve"><value>Advanced</value></data>
-  <data name="AboutExpander.Header" xml:space="preserve"><value>About &amp; system info</value></data>
+  <data name="AboutExpander.Header" xml:space="preserve"><value>About and system info</value></data>
   <data name="CheckNowText.Text" xml:space="preserve"><value>Check now</value></data>
   <data name="CopyDebugText.Text" xml:space="preserve"><value>Copy debug info</value></data>
   <data name="ShowDebugText.Text" xml:space="preserve"><value>Show debug info</value></data>
   <data name="LanguageCard.Header" xml:space="preserve"><value>Language</value></data>
-  <data name="LanguageCard.Description" xml:space="preserve"><value>Override the display language. Restart Mo to apply.</value></data>
+  <data name="LanguageCard.Description" xml:space="preserve"><value>Takes effect the next time Mo starts.</value></data>
   <data name="LanguageAuto" xml:space="preserve"><value>Use Windows default</value></data>
 
   <!-- About -->
-  <data name="AboutSection" xml:space="preserve"><value>About</value></data>
-  <data name="AboutName" xml:space="preserve"><value>Mo — Monitor Profile Manager</value></data>
-  <data name="AboutVersion" xml:space="preserve"><value>Version 0.21.2</value></data>
+  <data name="AboutName" xml:space="preserve"><value>Mo: Monitor Profile Manager</value></data>
+  <data name="AboutVersionFormat" xml:space="preserve"><value>Version {0}</value></data>
+  <data name="MonitorPrimaryBadge.Text" xml:space="preserve"><value>Primary</value></data>
+  <data name="SysSectionTitle" xml:space="preserve"><value>This PC</value></data>
+  <data name="SysMonitorsTitle" xml:space="preserve"><value>Monitors</value></data>
+  <data name="SysDiagnosticsTitle" xml:space="preserve"><value>Diagnostics</value></data>
+  <data name="SysLabelOs" xml:space="preserve"><value>Windows</value></data>
+  <data name="SysLabelCpu" xml:space="preserve"><value>Processor</value></data>
+  <data name="SysLabelRam" xml:space="preserve"><value>Memory</value></data>
+  <data name="SysLabelGpu" xml:space="preserve"><value>Graphics</value></data>
   <data name="AboutDescription" xml:space="preserve"><value>Save and restore your multi-monitor configurations with one click.</value></data>
 
   <!-- Profile Editor -->
@@ -258,9 +231,7 @@ Press Delete or Backspace to clear. Escape to cancel.</value></data>
   <data name="Resolution" xml:space="preserve"><value>Resolution</value></data>
   <data name="RefreshRate" xml:space="preserve"><value>Refresh Rate</value></data>
   <data name="Rotation" xml:space="preserve"><value>Rotation</value></data>
-  <data name="Position" xml:space="preserve"><value>Position</value></data>
-  <data name="RotationNone" xml:space="preserve"><value>None</value></data>
-  <data name="NoMonitorsDetected" xml:space="preserve"><value>No monitors detected</value></data>
+  <data name="DisplayScale" xml:space="preserve"><value>Scale</value></data>
 
   <!-- Monitor Color -->
   <data name="MonitorColor" xml:space="preserve"><value>Brightness &amp; Color</value></data>
@@ -272,29 +243,24 @@ Press Delete or Backspace to clear. Escape to cancel.</value></data>
 
   <!-- Audio -->
   <data name="AudioDevice" xml:space="preserve"><value>Audio Output</value></data>
-  <data name="AudioDeviceDesc" xml:space="preserve"><value>Default audio output device for this profile</value></data>
-  <data name="AudioNone" xml:space="preserve"><value>None (don't change)</value></data>
+  <data name="AudioDeviceDesc" xml:space="preserve"><value>Applying this profile switches sound to this device.</value></data>
+  <data name="AudioNone" xml:space="preserve"><value>Leave unchanged</value></data>
 
   <!-- Wallpaper -->
   <data name="Wallpaper" xml:space="preserve"><value>Wallpaper</value></data>
-  <data name="WallpaperDesc" xml:space="preserve"><value>Desktop wallpaper for this profile</value></data>
   <data name="WallpaperBrowse" xml:space="preserve"><value>Browse...</value></data>
   <data name="WallpaperClear" xml:space="preserve"><value>Clear</value></data>
 
-  <!-- HDR -->
-  <data name="HdrStatus" xml:space="preserve"><value>HDR</value></data>
-
   <!-- Night Light -->
   <data name="NightLight" xml:space="preserve"><value>Night Light</value></data>
-  <data name="NightLightDesc" xml:space="preserve"><value>Enable or disable Night Light</value></data>
+  <data name="NightLightDesc" xml:space="preserve"><value>Turn Night light on or off when this profile is applied.</value></data>
   <data name="NightLightOn" xml:space="preserve"><value>On</value></data>
   <data name="NightLightOff" xml:space="preserve"><value>Off</value></data>
   <data name="NightLightUnchanged" xml:space="preserve"><value>Unchanged</value></data>
 
   <!-- Schedule -->
   <data name="ScheduleSection" xml:space="preserve"><value>Schedule</value></data>
-  <data name="ScheduleDesc" xml:space="preserve"><value>Automatically apply this profile at a specific time</value></data>
-  <data name="ScheduleEnabled" xml:space="preserve"><value>Enable schedule</value></data>
+  <data name="ScheduleDesc" xml:space="preserve"><value>Apply this profile automatically at a set time.</value></data>
   <data name="ScheduleTime" xml:space="preserve"><value>Time</value></data>
   <data name="ScheduleDays" xml:space="preserve"><value>Days</value></data>
   <data name="Monday" xml:space="preserve"><value>Mon</value></data>
@@ -308,62 +274,48 @@ Press Delete or Backspace to clear. Escape to cancel.</value></data>
   <!-- Tray -->
   <data name="TrayOpen" xml:space="preserve"><value>Open Mo</value></data>
   <data name="TrayExit" xml:space="preserve"><value>Exit</value></data>
-  <data name="TrayTooltip" xml:space="preserve"><value>Mo — Monitor Profile Manager</value></data>
+  <data name="TrayTooltip" xml:space="preserve"><value>Mo: Monitor Profile Manager</value></data>
 
   <!-- Update Notification -->
   <data name="UpdateAvailableTitle" xml:space="preserve"><value>Update Available</value></data>
   <data name="DownloadUpdate" xml:space="preserve"><value>Download</value></data>
   <data name="Later" xml:space="preserve"><value>Later</value></data>
 
-  <!-- Experimental -->
-  <data name="ExperimentalSection" xml:space="preserve"><value>Experimental</value></data>
-  <data name="ExperimentalWarning" xml:space="preserve"><value>These features are experimental and may not work correctly on all systems.</value></data>
-  <data name="RotationMethod" xml:space="preserve"><value>Rotation Method</value></data>
-  <data name="RotationMethodDesc" xml:space="preserve"><value>NVIDIA driver rotation avoids the Windows mouse cursor bug with rotated displays.</value></data>
-  <data name="RotationWindows" xml:space="preserve"><value>Windows (CCD API)</value></data>
-  <data name="RotationNvidia" xml:space="preserve"><value>NVIDIA Driver (NVAPI)</value></data>
-  <data name="RotationNvidiaUnavailable" xml:space="preserve"><value>NVIDIA Driver (not available)</value></data>
-  <data name="RotationAmd" xml:space="preserve"><value>AMD Driver (ADL)</value></data>
-  <data name="RotationAmdUnavailable" xml:space="preserve"><value>AMD Driver (not available)</value></data>
-  <data name="RotationIntel" xml:space="preserve"><value>Intel Driver (IGCL)</value></data>
-  <data name="RotationIntelUnavailable" xml:space="preserve"><value>Intel Driver (not available)</value></data>
+  <!-- Rotation method -->
+  <data name="RotationWindows" xml:space="preserve"><value>Windows</value></data>
+  <data name="RotationNvidia" xml:space="preserve"><value>NVIDIA driver</value></data>
+  <data name="RotationNvidiaUnavailable" xml:space="preserve"><value>NVIDIA driver (not available)</value></data>
+  <data name="RotationAmd" xml:space="preserve"><value>AMD driver</value></data>
+  <data name="RotationAmdUnavailable" xml:space="preserve"><value>AMD driver (not available)</value></data>
 
   <!-- System Info -->
-  <data name="SystemInfoSection" xml:space="preserve"><value>System</value></data>
-  <data name="MonitorSection" xml:space="preserve"><value>Monitors</value></data>
-  <data name="DebugInfoSection" xml:space="preserve"><value>Debug Information</value></data>
-  <data name="DebugInfoDesc" xml:space="preserve"><value>Copy debug information for bug reporting or troubleshooting.</value></data>
-  <data name="CopyDebugInfo" xml:space="preserve"><value>Copy Debug Info</value></data>
   <data name="ShowDebugInfo" xml:space="preserve"><value>Show Details</value></data>
   <data name="HideDebugInfo" xml:space="preserve"><value>Hide Details</value></data>
 
   <!-- Rotation Warning -->
-  <data name="RotationWarning" xml:space="preserve"><value>Applying rotation via Windows CCD API may cause mouse pointer coordinate issues. This is a known Windows limitation. Lock and unlock your PC (Win+L) if the cursor behaves incorrectly.</value></data>
+  <data name="RotationWarning" xml:space="preserve"><value>After rotating, the pointer can end up pointing the wrong way. Turn on "Fix the pointer after rotating" in Settings to correct it.</value></data>
 
   <!-- Apply Error -->
-  <data name="CompatWarningTitle" xml:space="preserve"><value>Monitor Mismatch</value></data>
   <data name="MissingMonitors" xml:space="preserve"><value>Not connected</value></data>
-  <data name="ExtraMonitors" xml:space="preserve"><value>Not in profile</value></data>
-  <data name="ApplyAnyway" xml:space="preserve"><value>Apply Anyway</value></data>
   <data name="ExtraMonitorsWillDisable" xml:space="preserve"><value>Will be turned off</value></data>
   <data name="ApplyErrorTitle" xml:space="preserve"><value>Failed to Apply Profile</value></data>
   <data name="ApplyFailed" xml:space="preserve"><value>The display configuration could not be applied. Some monitors may not be connected or the configuration is incompatible.</value></data>
-  <data name="ApplyValidationError" xml:space="preserve"><value>The display configuration is invalid for the current hardware setup. Please check monitor connections and profile settings.</value></data>
+  <data name="ApplyValidationError" xml:space="preserve"><value>These settings cannot be applied to the monitors connected right now. Check the connections and the profile.</value></data>
   <data name="OK" xml:space="preserve"><value>OK</value></data>
 
   <!-- Error Dialog -->
   <data name="UnhandledErrorTitle" xml:space="preserve"><value>An unexpected error occurred</value></data>
-  <data name="UnhandledErrorDesc" xml:space="preserve"><value>Mo encountered an unhandled error. You can copy the details below for bug reporting.</value></data>
+  <data name="UnhandledErrorDesc" xml:space="preserve"><value>Something went wrong. Copy the details below and let us know.</value></data>
   <data name="CopyErrorInfo" xml:space="preserve"><value>Copy to Clipboard</value></data>
-  <data name="Copied" xml:space="preserve"><value>Copied!</value></data>
+  <data name="Copied" xml:space="preserve"><value>Copied</value></data>
   <data name="ContinueRunning" xml:space="preserve"><value>Continue</value></data>
   <data name="ExitApp" xml:space="preserve"><value>Exit Mo</value></data>
 
   <!-- Hotkey UI -->
   <data name="NextProfileHotkeyCard.Header" xml:space="preserve"><value>Next profile</value></data>
-  <data name="NextProfileHotkeyCard.Description" xml:space="preserve"><value>Cycle to the next saved profile.</value></data>
+  <data name="NextProfileHotkeyCard.Description" xml:space="preserve"><value>Moves down your list, in order.</value></data>
   <data name="PrevProfileHotkeyCard.Header" xml:space="preserve"><value>Previous profile</value></data>
-  <data name="PrevProfileHotkeyCard.Description" xml:space="preserve"><value>Cycle to the previous saved profile.</value></data>
+  <data name="PrevProfileHotkeyCard.Description" xml:space="preserve"><value>Moves back up your list.</value></data>
   <data name="ProfileSlotHotkeyCard.Header" xml:space="preserve"><value>Profile slots 0–9</value></data>
   <data name="ProfileSlotHotkeyCard.Description" xml:space="preserve"><value>Modifier + 0–9 applies the profile in that slot (in list order).</value></data>
   <data name="HotkeyChangeBtn.Text" xml:space="preserve"><value>Change…</value></data>

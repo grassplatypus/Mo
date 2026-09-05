@@ -2,13 +2,9 @@ using System.Runtime.InteropServices;
 
 namespace Mo.Services;
 
-// Brightness / contrast / saturation / hue / color-temperature via ADL2 (AMD Display
-// Library). Runs alongside DDC/CI — for AMD GPUs these adjust the display pipeline
-// on the GPU side, so they work even for monitors that don't expose DDC/CI.
-//
-// Reference: AMD Display Library (ADL) SDK, specifically ADL2_Display_Color_Get/Set.
-//   type = 0 brightness, 1 contrast, 2 saturation, 3 hue, 4 temperature.
-// Sliders accept the range the adapter reports via ADL_Display_Color_Get(... min/max).
+// Colour via ADL2_Display_Color_Get/Set (type 0 brightness, 1 contrast, 2 saturation,
+// 3 hue, 4 temperature), adjusting the GPU-side pipeline — so it works on monitors with
+// no DDC/CI. Ranges come from the adapter's own reported min/max.
 public sealed class AmdColorService : IDisposable
 {
     // ADL2 context creation is ~50 ms — caching it makes slider drags responsive.
@@ -45,11 +41,9 @@ public sealed class AmdColorService : IDisposable
     private static extern int ADL2_Display_Color_Set(
         IntPtr context, int adapterIndex, int displayIndex, int type, int current);
 
-    // StdCall, not Cdecl. ADL's exported functions are __cdecl, but the allocation
-    // callback it invokes is declared __stdcall:
-    //   typedef void* ( __stdcall *ADL_MAIN_MALLOC_CALLBACK )( int );   [adl_sdk.h]
-    // Declaring it Cdecl leaves the caller cleaning a stack the callee already cleaned,
-    // which corrupts the stack every time ADL allocates through us.
+    // StdCall, not Cdecl: ADL's exports are __cdecl but ADL_MAIN_MALLOC_CALLBACK is
+    // __stdcall [adl_sdk.h]. Cdecl here corrupts the stack on every ADL allocation.
+    // See .claude/rules/30-display-apis.md.
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     private delegate IntPtr ADL_Main_Memory_Alloc(int size);
 
@@ -121,11 +115,8 @@ public sealed class AmdColorService : IDisposable
     }
 
     // ── Device-name targeting (preferred) ──
-    //
-    // ADL's (adapter, display) indices are unrelated to the order Windows lists
-    // monitors in, so callers must say *which* monitor they mean. The UI previously
-    // hardcoded (0, 0), which meant the saturation and hue sliders read and wrote the
-    // first monitor's values no matter which one was selected in the list.
+    // ADL's (adapter, display) indices are unrelated to Windows' monitor order, so the
+    // caller must name the monitor. Hardcoding (0, 0) drove the first monitor always.
 
     /// <summary>Reads a colour control for a specific monitor, by GDI device name.</summary>
     public ColorRange? GetColorByDeviceName(string gdiDeviceName, ColorKind kind)

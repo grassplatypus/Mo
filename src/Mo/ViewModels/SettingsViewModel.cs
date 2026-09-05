@@ -6,11 +6,9 @@ using Mo.Services;
 
 namespace Mo.ViewModels;
 
-// Two-way bindings to AppSettings with three concerns rolled into one helper:
-//   1. value comparison so we don't spam SaveAsync,
-//   2. PropertyChanged notifications,
-//   3. side-effects that must happen exactly when a user-facing toggle flips
-//      (registering at logon, starting AutoSwitch, registering hotkeys, …).
+// Two-way bindings to AppSettings. The Set helper rolls up three concerns: value
+// comparison so we don't spam SaveAsync, PropertyChanged, and the side effect a
+// user-facing toggle must trigger (logon registration, AutoSwitch, hotkeys).
 public partial class SettingsViewModel : ObservableObject
 {
     private readonly ISettingsService _settings;
@@ -66,15 +64,6 @@ public partial class SettingsViewModel : ObservableObject
         set => Set(_settings.Settings.ConfirmApply, value, v => _settings.Settings.ConfirmApply = v);
     }
 
-    public int ApplyConfirmSeconds
-    {
-        get => _settings.Settings.ApplyConfirmSeconds;
-        // Clamped to the same range ApplyConfirmationDialog enforces, so the number in
-        // Settings always matches the countdown the user will actually see.
-        set => Set(_settings.Settings.ApplyConfirmSeconds, Math.Clamp(value, 5, 120),
-            v => _settings.Settings.ApplyConfirmSeconds = v);
-    }
-
     public bool AutoSwitchEnabled
     {
         get => _settings.Settings.AutoSwitchEnabled;
@@ -105,6 +94,12 @@ public partial class SettingsViewModel : ObservableObject
     {
         get => _settings.Settings.RestoreColorOnStartup;
         set => Set(_settings.Settings.RestoreColorOnStartup, value, v => _settings.Settings.RestoreColorOnStartup = v);
+    }
+
+    public bool ResetCursorAfterRotation
+    {
+        get => _settings.Settings.ResetCursorAfterRotation;
+        set => Set(_settings.Settings.ResetCursorAfterRotation, value, v => _settings.Settings.ResetCursorAfterRotation = v);
     }
 
     public bool HotkeysEnabled

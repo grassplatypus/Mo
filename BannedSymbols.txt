@@ -13,6 +13,13 @@
 ; If a call genuinely must block (never on the UI thread), suppress RS0030 locally with
 ; a comment saying which thread it runs on and why it cannot deadlock.
 
+; The Windows event log is banned for a different reason: EventLog.CreateEventSource
+; writes a key under HKLM that needs admin to create AND to remove, and survives
+; uninstalling the app. Mo's promise is that uninstall leaves nothing behind, and
+; BootLog (%LOCALAPPDATA%\Mo\logs) covers the same diagnostic need.
+
+T:System.Diagnostics.EventLog;use Helpers.BootLog — EventLog leaves an HKLM key behind after uninstall
+
 M:System.Threading.Tasks.Task.Wait;await it, or use Wait(TimeSpan) off the UI thread
 M:System.Threading.Tasks.Task.Wait(System.Int32);pass a TimeSpan and only off the UI thread
 P:System.Threading.Tasks.Task`1.Result;await the task instead of blocking on Result

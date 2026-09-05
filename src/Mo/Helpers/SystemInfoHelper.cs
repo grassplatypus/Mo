@@ -9,10 +9,8 @@ using Mo.Services;
 
 namespace Mo.Helpers;
 
-/// <summary>
-/// Builds structured system/hardware/runtime reports in YAML-like format
-/// optimized for both human readability and LLM analysis.
-/// </summary>
+/// <summary>Builds structured system/hardware/runtime reports in a YAML-like format,
+/// readable by both a person and an LLM.</summary>
 public static class SystemInfoHelper
 {
     public static string DecodeEdidManufacturer(ushort id)
@@ -376,11 +374,8 @@ public static class SystemInfoHelper
         w.KV("hresult", $"0x{ex.HResult:X8}");
         if (ex.Source != null)
             w.KV("source", $"\"{ex.Source}\"");
-        // TargetSite may be unavailable after trimming — acceptable degradation
-#pragma warning disable IL2026
-        try { if (ex.TargetSite != null) w.KV("target_method", $"\"{ex.TargetSite.DeclaringType?.FullName}.{ex.TargetSite.Name}\""); } catch { }
-#pragma warning restore IL2026
-
+        // No TargetSite: reading it is trim-unsafe, and its answer is already the first
+        // frame of the stack trace below.
         w.Line("  stack_trace: |");
         foreach (var line in (ex.StackTrace ?? "(none)").Split('\n'))
             w.Line($"    {line.TrimEnd()}");

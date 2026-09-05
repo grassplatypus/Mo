@@ -2,25 +2,16 @@ using Mo.Models;
 
 namespace Mo.Services;
 
-/// <summary>
-/// Undo safety net for display changes.
-///
-/// A profile can position a monitor off-screen, pick a mode the panel cannot sync to,
-/// disable the only visible display, or drive DDC/CI brightness to zero. Any of those
-/// leaves the user unable to see Mo — and therefore unable to undo it from inside Mo.
-/// Windows guards its own display-settings changes with a 15-second "Keep these
-/// settings?" prompt for exactly this reason; this is Mo's equivalent.
-/// </summary>
+/// <summary>Undo safety net for display changes — Mo's equivalent of Windows' own
+/// "Keep these settings?" prompt, for the same reason.
+/// See .claude/rules/40-safety-invariants.md.</summary>
 public interface IApplyGuardService
 {
     /// <summary>Captures the live display + color state so it can be restored later.</summary>
     DisplaySnapshot Capture();
 
-    /// <summary>
-    /// Asks the user to confirm the change now in effect, reverting to
-    /// <paramref name="snapshot"/> if they decline or do not answer in time.
-    /// Returns true when the new configuration was kept.
-    /// </summary>
+    /// <summary>Asks the user to confirm the change now in effect, reverting to
+    /// <paramref name="snapshot"/> on decline or timeout. True when it was kept.</summary>
     Task<bool> ConfirmOrRevertAsync(DisplaySnapshot snapshot, ApplyTrigger trigger);
 
     /// <summary>Restores a snapshot immediately, without prompting.</summary>
@@ -42,11 +33,8 @@ public enum ApplyTrigger
     Startup,
 }
 
-/// <summary>
-/// Point-in-time copy of everything an apply can change destructively. Held in memory
-/// only — it describes the machine right now, so persisting it would be meaningless
-/// on the next boot.
-/// </summary>
+/// <summary>Point-in-time copy of everything an apply can change destructively. Memory
+/// only — it describes the machine now, so persisting it would be meaningless.</summary>
 public sealed class DisplaySnapshot
 {
     public required List<MonitorInfo> Monitors { get; init; }
@@ -54,10 +42,7 @@ public sealed class DisplaySnapshot
     /// <summary>Per-monitor DDC/CI state, keyed by GDI device name ("\\.\DISPLAY1").</summary>
     public required Dictionary<string, MonitorColorSettings> Color { get; init; }
 
-    /// <summary>
-    /// Stable description of the layout, used to tell "the apply actually changed
-    /// something" from "the apply was a no-op". Prompting on a no-op trains users to
-    /// dismiss the dialog without reading it, which defeats the whole safety net.
-    /// </summary>
+    /// <summary>Stable layout description, telling a real change from a no-op apply.
+    /// Prompting on a no-op trains users to dismiss the dialog unread.</summary>
     public required string Signature { get; init; }
 }

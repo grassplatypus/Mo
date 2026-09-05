@@ -146,38 +146,48 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <ToggleSwitch
-                        x:Name="MonitorEnabledToggle"
-                        Toggled="MonitorEnabledToggle_Toggled"
-                        Margin="0,0,0,8" />
+                    <TextBlock
+                        x:Name="SelectedMonitorName"
+                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                        TextTrimming="CharacterEllipsis"
+                        Margin="0,0,0,12" />
 
                     <Grid Grid.Row="1">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
-                        <StackPanel Spacing="4">
+                        <StackPanel Spacing="4" Margin="0,0,12,0">
                             <TextBlock x:Name="ResLabel" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.6" />
-                            <TextBlock x:Name="DetailResolution" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                            <ComboBox x:Name="ResolutionCombo" HorizontalAlignment="Stretch"
+                                      SelectionChanged="ResolutionCombo_SelectionChanged" />
                         </StackPanel>
-                        <StackPanel Grid.Column="1" Spacing="4">
+                        <StackPanel Grid.Column="1" Spacing="4" Margin="0,0,12,0">
                             <TextBlock x:Name="RefreshLabel" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.6" />
-                            <TextBlock x:Name="DetailRefreshRate" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                            <ComboBox x:Name="RefreshCombo" HorizontalAlignment="Stretch"
+                                      SelectionChanged="RefreshCombo_SelectionChanged" />
                         </StackPanel>
-                        <StackPanel Grid.Column="2" Spacing="4">
+                        <StackPanel Grid.Column="2" Spacing="4" Margin="0,0,12,0">
                             <TextBlock x:Name="RotLabel" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.6" />
-                            <ComboBox x:Name="RotationCombo" MinWidth="100" SelectionChanged="RotationCombo_SelectionChanged">
+                            <ComboBox x:Name="RotationCombo" HorizontalAlignment="Stretch"
+                                      SelectionChanged="RotationCombo_SelectionChanged">
                                 <ComboBoxItem Content="0°" Tag="0" />
                                 <ComboBoxItem Content="90°" Tag="90" />
                                 <ComboBoxItem Content="180°" Tag="180" />
                                 <ComboBoxItem Content="270°" Tag="270" />
                             </ComboBox>
                         </StackPanel>
-                        <Button Grid.Column="3" x:Name="RemoveMonitorBtn" Click="RemoveMonitor_Click"
-                                VerticalAlignment="Center">
+                        <StackPanel Grid.Column="3" Spacing="4" Margin="0,0,12,0">
+                            <TextBlock x:Name="ScaleLabel" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.6" />
+                            <ComboBox x:Name="ScaleCombo" HorizontalAlignment="Stretch"
+                                      SelectionChanged="ScaleCombo_SelectionChanged" />
+                        </StackPanel>
+                        <Button Grid.Column="4" x:Name="RemoveMonitorBtn" VerticalAlignment="Bottom"
+                                Click="RemoveMonitor_Click">
                             <FontIcon Glyph="&#xE74D;" FontSize="14" />
                         </Button>
                     </Grid>
@@ -196,7 +206,8 @@
                       BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
                     <StackPanel Spacing="12">
                         <TextBlock x:Name="ColorTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
-                        <Grid>
+                        <!-- Rows are hidden outright when the panel cannot honour them. -->
+                        <Grid x:Name="BrightnessRow">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="80" /><ColumnDefinition Width="*" /><ColumnDefinition Width="40" />
                             </Grid.ColumnDefinitions>
@@ -204,7 +215,7 @@
                             <Slider Grid.Column="1" x:Name="BrightnessSlider" Minimum="0" Maximum="100" ValueChanged="ColorSlider_Changed" />
                             <TextBlock Grid.Column="2" x:Name="BrightnessValue" VerticalAlignment="Center" HorizontalAlignment="Right" />
                         </Grid>
-                        <Grid>
+                        <Grid x:Name="ContrastRow">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="80" /><ColumnDefinition Width="*" /><ColumnDefinition Width="40" />
                             </Grid.ColumnDefinitions>
@@ -212,27 +223,39 @@
                             <Slider Grid.Column="1" x:Name="ContrastSlider" Minimum="0" Maximum="100" ValueChanged="ColorSlider_Changed" />
                             <TextBlock Grid.Column="2" x:Name="ContrastValue" VerticalAlignment="Center" HorizontalAlignment="Right" />
                         </Grid>
-                        <Grid>
+                        <!-- Swatch plus a plain letter, matching DisplayTuningPage: a
+                             tinted letter alone fails contrast in the light theme and
+                             carries nothing for a reader who cannot separate the hues. -->
+                        <Grid x:Name="RedRow">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="80" /><ColumnDefinition Width="*" /><ColumnDefinition Width="40" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="R" VerticalAlignment="Center" Foreground="#FF4444" FontWeight="Bold" />
+                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <Rectangle Width="10" Height="10" RadiusX="2" RadiusY="2" Fill="#E03A3A" />
+                                <TextBlock Text="R" FontWeight="SemiBold" />
+                            </StackPanel>
                             <Slider Grid.Column="1" x:Name="RedSlider" Minimum="0" Maximum="100" ValueChanged="ColorSlider_Changed" />
                             <TextBlock Grid.Column="2" x:Name="RedValue" VerticalAlignment="Center" HorizontalAlignment="Right" />
                         </Grid>
-                        <Grid>
+                        <Grid x:Name="GreenRow">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="80" /><ColumnDefinition Width="*" /><ColumnDefinition Width="40" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="G" VerticalAlignment="Center" Foreground="#44BB44" FontWeight="Bold" />
+                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <Rectangle Width="10" Height="10" RadiusX="2" RadiusY="2" Fill="#2FA84F" />
+                                <TextBlock Text="G" FontWeight="SemiBold" />
+                            </StackPanel>
                             <Slider Grid.Column="1" x:Name="GreenSlider" Minimum="0" Maximum="100" ValueChanged="ColorSlider_Changed" />
                             <TextBlock Grid.Column="2" x:Name="GreenValue" VerticalAlignment="Center" HorizontalAlignment="Right" />
                         </Grid>
-                        <Grid>
+                        <Grid x:Name="BlueRow">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="80" /><ColumnDefinition Width="*" /><ColumnDefinition Width="40" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="B" VerticalAlignment="Center" Foreground="#4488FF" FontWeight="Bold" />
+                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <Rectangle Width="10" Height="10" RadiusX="2" RadiusY="2" Fill="#3A6FE0" />
+                                <TextBlock Text="B" FontWeight="SemiBold" />
+                            </StackPanel>
                             <Slider Grid.Column="1" x:Name="BlueSlider" Minimum="0" Maximum="100" ValueChanged="ColorSlider_Changed" />
                             <TextBlock Grid.Column="2" x:Name="BlueValue" VerticalAlignment="Center" HorizontalAlignment="Right" />
                         </Grid>
@@ -313,21 +336,6 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </StackPanel>
-                </Grid>
-
-                <!-- Unmatched monitors -->
-                <Grid Padding="16" CornerRadius="8"
-                      Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel>
-                        <TextBlock x:Name="UnmatchedLabel" />
-                        <TextBlock x:Name="UnmatchedDesc" Opacity="0.6" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap" />
-                    </StackPanel>
-                    <ComboBox Grid.Column="1" x:Name="UnmatchedCombo" MinWidth="120" MaxWidth="180" SelectionChanged="UnmatchedCombo_SelectionChanged" />
                 </Grid>
 
                 <!-- Auto-switch -->

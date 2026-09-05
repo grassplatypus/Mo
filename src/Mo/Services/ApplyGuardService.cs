@@ -10,6 +10,10 @@ public sealed class ApplyGuardService : IApplyGuardService
 {
     private readonly IDisplayService _displayService;
 
+    /// <summary>How long the countdown runs. Long enough to read a dialog on a screen
+    /// that may have just moved, short enough that an unattended apply is not stuck.</summary>
+    private const int CountdownSeconds = 15;
+
     // ContentDialog is single-instance per XamlRoot in WinUI; a second ShowAsync
     // while one is open throws. Two applies can overlap easily (hotkey pressed while
     // an auto-switch is mid-flight), so serialize the prompt.
@@ -19,6 +23,9 @@ public sealed class ApplyGuardService : IApplyGuardService
 
     public DisplaySnapshot Capture()
     {
+        // Active paths only, deliberately. This snapshot is what a revert restores, so it
+        // has to describe the desktop exactly as it stands; the all-paths read gives
+        // switched-off monitors a placeholder mode at the origin.
         var monitors = _displayService.GetCurrentConfiguration();
 
         var color = new Dictionary<string, MonitorColorSettings>(StringComparer.OrdinalIgnoreCase);
@@ -103,11 +110,7 @@ public sealed class ApplyGuardService : IApplyGuardService
         var xamlRoot = window.Content?.XamlRoot;
         if (xamlRoot == null) return true;
 
-        int seconds = 15;
-        try { seconds = App.Services.GetRequiredService<ISettingsService>().Settings.ApplyConfirmSeconds; }
-        catch { }
-
-        var dialog = new ApplyConfirmationDialog(seconds) { XamlRoot = xamlRoot };
+        var dialog = new ApplyConfirmationDialog(CountdownSeconds) { XamlRoot = xamlRoot };
         bool kept = await dialog.ShowAndWaitAsync();
 
         if (!kept) Restore(snapshot);
@@ -119,13 +122,15 @@ public sealed class ApplyGuardService : IApplyGuardService
         bool ok = false;
         try
         {
-            // Reuse the normal apply path for the same fallbacks and cursor fix.
+            // Reuse the normal apply path for the same fallbacks. Not ApplyTrigger.User:
+            // the user is already looking at one blackout, and a revert must not stack
+            // a second one on top of it.
             var revertProfile = new DisplayProfile
             {
                 Name = "__revert__",
                 Monitors = snapshot.Monitors,
             };
-            var result = _displayService.ApplyProfile(revertProfile);
+            var result = _displayService.ApplyProfile(revertProfile, ApplyTrigger.AutoSwitch);
             ok = result is DisplayApplyResult.Success or DisplayApplyResult.PartialMatch;
         }
         catch (Exception ex) { Helpers.BootLog.WriteError("applyguard.restore.display", ex); }
@@ -144,11 +149,9 @@ public sealed class ApplyGuardService : IApplyGuardService
         return ok;
     }
 
-    /// <summary>
-    /// Everything that decides whether the desktop is still usable: which monitors are
-    /// on, where, how big, at what orientation and refresh rate. Ordered by DevicePath
-    /// so enumeration order can't produce spurious differences.
-    /// </summary>
+    /// <summary>Everything that decides whether the desktop is still usable: which
+    /// monitors are on, where, how big, orientation, refresh, scaling. Ordered by
+    /// DevicePath so enumeration order cannot produce spurious differences.</summary>
     private static string BuildSignature(List<MonitorInfo> monitors)
     {
         var sb = new StringBuilder();
@@ -160,6 +163,9 @@ public sealed class ApplyGuardService : IApplyGuardService
               .Append(m.Width).Append('x').Append(m.Height).Append('|')
               .Append((int)m.Rotation).Append('|')
               .Append(m.RefreshRateNumerator).Append('/').Append(m.RefreshRateDenominator).Append('|')
+              // Scaling belongs here: 100% to 500% leaves every other field identical and
+              // is exactly the kind of change that can make the desktop unreadable.
+              .Append(m.DpiScale).Append('|')
               .Append(m.IsPrimary ? '1' : '0').Append(';');
         }
         return sb.ToString();

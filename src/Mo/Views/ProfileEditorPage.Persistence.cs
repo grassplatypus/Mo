@@ -84,7 +84,7 @@ public sealed partial class ProfileEditorPage
             XamlRoot = this.XamlRoot,
         };
 
-        var result = await dialog.ShowAsync();
+        var result = await dialog.ShowThemedAsync();
         if (result == ContentDialogResult.Primary)
         {
             await SaveProfileAsync();
