@@ -109,7 +109,12 @@ the script does; installation works from `TrustedPeople`.
 
 - **ZIP**: `dotnet publish` with the .NET 10 SDK (trimming + R2R).
 - **MSIX**: `msbuild` from VS MSBuild, for the reason above.
+- **Installer**: `ISCC` on `installer/Mo.iss`, x64 only, since the script sets
+  `ArchitecturesAllowed=x64compatible`. The runner image usually carries Inno Setup;
+  the workflow installs it when it does not.
 - **Signing**: DigiCert timestamp server, SHA-512 digest.
+- **Release body**: the annotated tag's message, not GitHub's generated notes, so the
+  release reads the same as `git show <tag>`. Write the tag message in Korean.
 - `.github/workflows/release.yml` rewrites the manifest version with `sed -i`, because
   PowerShell `Set-Content` corrupts the XML encoding. That runs on the CI runner and
   it is not a licence to edit files with `sed` locally (`00-tooling.md`).
