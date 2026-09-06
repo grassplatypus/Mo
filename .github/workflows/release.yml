@@ -42,9 +42,11 @@ jobs:
       - name: Restore
         run: dotnet restore src/Mo/Mo.csproj -p:Platform=${{ matrix.platform }}
 
-      # ZIP — dotnet publish (.NET 10 SDK)
+      # ZIP: the publish the local release script runs, so CI ships identical binaries.
+      # Do not add PublishTrimmed. Nothing trims locally, and TreatWarningsAsErrors
+      # turns the SDK and WinRT trim warnings into errors (IL2104).
       - name: Publish (portable)
-        run: dotnet publish src/Mo/Mo.csproj -c Release -p:Platform=${{ matrix.platform }} -p:PublishReadyToRun=true -p:PublishTrimmed=true -p:WindowsPackageType=None -p:EnableMsixTooling=false -o publish/${{ matrix.platform }}
+        run: dotnet publish src/Mo/Mo.csproj -c Release -p:Platform=${{ matrix.platform }} -p:PublishProfile=win-${{ matrix.platform }}.pubxml -p:AppxPackageSigningEnabled=false -p:GenerateAppxPackageOnBuild=false -o publish/${{ matrix.platform }} --nologo
         timeout-minutes: 15
 
       - name: Create ZIP
