@@ -134,12 +134,18 @@ jobs:
             installer\Mo.iss
           Get-ChildItem artifacts\*.exe | ForEach-Object { Write-Host $_.Name }
 
-      # The Korean notes live in the annotated tag, so the release body matches
-      # what `git show <tag>` says.
+      # The release body is the annotated tag's message. checkout leaves a lightweight
+      # tag, so %(contents:body) falls through to the commit message: re-fetch the real
+      # object, and fail loudly rather than publish whatever the commit happened to say.
       - name: Release notes from the tag message
         shell: bash
         run: |
+          git fetch --force --tags origin
           git tag -l --format='%(contents:body)' "${{ github.ref_name }}" > RELEASE_NOTES.md
+          if [ ! -s RELEASE_NOTES.md ]; then
+            echo "::error::Tag ${{ github.ref_name }} carries no annotated message body"
+            exit 1
+          fi
           cat RELEASE_NOTES.md
 
       - name: Upload Release Assets
