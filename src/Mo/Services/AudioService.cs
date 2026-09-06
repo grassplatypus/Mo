@@ -33,31 +33,21 @@ public sealed class AudioService : IAudioService
         }
     }
 
-    /// <summary>
-    /// Enumerates render endpoints. Blocking, and therefore must be called from a
-    /// background thread — <c>ProfileEditorPage.LoadProfileDeferredAsync</c> wraps it
-    /// in <c>Task.Run</c>.
-    /// </summary>
-    public List<(string id, string name)> GetAudioDevices()
+    /// <summary>Enumerates render endpoints. Async all the way, so it blocks no thread
+    /// at all and needs no RS0030 exemption.</summary>
+    public async Task<List<(string id, string name)>> GetAudioDevicesAsync()
     {
         var result = new List<(string, string)>();
         try
         {
-            var task = DeviceInformation.FindAllAsync(MediaDevice.GetAudioRenderSelector()).AsTask();
+            var query = DeviceInformation.FindAllAsync(MediaDevice.GetAudioRenderSelector()).AsTask();
 
-            // Bounded wait: a stuck audio driver must degrade to an empty device list,
-            // never hang whichever thread asked for it.
-            if (!task.Wait(TimeSpan.FromSeconds(10))) return result;
+            // Bounded: a stuck audio driver degrades to an empty device list rather than
+            // leaving the caller waiting forever.
+            var finished = await Task.WhenAny(query, Task.Delay(TimeSpan.FromSeconds(10)));
+            if (finished != query) return result;
 
-            // RS0030 (no blocking on Task.Result) exists to stop UI-thread deadlocks.
-            // This runs on a thread-pool thread, the task is already known to have
-            // completed, and WinRT async completions do not marshal back to the
-            // dispatcher — so there is no continuation to deadlock against.
-#pragma warning disable RS0030
-            var devices = task.Result;
-#pragma warning restore RS0030
-
-            foreach (var device in devices)
+            foreach (var device in await query)
             {
                 result.Add((device.Id, device.Name));
             }

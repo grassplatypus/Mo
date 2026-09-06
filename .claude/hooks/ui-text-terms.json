@@ -1,0 +1,21 @@
+{
+  "_comment": "Words that are internal to Mo and must not appear in text a user reads. Judgement, not a fixed vocabulary: consumer-facing terms (HDR, sRGB, Hz, Windows) belong in the UI and stay off this list. See .claude/rules/70-localization.md.",
+  "internal": [
+    "DDC/CI",
+    "CCD API",
+    "NVAPI",
+    "ADL",
+    "IGCL",
+    "SetDisplayConfig",
+    "ChangeDisplaySettings",
+    "QueryDisplayConfig",
+    "DEVMODE",
+    "P/Invoke",
+    "JSON",
+    "HKCU",
+    "HKLM",
+    "LUID",
+    "EDID",
+    "레지스트리"
+  ]
+}

@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "permissions": {
+    "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+      "Edit",
+      "Write",
+      "TodoWrite",
+      "WebSearch",
+      "WebFetch",
+      "Bash(dotnet:*)",
+      "Bash(msbuild:*)",
+      "Bash(nuget:*)",
+      "Bash(git:*)",
+      "Bash(gh:*)",
+      "Bash(node:*)",
+      "Bash(ls:*)",
+      "Bash(pwd)",
+      "Bash(cd:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(wc:*)",
+      "Bash(sort:*)",
+      "Bash(uniq:*)",
+      "Bash(diff:*)",
+      "Bash(echo:*)",
+      "Bash(xargs:*)",
+      "Bash(where:*)",
+      "Bash(which:*)",
+      "Bash(tasklist:*)",
+      "Bash(taskkill:*)"
+    ],
+    "deny": [
+      "Bash(tee:*)",
+      "Bash(patch:*)",
+      "Bash(truncate:*)",
+      "Bash(dd:*)",
+      "Bash(python:*)",
+      "Bash(python3:*)",
+      "Bash(py:*)",
+      "Bash(perl:*)",
+      "Bash(ruby:*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-shell-file-ops.mjs\"",
+            "timeout": 15,
+            "statusMessage": "Checking shell command for file-edit bypass"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/check-comment-length.mjs\"",
+            "timeout": 15,
+            "statusMessage": "Checking comment length"
+          },
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/check-resw-sync.mjs\"",
+            "timeout": 15,
+            "statusMessage": "Checking resw locale sync"
+          },
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/check-resource-keys.mjs\"",
+            "timeout": 15,
+            "statusMessage": "Checking resource keys resolve"
+          },
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/check-ui-text.mjs\"",
+            "timeout": 15,
+            "statusMessage": "Checking user-facing text"
+          },
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/check-code-invariants.mjs\"",
+            "timeout": 15,
+            "statusMessage": "Checking code invariants"
+          },
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/check-project-integrity.mjs\"",
+            "timeout": 15,
+            "statusMessage": "Checking build integrity"
+          }
+        ]
+      }
+    ]
+  }
+}

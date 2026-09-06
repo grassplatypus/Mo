@@ -181,9 +181,16 @@ public sealed partial class MonitorLayoutCanvas : UserControl
         }
     }
 
-    // Arrow keys nudge the selected monitor by 1 px, Shift+Arrow by 10 px. Snap and
-    // adjacency enforcement run on each step, so the tile "sticks" to neighbors just
-    // like with drag.
+    // Steps in desktop pixels. The plain one has to be visible on a canvas that shows a
+    // multi-thousand-pixel desktop in a few hundred, and small enough that the snap
+    // tolerance still catches a neighbour on the way past.
+    private const int NudgeStep = 20;
+    private const int NudgeStepCoarse = 200;
+    private const int NudgeStepFine = 1;
+
+    /// <summary>Arrow keys move the selected monitor: Shift for long strides, Ctrl for
+    /// exact pixels. Snap and adjacency run on every step, so a tile sticks to its
+    /// neighbours the same way it does under the pointer.</summary>
     private void MonitorLayoutCanvas_KeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (!IsEditable || _selectedTile?.Monitor is not { } m) return;
@@ -198,9 +205,9 @@ public sealed partial class MonitorLayoutCanvas : UserControl
             default: return;
         }
 
-        bool shift = (Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift)
-            & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
-        int step = shift ? 10 : 1;
+        int step = IsDown(VirtualKey.Control) ? NudgeStepFine
+            : IsDown(VirtualKey.Shift) ? NudgeStepCoarse
+            : NudgeStep;
 
         int requestedX = m.PositionX + dx * step;
         int requestedY = m.PositionY + dy * step;
@@ -228,6 +235,10 @@ public sealed partial class MonitorLayoutCanvas : UserControl
 
         e.Handled = true;
     }
+
+    private static bool IsDown(VirtualKey key) =>
+        (Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(key)
+            & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
 
     private void Tile_PointerMoved(object sender, PointerRoutedEventArgs e)
     {

@@ -17,11 +17,8 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TitleBar x:Name="AppTitleBar" Title="Mo">
-            <TitleBar.IconSource>
-                <ImageIconSource ImageSource="Assets/AppIcon.ico" />
-            </TitleBar.IconSource>
-        </TitleBar>
+        <!-- Icon set in code from a file path; see Helpers/AppImages for why not here. -->
+        <TitleBar x:Name="AppTitleBar" Title="Mo" />
 
         <Frame x:Name="RootFrame" Grid.Row="1" />
     </Grid>

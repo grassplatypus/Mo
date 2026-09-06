@@ -16,6 +16,21 @@ public static class MonitorMatcher
         List<int> UnmatchedProfile,
         List<int> UnmatchedCurrent);
 
+    /// <summary>True when two identities describe the same physical monitor: device path
+    /// first, EDID triple as the fallback for a path Windows has renumbered. This is the
+    /// one place that rule lives; callers comparing fields by hand drift out of step.</summary>
+    public static bool IsSameMonitor(MonitorIdentity a, MonitorIdentity b)
+    {
+        if (!string.IsNullOrEmpty(a.DevicePath) &&
+            string.Equals(a.DevicePath, b.DevicePath, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return a.EdidManufacturerId != 0
+            && a.EdidManufacturerId == b.EdidManufacturerId
+            && a.EdidProductCodeId == b.EdidProductCodeId
+            && a.ConnectorInstance == b.ConnectorInstance;
+    }
+
     public static MatchResult Match(
         IReadOnlyList<MonitorIdentity> profileMonitors,
         IReadOnlyList<MonitorIdentity> currentMonitors)

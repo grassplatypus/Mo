@@ -24,10 +24,12 @@ public sealed class DisplayProfile : ObservableObject
 
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
 
-    /// <summary>
-    /// Position in the user's own ordering; lower comes first. Load-bearing — the slot
-    /// hotkeys and next/previous cycling index into this order.
-    /// </summary>
+    /// <summary>Bumped when a stored field changes meaning, so a load can tell an old
+    /// file's default from a value the user asked for. Absent means 0.</summary>
+    public int SchemaVersion { get; set; }
+
+    /// <summary>Position in the user's own ordering; lower comes first. Load-bearing —
+    /// slot hotkeys and next/previous cycling index into this order.</summary>
     public int SortOrder { get; set; }
 
     // Setters coalesce null away: a hand-edited file can parse cleanly and still hold
@@ -93,9 +95,6 @@ public sealed class DisplayProfile : ObservableObject
     // Live wallpaper (WallpaperEngine / Lively)
     public LiveWallpaperConfig? LiveWallpaper { get; set; }
 
-    // What to do with monitors not listed in this profile
-    public UnmatchedMonitorAction UnmatchedAction { get; set; } = UnmatchedMonitorAction.Keep;
-
     /// <summary>True for the profile currently in effect. Runtime-only.</summary>
     [JsonIgnore]
     public bool IsActive
@@ -117,10 +116,8 @@ public sealed class DisplayProfile : ObservableObject
     [JsonIgnore]
     public int MonitorCount => Monitors.Count;
 
-    /// <summary>
-    /// The profile's name. A GridViewItem's automation peer names itself from this,
-    /// and a DataTemplate cannot set AutomationProperties.Name on the container.
-    /// </summary>
+    /// <summary>The profile's name. A GridViewItem's automation peer names itself from
+    /// this, and a DataTemplate cannot set AutomationProperties.Name.</summary>
     public override string ToString() => Name;
 }
 
@@ -141,12 +138,6 @@ public sealed class LiveWallpaperEntry
 {
     public int MonitorIndex { get; set; }
     public string FilePath { get; set; } = string.Empty;
-}
-
-public enum UnmatchedMonitorAction
-{
-    Keep,
-    Disable,
 }
 
 public sealed class ScheduleConfig

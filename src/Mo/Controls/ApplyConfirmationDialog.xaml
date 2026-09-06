@@ -17,11 +17,9 @@
             AutomationProperties.LiveSetting="Polite"
             TextWrapping="Wrap" />
 
-        <!-- Not a ProgressBar: its Value is a dependent (UI-thread) property, so a
-             countdown driven through it either steps once a second or costs a frame
-             callback. A ScaleTransform on a plain Border animates on the composition
-             thread instead, and filling left-to-right reads as time running out rather
-             than as progress being undone. -->
+        <!-- Not a ProgressBar: its Value is a UI-thread property, so the countdown would
+             step once a second or cost a frame callback. A ScaleTransform on a Border
+             animates on the composition thread and reads as time running out. -->
         <Grid
             Height="4"
             CornerRadius="2"

@@ -17,10 +17,9 @@ public interface IMonitorColorService : IDisposable
     /// <summary>Write a raw VCP feature value. Returns true on success.</summary>
     bool SetVcpFeature(int monitorIndex, byte vcpCode, uint value);
 
-    // Device-name-based overloads. Preferred over index-based methods because the
-    // EnumDisplayMonitors order does NOT match QueryDisplayConfig order; passing an
-    // index from the CCD list to the DDC/CI cache often hits the wrong physical
-    // monitor. Pass MonitorInfo.GdiDeviceName ("\\.\DISPLAY1") to target reliably.
+    // Device-name overloads, preferred over index-based ones: EnumDisplayMonitors order
+    // does NOT match QueryDisplayConfig order, so a CCD index often hits the wrong
+    // monitor. Pass MonitorInfo.GdiDeviceName ("\\.\DISPLAY1").
     bool ApplyToMonitorByDeviceName(string gdiDeviceName, MonitorColorSettings settings);
     MonitorColorCapabilities? DetectCapabilitiesByDeviceName(string gdiDeviceName);
     MonitorColorSettings? CaptureByDeviceName(string gdiDeviceName);

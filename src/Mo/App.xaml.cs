@@ -13,6 +13,30 @@ public partial class App : Application
     public static IServiceProvider Services { get; private set; } = null!;
     public static MainWindow MainWindow { get; private set; } = null!;
 
+    /// <summary>The one full-exit path: drop the tray icon, then close the window with the
+    /// minimise-to-tray handler bypassed. Safe to call from any thread.</summary>
+    public static void RequestExit()
+    {
+        var queue = MainWindow?.DispatcherQueue;
+        if (queue != null)
+        {
+            if (queue.HasThreadAccess) { ExitNow(); return; }
+            if (queue.TryEnqueue(ExitNow)) return;
+        }
+
+        // No window, or a dispatcher that will not take work: the windowless zombie
+        // 20-architecture.md describes. There is nothing left to close politely, and
+        // leaving it alive holds the single-instance key and the program files.
+        BootLog.Write("exit.forced", "no window to close");
+        Environment.Exit(0);
+
+        static void ExitNow()
+        {
+            try { Services.GetRequiredService<ITrayService>().Dispose(); } catch { }
+            MainWindow?.ForceClose();
+        }
+    }
+
     private static bool _isShowingErrorDialog;
 
     // False until MainWindow has been created and activated. While false, an unhandled
@@ -44,21 +68,18 @@ public partial class App : Application
         try
         {
             var settings = Services.GetRequiredService<ISettingsService>();
-            // MUST be the synchronous overload. Blocking the UI thread on LoadAsync()
-            // deadlocks: Program.Main installs a DispatcherQueueSynchronizationContext,
-            // so the await continuation inside LoadAsync is posted back to this very
-            // thread while it waits. The hang is intermittent because ReadAllTextAsync
-            // often completes synchronously off the file cache — on a cold cache the
-            // app hangs forever with no window and no crash log.
+            // MUST be the synchronous overload: blocking the UI thread on LoadAsync()
+            // deadlocks against Program.Main's DispatcherQueueSynchronizationContext,
+            // intermittently. See .claude/rules/10-code-style.md.
             settings.Load();
-            startMinimized = settings.Settings.StartMinimized || IsStartupTaskActivation();
+            // Only an automatic launch starts in the tray. Opening Mo yourself, from the
+            // Start menu or the installer's own button, has to produce a window: doing
+            // otherwise is indistinguishable from the app failing to start.
+            startMinimized = settings.Settings.StartMinimized && IsAutomaticLaunch();
 
-            // Apply user language override BEFORE the first window is created so initial
-            // resource lookups (window title, x:Uid bindings) hit the right .resw. When
-            // the user hasn't picked an override, fall back to the first preferred system
-            // language so Korean Windows shows Korean UI even when our DefaultLanguage is
-            // en-US (without this, the WinAppSDK ResourceLoader sometimes refuses to
-            // resolve ko-KR resources for unpackaged or sideloaded MSIX builds).
+            // Set the language BEFORE the first window so initial x:Uid lookups hit the
+            // right .resw; an empty override falls back to the first preferred system
+            // language. See .claude/rules/70-localization.md.
             var lang = settings.Settings.Language;
             if (string.IsNullOrWhiteSpace(lang))
             {
@@ -100,6 +121,10 @@ public partial class App : Application
 
         MainWindow.DispatcherQueue.ShutdownStarting += (_, _) => DisposeServices();
 
+        // An entry written by an older build, or by a previous install location, makes
+        // every logon look like a hand launch. Repairing it here costs one registry read.
+        try { Services.GetRequiredService<IStartupService>().RepairRegistryEntry(); } catch { }
+
         // Secondary launches are redirected here by Program.Main's single-instance guard.
         // Bring the existing window forward instead of letting the redirect end silently —
         // otherwise the user clicks the Start-menu shortcut and nothing visible happens.
@@ -114,10 +139,19 @@ public partial class App : Application
         _ = InitializeAsync();
     }
 
-    // True when Windows launched the app via the StartupTask contract (logon auto-run).
-    // Lets us start in tray on boot even if the user hasn't toggled StartMinimized.
-    private static bool IsStartupTaskActivation()
+    /// <summary>Marks the HKCU Run entry so a logon launch is recognisable. That launch
+    /// is an ordinary Mo.exe with no activation kind of its own, so without the argument
+    /// it is indistinguishable from a double-click.</summary>
+    public const string StartupLaunchArgument = "--startup";
+
+    /// <summary>True when Windows started Mo rather than the user: the packaged startup
+    /// task, or the Run entry above.</summary>
+    private static bool IsAutomaticLaunch()
     {
+        if (Environment.GetCommandLineArgs()
+            .Any(a => string.Equals(a, StartupLaunchArgument, StringComparison.OrdinalIgnoreCase)))
+            return true;
+
         try
         {
             var aea = Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().GetActivatedEventArgs();
@@ -134,10 +168,9 @@ public partial class App : Application
         LogException("UnhandledException", ex);
         BootLog.WriteError("unhandled", ex);
 
-        // Before the window exists there is no XamlRoot to host a ContentDialog, so
-        // swallowing here would leave a live dispatcher with nothing on screen — the
-        // invisible-zombie state that also holds the single-instance key and makes
-        // every later launch appear to do nothing. Report and terminate instead.
+        // Before the window exists there is no XamlRoot for a ContentDialog, so
+        // swallowing would leave an invisible zombie holding the single-instance key.
+        // Report and terminate instead — see .claude/rules/20-architecture.md.
         if (!_windowReady)
         {
             e.Handled = true; // Suppress the WinUI fail-fast so our own message wins.
@@ -237,7 +270,7 @@ public partial class App : Application
                 XamlRoot = MainWindow.Content.XamlRoot,
             };
 
-            var result = await dialog.ShowAsync();
+            var result = await dialog.ShowThemedAsync();
             if (result == ContentDialogResult.Secondary)
             {
                 DisposeServices();
@@ -310,21 +343,33 @@ public partial class App : Application
         services.AddSingleton<AmdRotationService>();
         services.AddSingleton<AmdColorService>();
         services.AddSingleton<ISystemInfoService, SystemInfoService>();
-        services.AddSingleton<IntelRotationService>();
 
-        // Singleton, not transient: this VM subscribes to IProfileService.ProfileApplied
-        // (a singleton event) and never unsubscribes, so every extra instance would leak
-        // and every one of them would react to each apply. It also mirrors the single
-        // shared profile collection, so there is nothing per-view to keep separate.
+        // Singleton, not transient: subscribes to the singleton ProfileApplied event and
+        // never unsubscribes, so extra instances would leak and each would react.
         services.AddSingleton<ProfileListViewModel>();
-        // Singleton: SettingsViewModel mirrors AppSettings, so a single instance lets
-        // every consumer (Settings page, prompts, hotkey editor) see PropertyChanged
-        // when settings mutate from any source. Transient instances would each cache
-        // a stale view of values the user changed elsewhere.
+        // Singleton: mirrors AppSettings, so every consumer sees PropertyChanged when
+        // settings mutate from any source. Transient instances would cache stale values.
         services.AddSingleton<SettingsViewModel>();
     }
 
     // ── Initialization ──
+
+    private static bool _hotkeyRebindQueued;
+
+    /// <summary>Collapses a burst of list changes into one re-bind on the next dispatcher
+    /// turn, so loading N profiles rebinds once rather than N times.</summary>
+    private static void QueueHotkeyRebind()
+    {
+        var queue = MainWindow?.DispatcherQueue;
+        if (queue == null || _hotkeyRebindQueued) return;
+
+        _hotkeyRebindQueued = true;
+        queue.TryEnqueue(() =>
+        {
+            _hotkeyRebindQueued = false;
+            SafeInit(RegisterAllHotkeys);
+        });
+    }
 
     private static async Task InitializeAsync()
     {
@@ -347,15 +392,16 @@ public partial class App : Application
             // Restore last-applied profile after reboot (NVIDIA/CCD persistence is unreliable).
             _ = RestoreLastAppliedProfileAsync();
 
-            // First-launch: offer to switch rotation backend if a driver SDK is available.
-            _ = MaybeOfferDriverRotationAsync();
+            // No first-launch driver-rotation prompt: the setting it changes is hidden
+            // while the reasons for it are being re-measured. MaybeOfferDriverRotationAsync
+            // is still here for when that finishes.
 
             SafeInit(() => RegisterAllHotkeys());
 
-            // Re-register hotkeys whenever the profile list changes so the 0–9 slot
-            // bindings track the current profile order.
-            profileService.Profiles.CollectionChanged += (_, _) =>
-                MainWindow?.DispatcherQueue?.TryEnqueue(() => SafeInit(RegisterAllHotkeys));
+            // Re-register hotkeys whenever the profile list changes so the slot bindings
+            // track the current order. Coalesced: loading raises this once per profile,
+            // and re-binding every shortcut each time is work nobody asked for.
+            profileService.Profiles.CollectionChanged += (_, _) => QueueHotkeyRebind();
         }
         catch (Exception ex)
         {
@@ -366,17 +412,8 @@ public partial class App : Application
         _ = CheckForUpdateOnStartupAsync();
     }
 
-    /// <summary>
-    /// Creates the tray icon and, if that fails, makes sure the user still has a way
-    /// into the app.
-    /// </summary>
-    /// <remarks>
-    /// "Start minimized" plus a failed Shell_NotifyIcon means the app boots with no
-    /// window and no icon: a live process the user cannot reach, which also holds the
-    /// single-instance key so every later launch looks like it does nothing. Failing
-    /// loudly here is the whole point — the previous code ran Initialize() inside
-    /// SafeInit and discarded the outcome.
-    /// </remarks>
+    /// <summary>Creates the tray icon; on failure still leaves the user a way into the
+    /// app — start-minimized plus a failed Shell_NotifyIcon is the invisible zombie.</summary>
     private static void EnsureReachableWithoutTray()
     {
         bool trayReady = false;
@@ -400,16 +437,18 @@ public partial class App : Application
                     CloseButtonText = ResourceHelper.GetString("OK"),
                     XamlRoot = MainWindow.Content.XamlRoot,
                 };
-                await dialog.ShowAsync();
+                await dialog.ShowThemedAsync();
             }
             catch (Exception ex) { LogException("TrayUnavailableNotice", ex); }
         });
     }
 
-    // On first launch, if the user is on an NVIDIA or AMD GPU and still using the default
-    // Windows rotation path, offer to switch. Windows rotation triggers a known cursor-
-    // coordinate bug; driver-level rotation avoids it. Shown once — tracked via
-    // AppSettings.GpuRotationMethodPromptShown.
+    // On first launch with an NVIDIA/AMD GPU still on the Windows rotation path, offer to
+    // switch — Windows rotation triggers a known cursor-coordinate bug. Shown once,
+    // tracked via AppSettings.GpuRotationMethodPromptShown.
+    /// <summary>Not called at the moment: the setting it points at is hidden, because
+    /// none of the reasons for choosing a driver path survived measurement. Kept whole
+    /// so it can come back if a second machine disagrees.</summary>
     private static async Task MaybeOfferDriverRotationAsync()
     {
         try
@@ -418,10 +457,9 @@ public partial class App : Application
             if (settings.Settings.GpuRotationMethodPromptShown) return;
             if (settings.Settings.RotationMethod != Models.RotationMethod.Windows) return;
 
-            // Mark "shown" BEFORE doing anything risky. If the dialog flow or the
-            // RotationMethod write below throws, we must still never re-prompt — the
-            // 0.20.1 bug where the SettingsPage Selector binding NREed left this
-            // flag false and trapped users in an infinite crash loop on every launch.
+            // Mark "shown" BEFORE anything risky: if the dialog or the RotationMethod
+            // write throws we must still never re-prompt. In 0.20.1 a NRE here left the
+            // flag false and trapped users in a crash loop on every launch.
             settings.Settings.GpuRotationMethodPromptShown = true;
             try { await settings.SaveAsync(); }
             catch (Exception saveEx) { LogException("MaybeOfferDriverRotationAsync.MarkShown", saveEx); }
@@ -458,13 +496,12 @@ public partial class App : Application
                 XamlRoot = MainWindow.Content.XamlRoot,
             };
 
-            var result = await dialog.ShowAsync();
+            var result = await dialog.ShowThemedAsync();
             if (result == ContentDialogResult.Primary)
             {
-                // Write directly to the settings store — going through the VM setter
-                // raises PropertyChanged into a possibly-cached SettingsPage whose
-                // SelectedValue/SelectedValuePath ComboBox binding throws NRE during
-                // the TwoWay readback (CastHelpers.Unbox on a null Selector value).
+                // Write straight to the store: the VM setter raises PropertyChanged into
+                // a possibly-cached SettingsPage whose ComboBox SelectedValue binding
+                // NREs during the TwoWay readback (Unbox on a null Selector value).
                 settings.Settings.RotationMethod = suggestion.Value;
                 try { await settings.SaveAsync(); }
                 catch (Exception saveEx) { LogException("MaybeOfferDriverRotationAsync.SaveRotation", saveEx); }
@@ -493,8 +530,10 @@ public partial class App : Application
             // Let the shell settle before touching displays.
             await Task.Delay(1500);
 
+            // Two CCD round trips, and this runs a second and a half into startup while
+            // the window is still settling. Off the dispatcher.
             var displayService = Services.GetRequiredService<IDisplayService>();
-            var compatibility = displayService.CheckCompatibility(profile);
+            var compatibility = await Task.Run(() => displayService.CheckCompatibility(profile));
             if (!compatibility.IsFullMatch && compatibility.MissingMonitors.Count > 0 &&
                 compatibility.MissingMonitors.Count == profile.Monitors.Count)
             {
@@ -502,11 +541,9 @@ public partial class App : Application
                 return;
             }
 
-            // A full match re-applies a layout the user already confirmed, to the same
-            // monitors, so prompting on every single boot would be pure noise and would
-            // train them to click through it. A partial match is the case that can go
-            // wrong — docked/undocked, a panel swapped, a monitor asleep — so that one
-            // gets the countdown and the automatic roll-back.
+            // A full match re-applies a layout the user already confirmed, so prompting
+            // every boot is noise that trains them to click through. A partial match is
+            // what can go wrong, so only that one gets the countdown and roll-back.
             await profileService.ApplyProfileAsync(
                 profileId,
                 applyColor: settings.Settings.RestoreColorOnStartup,
@@ -565,7 +602,7 @@ public partial class App : Application
             XamlRoot = MainWindow.Content.XamlRoot,
         };
 
-        var result = await dialog.ShowAsync();
+        var result = await dialog.ShowThemedAsync();
         if (result == ContentDialogResult.Primary && !string.IsNullOrEmpty(url))
         {
             await Windows.System.Launcher.LaunchUriAsync(new Uri(url));
@@ -622,11 +659,8 @@ public partial class App : Application
         }
     }
 
-    /// <summary>
-    /// Bindings Windows refused at the last registration pass because another program
-    /// already owns them. Surfaced in Settings so a shortcut that silently does nothing
-    /// has a visible explanation.
-    /// </summary>
+    /// <summary>Bindings Windows refused because another program owns them. Surfaced in
+    /// Settings so a shortcut that silently does nothing has a visible explanation.</summary>
     public static IReadOnlyList<HotkeyConflict> HotkeyConflicts { get; private set; } = [];
 
     public static event EventHandler? HotkeyConflictsChanged;
@@ -688,5 +722,9 @@ public partial class App : Application
         try { Services.GetRequiredService<IMonitorColorService>().Dispose(); } catch { }
         try { Services.GetRequiredService<AmdColorService>().Dispose(); } catch { }
         try { Services.GetRequiredService<AmdRotationService>().Dispose(); } catch { }
+
+        // Last: an installer polls the presence mutex, and it should go the moment Mo
+        // is genuinely on its way out rather than whenever the process finally unwinds.
+        ShutdownSignal.Stop();
     }
 }

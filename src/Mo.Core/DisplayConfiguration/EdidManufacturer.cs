@@ -55,14 +55,9 @@ public static class EdidManufacturer
     {
         if (edidManufacturerId == 0) return string.Empty;
 
-        // CCD and NVAPI disagree on endianness for this field depending on the
-        // Windows build, so both byte orders have to be considered.
-        //
-        // "decodes to three A–Z letters" is NOT enough to pick between them: AOC
-        // encodes to 0x05E3, and the byte swap 0xE305 also decodes to letters
-        // ("XXE") — which is exactly what users were shown. Bit 15 is the reserved
-        // bit and is 0 in every well-formed EDID, so it is the real discriminator;
-        // a candidate with the top bit set cannot be the correct reading.
+        // Endianness varies by Windows build, so both byte orders are candidates.
+        // "Decodes to three A–Z letters" cannot pick between them (AOC is 0x05E3 and the
+        // swap 0xE305 also decodes); bit 15 is reserved-zero, so it is the discriminator.
         ushort swappedId = (ushort)((edidManufacturerId << 8) | (edidManufacturerId >> 8));
 
         var asIs = Decode(edidManufacturerId);

@@ -2,8 +2,8 @@ using System.Runtime.InteropServices;
 
 namespace Mo.Services;
 
-// Shared ADL2 display lookup for the Radeon services. See CLAUDE.md "Radeon (ADL)
-// rules" for the constraints these calls depend on — they were verified against real
+// Shared ADL2 display lookup for the Radeon services. The constraints these calls
+// depend on are in .claude/rules/30-display-apis.md; they were verified against real
 // hardware and are easy to break by inspection.
 internal static class AdlDisplays
 {
@@ -73,10 +73,8 @@ internal static class AdlDisplays
         public int DisplayInfoValue;
     }
 
-    /// <summary>
-    /// ADL (adapter, display) pair for a GDI device name, or null when the monitor is
-    /// not driven by a Radeon adapter.
-    /// </summary>
+    /// <summary>ADL (adapter, display) pair for a GDI device name, or null when the
+    /// monitor is not driven by a Radeon adapter.</summary>
     public static (int adapterIndex, int displayIndex)? Resolve(nint context, string? gdiDeviceName)
     {
         if (context == 0 || string.IsNullOrEmpty(gdiDeviceName)) return null;

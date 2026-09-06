@@ -63,7 +63,7 @@ public sealed partial class ApplyConfirmationDialog : ContentDialog
     /// </summary>
     public async Task<bool> ShowAndWaitAsync()
     {
-        await ShowAsync();
+        await this.ShowThemedAsync();
         return _confirmed;
     }
 

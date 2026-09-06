@@ -19,7 +19,11 @@ public sealed class MonitorInfo
     public DisplayRotation Rotation { get; set; } = DisplayRotation.None;
     public uint RefreshRateNumerator { get; set; }
     public uint RefreshRateDenominator { get; set; }
-    public int DpiScale { get; set; } = 100;
+    /// <summary>"Scaling was never captured for this monitor, leave it alone." A real
+    /// percentage is only ever written from a display Windows is actually driving.</summary>
+    public const int DpiScaleUnset = 0;
+
+    public int DpiScale { get; set; } = DpiScaleUnset;
     public bool IsPrimary { get; set; }
     public bool IsEnabled { get; set; } = true;
     public bool HdrEnabled { get; set; }
@@ -32,11 +36,9 @@ public sealed class MonitorInfo
     public uint SourceId { get; set; }
     public uint TargetId { get; set; }
 
-    // GDI device name e.g. "\\.\DISPLAY1". Used to bridge CCD identity (DevicePath)
-    // with HMONITOR-based APIs (DDC/CI), since EnumDisplayMonitors orders results
-    // differently than QueryDisplayConfig and matching by index alone is unreliable.
-    // Runtime-only — the GDI display number is reassigned freely across reboots,
-    // so persisting it would do more harm than good.
+    // GDI device name e.g. "\\.\DISPLAY1" — bridges CCD identity (DevicePath) to
+    // HMONITOR APIs, since EnumDisplayMonitors and QueryDisplayConfig order differently.
+    // Runtime-only: the display number is reassigned freely across reboots.
     [System.Text.Json.Serialization.JsonIgnore]
     public string GdiDeviceName { get; set; } = string.Empty;
 

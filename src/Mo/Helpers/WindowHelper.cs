@@ -21,11 +21,8 @@ public static class WindowHelper
     }
 
     // ── Work-area enumeration ──
-    //
-    // Win32 rather than DisplayArea.FindAll(): that projection throws
-    // InvalidCastException in this app's self-contained/unpackaged configuration, and
-    // it was doing so inside a catch, silently yielding an empty monitor list. Any
-    // caller then concluded "no monitors" and gave up on restoring window placement.
+    // Win32 rather than DisplayArea.FindAll(), which throws InvalidCastException in the
+    // self-contained/unpackaged configuration. See .claude/rules/50-persistence.md.
 
     [StructLayout(LayoutKind.Sequential)]
     private struct RECT { public int Left, Top, Right, Bottom; }
@@ -48,10 +45,8 @@ public static class WindowHelper
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern bool GetMonitorInfoW(nint hMonitor, ref MONITORINFOEXW info);
 
-    /// <summary>
-    /// Work areas (screen minus taskbar) of every attached monitor, in virtual-desktop
-    /// pixels. Empty only if the enumeration genuinely fails.
-    /// </summary>
+    /// <summary>Work areas (screen minus taskbar) of every attached monitor, in
+    /// virtual-desktop pixels. Empty only if the enumeration genuinely fails.</summary>
     public static List<Core.WindowPlacementValidator.Rect> GetWorkAreas()
     {
         var areas = new List<Core.WindowPlacementValidator.Rect>();

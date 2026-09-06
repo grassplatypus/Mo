@@ -3,12 +3,9 @@ using System.Text;
 
 namespace Mo.Helpers;
 
-// Append-only startup trace at %LOCALAPPDATA%\Mo\logs\boot.log.
-//
-// WinUI3 startup failures are frequently silent: the dispatcher keeps running with no
-// window, so nothing is shown and no handler fires. The trace is what identifies where
-// it stopped. Dependency-free (no DI, settings or WinRT) so it works from the first
-// instruction of Main.
+// Append-only startup trace at %LOCALAPPDATA%\Mo\logs\boot.log — the last line says
+// where a silent WinUI3 startup failure stopped. Dependency-free (no DI, settings or
+// WinRT) so it works from the first instruction of Main.
 public static class BootLog
 {
     private static readonly object Gate = new();
@@ -18,11 +15,8 @@ public static class BootLog
 
     private const long MaxBytes = 256 * 1024;
 
-    /// <summary>
-    /// Writes a session header. Call once, first thing in Main. Appends rather than
-    /// truncates — a redirecting instance runs alongside the primary and would
-    /// otherwise erase the primary's trace.
-    /// </summary>
+    /// <summary>Writes a session header; call once, first thing in Main. Appends rather
+    /// than truncates — a redirecting instance would erase the primary's trace.</summary>
     public static void BeginSession(string version)
     {
         try

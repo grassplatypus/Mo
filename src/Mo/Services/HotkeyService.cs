@@ -4,10 +4,9 @@ using Windows.System;
 
 namespace Mo.Services;
 
-// Registers process-wide hotkeys via RegisterHotKey + intercepts WM_HOTKEY by
-// subclassing the main window. Without the subclass the system fires hotkeys
-// into the message queue but no one ever reads them — earlier versions of this
-// service registered keys but the events were silently dropped.
+// Process-wide hotkeys via RegisterHotKey, with WM_HOTKEY intercepted by subclassing the
+// main window. Without the subclass the system posts hotkeys into the message queue and
+// nobody reads them — earlier versions registered keys and dropped every event.
 public sealed class HotkeyService : IHotkeyService
 {
     // Action kinds the registered hotkeys can dispatch.
@@ -141,18 +140,15 @@ public sealed class HotkeyService : IHotkeyService
             return;
         }
 
-        // RegisterHotKey fails when another process already owns the combination —
-        // Ctrl+Alt+1..9 in particular collides with a lot of software. Previously the
-        // entry was just dropped: the shortcut stayed visible on the profile card and
-        // in Settings, and simply never fired, with nothing to explain why.
+        // RegisterHotKey fails when another process owns the combination — Ctrl+Alt+1..9
+        // collides often. Dropping the entry silently left the shortcut visible on the
+        // card and in Settings, never firing, with nothing to explain why.
         Conflicts.Add(new HotkeyConflict(action, binding, payload));
         Helpers.BootLog.Write("hotkey.conflict", $"{action} {binding} payload={payload ?? "-"}");
     }
 
-    /// <summary>
-    /// Bindings the OS refused since the last <see cref="UnregisterAll"/>, because
-    /// another application already owns them.
-    /// </summary>
+    /// <summary>Bindings the OS refused since the last <see cref="UnregisterAll"/>,
+    /// because another application already owns them.</summary>
     public List<HotkeyConflict> Conflicts { get; } = [];
 
     public void UnregisterAll()

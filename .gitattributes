@@ -14,6 +14,7 @@
 *.manifest  text eol=crlf
 *.pubxml    text eol=crlf
 *.config    text eol=crlf
+*.ps1       text eol=crlf
 
 # Cross-platform text files → LF
 *.md        text eol=lf
@@ -21,6 +22,9 @@
 *.yml       text eol=lf
 *.yaml      text eol=lf
 *.sh        text eol=lf
+*.mjs       text eol=lf
+*.cjs       text eol=lf
+*.js        text eol=lf
 *.editorconfig text eol=lf
 *.gitignore text eol=lf
 *.gitattributes text eol=lf

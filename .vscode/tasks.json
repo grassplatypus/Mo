@@ -1,0 +1,93 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "detail": "dotnet build (x64 Debug). Signing off — the csproj thumbprint is not on every machine.",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "build",
+        "${workspaceFolder}/Mo.slnx",
+        "-c", "Debug",
+        "-p:Platform=x64",
+        "-p:AppxPackageSigningEnabled=false",
+        "--nologo",
+        "-v", "minimal"
+      ],
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": "$msCompile",
+      "presentation": { "reveal": "silent", "clear": true }
+    },
+    {
+      "label": "rebuild",
+      "detail": "Clean then build.",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "build",
+        "${workspaceFolder}/Mo.slnx",
+        "-c", "Debug",
+        "-p:Platform=x64",
+        "-p:AppxPackageSigningEnabled=false",
+        "-t:Rebuild",
+        "--nologo",
+        "-v", "minimal"
+      ],
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "test: Mo.Core",
+      "detail": "Pure logic tests. No display hardware needed.",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["test", "${workspaceFolder}/tests/Mo.Core.Tests", "--nologo", "-v", "quiet"],
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "test: all",
+      "detail": "Core plus the integration tests that reference the app project.",
+      "dependsOrder": "sequence",
+      "dependsOn": ["test: Mo.Core"],
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/tests/Mo.Tests",
+        "-p:Platform=x64",
+        "-p:AppxPackageSigningEnabled=false",
+        "--nologo",
+        "-v", "quiet"
+      ],
+      "group": "test",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "release: signed package",
+      "detail": "Tests, ZIP and signed MSIX into artifacts/. Needs New-SigningCertificate.ps1 once.",
+      "type": "process",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", "${workspaceFolder}/scripts/Publish-Release.ps1"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "release: create signing certificate",
+      "detail": "One-off per machine. Creates and trusts the dev code-signing certificate.",
+      "type": "process",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", "${workspaceFolder}/scripts/New-SigningCertificate.ps1",
+        "-Trust"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}

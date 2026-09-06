@@ -21,6 +21,7 @@ public sealed class ProfileService : IProfileService
     public ObservableCollection<DisplayProfile> Profiles { get; } = [];
 
     public event EventHandler<DisplayProfile>? ProfileApplied;
+    public event EventHandler? ApplyWorkFinished;
 
     public async Task LoadAllAsync()
     {
@@ -39,6 +40,7 @@ public sealed class ProfileService : IProfileService
                 if (profile != null)
                 {
                     MigrateGeneratedDescription(profile);
+                    MigrateUncapturedDpiScale(profile);
                     loaded.Add(profile);
                 }
             }
@@ -56,10 +58,8 @@ public sealed class ProfileService : IProfileService
         NormalizeSortOrder();
     }
 
-    /// <summary>
-    /// Writes SortOrder to match list positions. Does not touch ModifiedAt — reordering
-    /// is not an edit, and bumping it would relabel every card "updated just now".
-    /// </summary>
+    /// <summary>Writes SortOrder to match list positions. Does not touch ModifiedAt —
+    /// bumping it would relabel every card "updated just now".</summary>
     public async Task PersistOrderAsync()
     {
         foreach (var profile in NormalizeSortOrder())
@@ -79,11 +79,9 @@ public sealed class ProfileService : IProfileService
         return changed;
     }
 
-    /// <summary>
-    /// Refuses to write a profile whose serialized form has lost data. MoJsonContext is
-    /// source-generated, so a member becoming invisible to it silently drops from the
-    /// contract and every save would overwrite a good file with a blank one.
-    /// </summary>
+    /// <summary>Refuses to write a profile whose serialized form has lost data — a member
+    /// invisible to the source-generated MoJsonContext would silently overwrite a good
+    /// file with a blank one. See .claude/rules/10-code-style.md.</summary>
     private static void EnsureRoundTrips(DisplayProfile profile, string json)
     {
         var reloaded = JsonSerializer.Deserialize(json, MoJsonContext.Default.DisplayProfile);
@@ -105,14 +103,25 @@ public sealed class ProfileService : IProfileService
         throw new InvalidOperationException(message);
     }
 
-    /// <summary>
-    /// Clears descriptions earlier versions generated. In memory only — rewriting the
-    /// files at startup would churn ModifiedAt for every profile.
-    /// </summary>
+    /// <summary>Schema the current build writes. Bump alongside a migration below.</summary>
+    private const int CurrentSchemaVersion = 1;
+
+    /// <summary>Clears descriptions earlier versions generated. In memory only, since
+    /// rewriting files at startup would churn ModifiedAt for every profile.</summary>
     private static void MigrateGeneratedDescription(DisplayProfile profile)
     {
         if (Mo.Core.Formatting.LegacyDescription.IsGenerated(profile.Description))
             profile.Description = string.Empty;
+    }
+
+    /// <summary>Drops the scaling of a profile written before Mo captured it. Those files
+    /// all say 100 because that was the field's default, never because anyone chose it,
+    /// and applying them would drag every scaled monitor down to 100%.</summary>
+    private static void MigrateUncapturedDpiScale(DisplayProfile profile)
+    {
+        if (profile.SchemaVersion >= 1) return;
+        foreach (var monitor in profile.Monitors)
+            monitor.DpiScale = MonitorInfo.DpiScaleUnset;
     }
 
     public Task SaveProfileAsync(DisplayProfile profile) => SaveProfileAsync(profile, touchModified: true);
@@ -121,6 +130,11 @@ public sealed class ProfileService : IProfileService
     public async Task SaveProfileAsync(DisplayProfile profile, bool touchModified)
     {
         if (touchModified) profile.ModifiedAt = DateTime.UtcNow;
+        profile.SchemaVersion = CurrentSchemaVersion;
+
+        // A profile lists the monitors that will be on. Anything it does not name is
+        // switched off, so an entry marked off says nothing the omission does not.
+        profile.Monitors.RemoveAll(m => !m.IsEnabled);
 
         // A new profile goes last rather than defaulting to 0 and jumping to front.
         if (profile.SortOrder == 0 && !Profiles.Contains(profile) && Profiles.Count > 0)
@@ -166,9 +180,16 @@ public sealed class ProfileService : IProfileService
         await Task.CompletedTask;
     }
 
-    public async Task<DisplayProfile> CaptureCurrentAsync(string name)
+    /// <summary>Reads the whole machine: display config, audio, wallpaper and a DDC/CI
+    /// round trip per monitor. All of it hardware, so all of it off the dispatcher.</summary>
+    public Task<DisplayProfile> CaptureCurrentAsync(string name) => Task.Run(() => CaptureCurrent(name));
+
+    private DisplayProfile CaptureCurrent(string name)
     {
+        // The monitors that are on, which is exactly what the profile stores. A monitor
+        // that is off right now is captured by leaving it out.
         var monitors = _displayService.GetCurrentConfiguration();
+
         var profile = new DisplayProfile
         {
             Name = name,
@@ -197,20 +218,22 @@ public sealed class ProfileService : IProfileService
         }
         catch { }
 
-        // Capture monitor color settings (brightness, contrast, RGB gain)
+        // Capture monitor colour settings (brightness, contrast, RGB gain). Addressed by
+        // GDI device name, never by list position: the monitor list includes switched-off
+        // displays and DDC/CI only enumerates the live ones, so the indices differ.
         try
         {
             var colorService = App.Services.GetRequiredService<IMonitorColorService>();
-            var colorSettings = colorService.CaptureAllMonitors();
-            for (int i = 0; i < Math.Min(profile.Monitors.Count, colorSettings.Count); i++)
+            foreach (var monitor in profile.Monitors)
             {
-                if (colorSettings[i].HasValues)
-                    profile.Monitors[i].ColorSettings = colorSettings[i];
+                if (!monitor.IsEnabled || string.IsNullOrEmpty(monitor.GdiDeviceName)) continue;
+                var captured = colorService.CaptureByDeviceName(monitor.GdiDeviceName);
+                if (captured is { HasValues: true })
+                    monitor.ColorSettings = captured;
             }
         }
         catch { }
 
-        await Task.CompletedTask;
         return profile;
     }
 
@@ -229,7 +252,10 @@ public sealed class ProfileService : IProfileService
         var guard = TryGetGuard(out var guardService) ? guardService : null;
         var snapshot = guard?.Capture();
 
-        var result = _displayService.ApplyProfile(profile);
+        // Off the dispatcher: ApplyProfile talks to drivers, sleeps for seconds, and
+        // broadcasts a window message whose timeout is per window. On the UI thread that
+        // freezes Mo outright. See .claude/rules/80-ui-responsiveness.md.
+        var result = await Task.Run(() => _displayService.ApplyProfile(profile, trigger));
 
         if (result is DisplayApplyResult.Success or DisplayApplyResult.PartialMatch)
         {
@@ -263,14 +289,19 @@ public sealed class ProfileService : IProfileService
             {
                 try
                 {
+                    // Resolved by identity against the hardware as it is right now. Not by
+                    // list position, which a switched-off monitor shifts, and not by the
+                    // stored GDI name, which Windows renumbers across reboots.
                     var colorService = App.Services.GetRequiredService<IMonitorColorService>();
-                    var entries = profile.Monitors
-                        .Select((m, i) => (index: i, settings: m.ColorSettings))
-                        .Where(e => e.settings is { HasValues: true })
-                        .Select(e => (e.index, e.settings!))
-                        .ToList();
-                    if (entries.Count > 0)
-                        colorService.ApplyAll(entries);
+                    var live = _displayService.GetCurrentConfiguration();
+
+                    foreach (var monitor in profile.Monitors)
+                    {
+                        if (monitor.ColorSettings is not { HasValues: true } settings) continue;
+                        var target = live.FirstOrDefault(c => monitor.IsSameMonitorAs(c));
+                        if (target == null || string.IsNullOrEmpty(target.GdiDeviceName)) continue;
+                        colorService.ApplyToMonitorByDeviceName(target.GdiDeviceName, settings);
+                    }
                 }
                 catch { }
             }
@@ -285,6 +316,10 @@ public sealed class ProfileService : IProfileService
                 }
                 catch { }
             }
+
+            // Everything that drives hardware has landed; anything still spinning in the
+            // UI should stop before the countdown asks a question.
+            ApplyWorkFinished?.Invoke(this, EventArgs.Empty);
 
             // Confirm after colour/audio/wallpaper land — brightness zero is as
             // unusable as a bad topology.

@@ -24,13 +24,8 @@ public sealed partial class MonitorLayoutThumbnail : Grid
     private double _renderedWidth;
     private double _renderedHeight;
 
-    /// <summary>
-    /// Re-draws only when the size changed enough to look different.
-    /// </summary>
-    /// <remarks>
-    /// A window-edge drag resizes every card on every frame; rebuilding all panels and
-    /// labels each time is a lot of allocation for an identical picture.
-    /// </remarks>
+    /// <summary>Re-draws only when the size changed enough to look different — an edge
+    /// drag resizes every card each frame, for an identical picture.</summary>
     private void OnSizeChanged(object sender, SizeChangedEventArgs e)
     {
         if (Math.Abs(e.NewSize.Width - _renderedWidth) < 1 &&

@@ -49,33 +49,38 @@
                 </tk:SettingsExpander.Items>
             </tk:SettingsExpander>
 
-            <!-- Appearance. The theme combo uses the same manual Loaded /
-                 SelectionChanged wiring as the language and rotation combos; see the
-                 note in SettingsPage.xaml.cs for why x:Bind SelectedItem on an enum
-                 is not safe here. -->
-            <tk:SettingsCard x:Uid="ThemeCard">
-                <tk:SettingsCard.HeaderIcon>
+            <!-- Appearance. Grouped rather than left as two loose cards between the
+                 expanders above and below. The combos use the manual Loaded /
+                 SelectionChanged wiring; SettingsPage.xaml.cs says why x:Bind is unsafe. -->
+            <tk:SettingsExpander x:Uid="AppearanceExpander" IsExpanded="True">
+                <tk:SettingsExpander.HeaderIcon>
                     <FontIcon Glyph="&#xE790;" />
-                </tk:SettingsCard.HeaderIcon>
-                <ComboBox x:Name="ThemeCombo"
-                          MinWidth="160"
-                          ItemsSource="{x:Bind ThemeOptions, Mode=OneTime}"
-                          DisplayMemberPath="Display"
-                          Loaded="ThemeCombo_Loaded"
-                          SelectionChanged="ThemeCombo_SelectionChanged" />
-            </tk:SettingsCard>
-
-            <tk:SettingsCard x:Uid="LanguageCard">
-                <tk:SettingsCard.HeaderIcon>
-                    <FontIcon Glyph="&#xF2B7;" />
-                </tk:SettingsCard.HeaderIcon>
-                <ComboBox x:Name="LanguageCombo"
-                          MinWidth="200"
-                          ItemsSource="{x:Bind LanguageOptions, Mode=OneTime}"
-                          DisplayMemberPath="Display"
-                          Loaded="LanguageCombo_Loaded"
-                          SelectionChanged="LanguageCombo_SelectionChanged" />
-            </tk:SettingsCard>
+                </tk:SettingsExpander.HeaderIcon>
+                <tk:SettingsExpander.Items>
+                    <tk:SettingsCard x:Uid="ThemeCard">
+                        <tk:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xE771;" />
+                        </tk:SettingsCard.HeaderIcon>
+                        <ComboBox x:Name="ThemeCombo"
+                                  MinWidth="200"
+                                  ItemsSource="{x:Bind ThemeOptions, Mode=OneTime}"
+                                  DisplayMemberPath="Display"
+                                  Loaded="ThemeCombo_Loaded"
+                                  SelectionChanged="ThemeCombo_SelectionChanged" />
+                    </tk:SettingsCard>
+                    <tk:SettingsCard x:Uid="LanguageCard">
+                        <tk:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xF2B7;" />
+                        </tk:SettingsCard.HeaderIcon>
+                        <ComboBox x:Name="LanguageCombo"
+                                  MinWidth="200"
+                                  ItemsSource="{x:Bind LanguageOptions, Mode=OneTime}"
+                                  DisplayMemberPath="Display"
+                                  Loaded="LanguageCombo_Loaded"
+                                  SelectionChanged="LanguageCombo_SelectionChanged" />
+                    </tk:SettingsCard>
+                </tk:SettingsExpander.Items>
+            </tk:SettingsExpander>
 
             <!-- Profiles -->
             <tk:SettingsExpander x:Uid="ProfilesExpander" IsExpanded="True">
@@ -149,52 +154,67 @@
                         </tk:SettingsCard.HeaderIcon>
                         <ToggleSwitch IsOn="{x:Bind ViewModel.ConfirmApply, Mode=TwoWay}" OnContent="" OffContent="" />
                     </tk:SettingsCard>
-                    <tk:SettingsCard x:Uid="ApplyConfirmSecondsCard"
-                                     IsEnabled="{x:Bind ViewModel.ConfirmApply, Mode=OneWay}">
-                        <tk:SettingsCard.HeaderIcon>
-                            <FontIcon Glyph="&#xE916;" />
-                        </tk:SettingsCard.HeaderIcon>
-                        <NumberBox Value="{x:Bind ViewModel.ApplyConfirmSeconds, Mode=TwoWay}"
-                                   Minimum="5" Maximum="120" SmallChange="5"
-                                   SpinButtonPlacementMode="Compact"
-                                   MinWidth="120" />
-                    </tk:SettingsCard>
                     <tk:SettingsCard x:Uid="RestoreOnStartupCard">
                         <tk:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE777;" />
                         </tk:SettingsCard.HeaderIcon>
                         <ToggleSwitch IsOn="{x:Bind ViewModel.RestoreOnStartup, Mode=TwoWay}" OnContent="" OffContent="" />
                     </tk:SettingsCard>
-                    <tk:SettingsCard x:Uid="RestoreColorCard">
+                    <!-- Only reachable through the startup restore above: this is the
+                         applyColor argument to it, so on its own it does nothing. -->
+                    <tk:SettingsCard x:Uid="RestoreColorCard"
+                                     IsEnabled="{x:Bind ViewModel.RestoreOnStartup, Mode=OneWay}">
                         <tk:SettingsCard.HeaderIcon>
-                            <FontIcon Glyph="&#xE790;" />
+                            <FontIcon Glyph="&#xE793;" />
                         </tk:SettingsCard.HeaderIcon>
                         <ToggleSwitch IsOn="{x:Bind ViewModel.RestoreColorOnStartup, Mode=TwoWay}" OnContent="" OffContent="" />
+                    </tk:SettingsCard>
+                    <tk:SettingsCard x:Uid="ResetCursorAfterRotationCard">
+                        <tk:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xE962;" />
+                        </tk:SettingsCard.HeaderIcon>
+                        <ToggleSwitch IsOn="{x:Bind ViewModel.ResetCursorAfterRotation, Mode=TwoWay}" OnContent="" OffContent="" />
                     </tk:SettingsCard>
                 </tk:SettingsExpander.Items>
             </tk:SettingsExpander>
 
-            <!-- Updates -->
-            <tk:SettingsCard x:Uid="UpdateCheckCard">
-                <tk:SettingsCard.HeaderIcon>
+            <!-- Updates. One control per card: a switch that sets a preference and a
+                 button that acts now are different promises, and pairing them in one row
+                 made the switch look like it governed the button. -->
+            <tk:SettingsExpander x:Uid="UpdatesExpander" IsExpanded="True">
+                <tk:SettingsExpander.HeaderIcon>
                     <FontIcon Glyph="&#xE895;" />
-                </tk:SettingsCard.HeaderIcon>
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBlock x:Name="UpdateStatusText"
-                               VerticalAlignment="Center"
-                               Opacity="0.7"
-                               Style="{StaticResource CaptionTextBlockStyle}"
-                               Foreground="{ThemeResource SystemFillColorSuccessBrush}"
-                               Visibility="Collapsed" />
-                    <ToggleSwitch IsOn="{x:Bind ViewModel.CheckForUpdates, Mode=TwoWay}" OnContent="" OffContent="" />
-                    <Button x:Name="CheckNowButton" Click="CheckNowButton_Click" VerticalAlignment="Center">
-                        <TextBlock x:Uid="CheckNowText" />
-                    </Button>
-                </StackPanel>
-            </tk:SettingsCard>
+                </tk:SettingsExpander.HeaderIcon>
+                <tk:SettingsExpander.Items>
+                    <tk:SettingsCard x:Uid="UpdateCheckCard">
+                        <tk:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xEA8F;" />
+                        </tk:SettingsCard.HeaderIcon>
+                        <ToggleSwitch IsOn="{x:Bind ViewModel.CheckForUpdates, Mode=TwoWay}" OnContent="" OffContent="" />
+                    </tk:SettingsCard>
+                    <tk:SettingsCard x:Uid="UpdateCheckNowCard">
+                        <tk:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xE117;" />
+                        </tk:SettingsCard.HeaderIcon>
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <TextBlock x:Name="UpdateStatusText"
+                                       VerticalAlignment="Center"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                                       Visibility="Collapsed" />
+                            <Button x:Name="CheckNowButton" Click="CheckNowButton_Click">
+                                <TextBlock x:Uid="CheckNowText" />
+                            </Button>
+                        </StackPanel>
+                    </tk:SettingsCard>
+                </tk:SettingsExpander.Items>
+            </tk:SettingsExpander>
 
             <!-- Advanced -->
-            <tk:SettingsExpander x:Uid="AdvancedExpander">
+            <!-- Hidden, not deleted. Every reason this setting existed failed
+                 measurement; the code stays until a second machine confirms it.
+                 See .claude/rules/30-display-apis.md. -->
+            <tk:SettingsExpander x:Uid="AdvancedExpander" Visibility="Collapsed">
                 <tk:SettingsExpander.HeaderIcon>
                     <FontIcon Glyph="&#xE9F5;" />
                 </tk:SettingsExpander.HeaderIcon>
@@ -221,7 +241,8 @@
                     <FontIcon Glyph="&#xE74D;" />
                 </tk:SettingsCard.HeaderIcon>
                 <Button x:Name="RemoveDataBtn" Click="RemoveData_Click">
-                    <TextBlock x:Uid="RemoveDataButton" />
+                    <TextBlock x:Uid="RemoveDataButton"
+                               Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
                 </Button>
             </tk:SettingsCard>
 
@@ -230,27 +251,72 @@
                 <tk:SettingsExpander.HeaderIcon>
                     <FontIcon Glyph="&#xE946;" />
                 </tk:SettingsExpander.HeaderIcon>
-                <tk:SettingsExpander.Items>
-                    <tk:SettingsCard ContentAlignment="Vertical">
-                        <StackPanel Spacing="12" Padding="0,8">
-                            <StackPanel>
-                                <TextBlock x:Name="AboutName" Style="{StaticResource BodyStrongTextBlockStyle}" />
-                                <TextBlock x:Name="AboutVersion" Opacity="0.6" Style="{StaticResource CaptionTextBlockStyle}" />
-                                <TextBlock x:Name="AboutDesc" Opacity="0.6" TextWrapping="Wrap" Margin="0,4,0,0" />
+                <!-- ItemsHeader, not an item. The toolkit indents each item to line up
+                     under the expander's own icon column, and this block carries no icon,
+                     so that reserved column showed as an empty gutter down the left. -->
+                <tk:SettingsExpander.ItemsHeader>
+                    <!-- Painted to match the expander's own items. An ItemsHeader is laid
+                         straight on the expanded area, which shows through darker than the
+                         cards every other section here is made of. -->
+                    <Border Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="0,1,0,0">
+                    <StackPanel Spacing="20" Padding="16,16,16,16">
+
+                            <!-- Identity -->
+                            <StackPanel Orientation="Horizontal" Spacing="16">
+                                <Image x:Name="AboutIcon"
+                                       Width="44" Height="44" VerticalAlignment="Center" />
+                                <StackPanel Spacing="2" VerticalAlignment="Center">
+                                    <TextBlock x:Name="AboutName" Style="{StaticResource SubtitleTextBlockStyle}" />
+                                    <TextBlock x:Name="AboutVersion" Opacity="0.6"
+                                               Style="{StaticResource CaptionTextBlockStyle}" />
+                                </StackPanel>
+                            </StackPanel>
+                            <TextBlock x:Name="AboutDesc" Opacity="0.7" TextWrapping="Wrap" Margin="0,-8,0,0" />
+
+                            <!-- This PC. A label/value grid rather than four loose lines,
+                                 so the values line up and the labels can be read past. -->
+                            <StackPanel Spacing="10">
+                                <TextBlock x:Name="SysSectionTitle" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                                <Grid ColumnSpacing="16" RowSpacing="6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" MinWidth="90" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock x:Name="SysOsLabel" Opacity="0.6" />
+                                    <TextBlock x:Name="SysOsText" Grid.Column="1" TextWrapping="Wrap" />
+
+                                    <TextBlock x:Name="SysCpuLabel" Grid.Row="1" Opacity="0.6" />
+                                    <TextBlock x:Name="SysCpuText" Grid.Row="1" Grid.Column="1" TextWrapping="Wrap" />
+
+                                    <TextBlock x:Name="SysRamLabel" Grid.Row="2" Opacity="0.6" />
+                                    <TextBlock x:Name="SysRamText" Grid.Row="2" Grid.Column="1" TextWrapping="Wrap" />
+
+                                    <TextBlock x:Name="SysGpuLabel" Grid.Row="3" Opacity="0.6" />
+                                    <TextBlock x:Name="SysGpuText" Grid.Row="3" Grid.Column="1" TextWrapping="Wrap" />
+                                </Grid>
                             </StackPanel>
 
-                            <StackPanel Spacing="2">
-                                <TextBlock x:Name="SysOsText" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7" />
-                                <TextBlock x:Name="SysCpuText" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7" />
-                                <TextBlock x:Name="SysRamText" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7" />
-                                <TextBlock x:Name="SysGpuText" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7" />
-                            </StackPanel>
-
-                            <ItemsRepeater x:Name="MonitorsRepeater" ItemsSource="{x:Bind Monitors, Mode=OneWay}">
-                                <ItemsRepeater.Layout>
-                                    <StackLayout Spacing="6" />
-                                </ItemsRepeater.Layout>
-                                <ItemsRepeater.ItemTemplate>
+                            <TextBlock x:Name="SysMonitorsTitle" Style="{StaticResource BodyStrongTextBlockStyle}"
+                                       Margin="0,0,0,-12" />
+                            <!-- ItemsControl, not ItemsRepeater: a repeater virtualizes
+                                 against the outer ScrollViewer and re-measures on every
+                                 scroll tick here, which is the shimmer. -->
+                            <ItemsControl x:Name="MonitorsList" ItemsSource="{x:Bind Monitors, Mode=OneWay}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Spacing="6" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="helpers:MonitorDisplayInfo">
                                         <Border Padding="12,10"
                                                 CornerRadius="6"
@@ -263,7 +329,8 @@
                                                             Padding="6,1"
                                                             VerticalAlignment="Center"
                                                             Visibility="{x:Bind PrimaryBadgeVisibility}">
-                                                        <TextBlock Text="P" FontSize="10" Foreground="White" />
+                                                        <TextBlock x:Uid="MonitorPrimaryBadge" FontSize="11"
+                                                                   Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
                                                     </Border>
                                                 </StackPanel>
                                                 <TextBlock Text="{x:Bind ManufacturerModel}"
@@ -275,28 +342,38 @@
                                             </StackPanel>
                                         </Border>
                                     </DataTemplate>
-                                </ItemsRepeater.ItemTemplate>
-                            </ItemsRepeater>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
 
-                            <TextBox x:Name="SystemInfoBox"
-                                     IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
-                                     FontFamily="Consolas" FontSize="11" MaxHeight="300"
-                                     BorderThickness="0" Background="Transparent"
-                                     Visibility="Collapsed" />
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <Button x:Name="CopySystemInfoBtn" Click="CopySystemInfo_Click">
-                                    <TextBlock x:Uid="CopyDebugText" />
-                                </Button>
-                                <Button x:Name="ShowDebugBtn" Click="ShowDebugInfo_Click">
-                                    <TextBlock x:Uid="ShowDebugText" />
-                                </Button>
-                                <Button x:Name="OpenLogFolderBtn" Click="OpenLogFolder_Click">
-                                    <TextBlock x:Uid="OpenLogFolderText" />
-                                </Button>
+                            <!-- Diagnostics last, and grouped: these are for reporting a
+                                 problem, not for reading the machine's specification. -->
+                            <StackPanel Spacing="10">
+                                <TextBlock x:Name="SysDiagnosticsTitle" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Button x:Name="CopySystemInfoBtn" Click="CopySystemInfo_Click"
+                                            Style="{StaticResource AccentButtonStyle}">
+                                        <TextBlock x:Uid="CopyDebugText" />
+                                    </Button>
+                                    <Button x:Name="ShowDebugBtn" Click="ShowDebugInfo_Click">
+                                        <TextBlock x:Uid="ShowDebugText" />
+                                    </Button>
+                                    <Button x:Name="OpenLogFolderBtn" Click="OpenLogFolder_Click">
+                                        <TextBlock x:Uid="OpenLogFolderText" />
+                                    </Button>
+                                </StackPanel>
+                                <Border x:Name="SystemInfoBorder" Visibility="Collapsed"
+                                        CornerRadius="6" Padding="4"
+                                        Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                                    <TextBox x:Name="SystemInfoBox"
+                                             IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+                                             IsSpellCheckEnabled="False"
+                                             FontFamily="Consolas" FontSize="11" MaxHeight="300"
+                                             BorderThickness="0" Background="Transparent" />
+                                </Border>
                             </StackPanel>
-                        </StackPanel>
-                    </tk:SettingsCard>
-                </tk:SettingsExpander.Items>
+                    </StackPanel>
+                    </Border>
+                </tk:SettingsExpander.ItemsHeader>
             </tk:SettingsExpander>
 
         </StackPanel>

@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <MoVersion>0.21.2</MoVersion>
+    <MoVersion>0.22.0</MoVersion>
     <MoVersionFull>$(MoVersion).0</MoVersionFull>
     <NoWarn>$(NoWarn);NETSDK1233</NoWarn>
   </PropertyGroup>
@@ -8,9 +8,9 @@
   <!--
     Blocking a Task from the UI thread is not a style preference here: it is the exact
     defect that made Mo start, hang before creating a window, and then look permanently
-    un-launchable (the hung process kept the single-instance key). The rule was already
-    written down in .github/instructions/performance.instructions.md and violated in
-    three places anyway, so it is enforced by the compiler now. See BannedSymbols.txt.
+    un-launchable (the hung process kept the single-instance key). Written as prose it
+    was violated in three places anyway, so the compiler enforces it now. See
+    BannedSymbols.txt and .claude/rules/10-code-style.md.
   -->
   <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
     <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="4.14.0">
@@ -24,5 +24,10 @@
     <!-- RS0030 = "banned API used". An error, not a warning: a warning is what the
          previous convention amounted to, and it did not stop the bug. -->
     <WarningsAsErrors>$(WarningsAsErrors);RS0030</WarningsAsErrors>
+
+    <!-- The build is warning-clean, so this costs nothing today and stops the slow
+         accumulation that makes a warning list worth ignoring. Suppress a specific
+         case with a #pragma that says why, never by adding to NoWarn. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 </Project>

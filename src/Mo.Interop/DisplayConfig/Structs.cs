@@ -120,6 +120,24 @@ public struct DISPLAYCONFIG_DEVICE_INFO_HEADER
     public uint id;
 }
 
+/// <summary>Per-monitor scaling, read. The values are steps relative to the display's
+/// recommended scale, not percentages; Mo.Core's DpiScaling converts them.</summary>
+[StructLayout(LayoutKind.Sequential)]
+public struct DISPLAYCONFIG_SOURCE_DPI_SCALE_GET
+{
+    public DISPLAYCONFIG_DEVICE_INFO_HEADER header;
+    public int minScaleRel;
+    public int curScaleRel;
+    public int maxScaleRel;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public struct DISPLAYCONFIG_SOURCE_DPI_SCALE_SET
+{
+    public DISPLAYCONFIG_DEVICE_INFO_HEADER header;
+    public int scaleRel;
+}
+
 [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
 public struct DISPLAYCONFIG_TARGET_DEVICE_NAME
 {
@@ -146,11 +164,8 @@ public struct DISPLAYCONFIG_SOURCE_DEVICE_NAME
     public string viewGdiDeviceName;
 }
 
-// value bit layout:
-//   bit 0: advancedColorSupported
-//   bit 1: advancedColorEnabled (HDR on/off)
-//   bit 2: wideColorEnforced
-//   bit 3: advancedColorForceDisabled
+// value bits: 0 advancedColorSupported, 1 advancedColorEnabled (HDR on/off),
+// 2 wideColorEnforced, 3 advancedColorForceDisabled
 [StructLayout(LayoutKind.Sequential)]
 public struct DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO
 {

@@ -239,10 +239,9 @@ public sealed class NvidiaRotationService
                         }
                     }
 
-                    // Geometry lives on the path, not the target. Without it a rotation
-                    // changes the display's desktop footprint and the driver repacks the
-                    // remaining monitors however it likes, discarding the arrangement the
-                    // profile actually describes.
+                    // Geometry lives on the path, not the target. Without it the driver
+                    // repacks the desktop after a rotation and the profile's arrangement
+                    // is lost — see .claude/rules/30-display-apis.md.
                     var (srcW, srcH) = RotationGeometry.ToSource(pm.Width, pm.Height, (int)pm.Rotation);
                     Log($"    Position: ({path.Position.X},{path.Position.Y}) → ({pm.PositionX},{pm.PositionY})");
                     Log($"    Resolution: {path.Resolution.Width}x{path.Resolution.Height} → {srcW}x{srcH} (desktop {pm.Width}x{pm.Height})");
@@ -254,18 +253,10 @@ public sealed class NvidiaRotationService
                 }
             }
 
-            // Remove paths for monitors that should be disabled
-            // Auto-disable if profile has fewer enabled monitors than currently active
-            bool shouldDisableUnmatched = profile.UnmatchedAction == UnmatchedMonitorAction.Disable ||
-                profile.Monitors.Count(m => m.IsEnabled) < currentPaths.Length;
-
-            var finalPaths = currentPaths.AsEnumerable();
-            if (shouldDisableUnmatched)
-            {
-                finalPaths = currentPaths.Where(path =>
-                    path.TargetsInfo.Any(t => usedDisplayIds.Contains(t.DisplayDevice.DisplayId)));
-                Log($"Disable unmatched: keeping {finalPaths.Count()} of {currentPaths.Length} paths");
-            }
+            // A monitor the profile does not mention goes off, matching the CCD branch.
+            var finalPaths = currentPaths.Where(path =>
+                path.TargetsInfo.Any(t => usedDisplayIds.Contains(t.DisplayDevice.DisplayId)));
+            Log($"Disable unmatched: keeping {finalPaths.Count()} of {currentPaths.Length} paths");
 
             // Also remove paths for profile monitors with IsEnabled=false
             var disabledProfileDisplayIds = new HashSet<uint>();
@@ -359,11 +350,9 @@ public sealed class NvidiaRotationService
         catch { return false; }
     }
 
-    /// <summary>
-    /// Maps NVAPI DisplayId → CCD EDID info using GDI device name as bridge.
-    /// Active displays: CCD source → GDI name (\\.\DISPLAY1) → NVAPI Display.Name
-    /// Inactive displays: matched by exclusion after active matching
-    /// </summary>
+    /// <summary>Maps NVAPI DisplayId → CCD EDID info, bridging on the GDI device name
+    /// (CCD source → \\.\DISPLAY1 → NVAPI Display.Name). Inactive displays are matched by
+    /// exclusion once the active ones are paired.</summary>
     private static Dictionary<uint, (string devicePath, ushort mfrId, ushort prodId, uint connector, string name)>
         BuildNvapiToEdidMap(DisplayDevice[] allConnected, PathInfo[] currentPaths)
     {

@@ -58,10 +58,8 @@ public sealed class UpdateService : IUpdateService
         return (false, null, null);
     }
 
-    /// <summary>
-    /// Proper semver comparison: 1.10.0 > 1.9.0
-    /// Returns positive if a > b, negative if a < b, 0 if equal.
-    /// </summary>
+    /// <summary>Proper semver comparison (1.10.0 beats 1.9.0). Positive if a is newer,
+    /// negative if b is, 0 if equal.</summary>
     private static int CompareSemVer(string a, string b)
     {
         var pa = a.Split('.', '-')[..3];

@@ -40,8 +40,16 @@ public static class NativeDisplayApi
         ref DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO requestPacket);
 
     [DllImport("user32.dll")]
+    public static extern int DisplayConfigGetDeviceInfo(
+        ref DISPLAYCONFIG_SOURCE_DPI_SCALE_GET requestPacket);
+
+    [DllImport("user32.dll")]
     public static extern int DisplayConfigSetDeviceInfo(
         ref DISPLAYCONFIG_SET_ADVANCED_COLOR_STATE setPacket);
+
+    [DllImport("user32.dll")]
+    public static extern int DisplayConfigSetDeviceInfo(
+        ref DISPLAYCONFIG_SOURCE_DPI_SCALE_SET setPacket);
 
     [DllImport("user32.dll")]
     public static extern bool SystemParametersInfo(
@@ -50,6 +58,11 @@ public static class NativeDisplayApi
     [DllImport("user32.dll")]
     public static extern bool PostMessage(
         IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern IntPtr SendMessageTimeout(
+        IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam,
+        uint fuFlags, uint uTimeout, out IntPtr lpdwResult);
 
     [DllImport("user32.dll")]
     public static extern bool ClipCursor(IntPtr lpRect);
@@ -68,6 +81,13 @@ public static class NativeDisplayApi
     public const int SM_CXSCREEN = 0;
     public const int SM_CYSCREEN = 1;
 
+    // Display power, the only thing found to reseat a rotated cursor plane.
+    public const uint WM_SYSCOMMAND = 0x0112;
+    public const int SC_MONITORPOWER = 0xF170;
+    public const int MONITOR_POWER_OFF = 2;
+    public const int MONITOR_POWER_ON = -1;
+    public const uint SMTO_ABORTIFHUNG = 0x0002;
+
     // ChangeDisplaySettingsEx (legacy GDI)
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     public static extern int ChangeDisplaySettingsEx(
@@ -85,11 +105,31 @@ public static class NativeDisplayApi
     public static extern bool EnumDisplaySettings(
         string lpszDeviceName, int iModeNum, ref DEVMODE lpDevMode);
 
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern bool EnumDisplaySettingsEx(
+        string lpszDeviceName, int iModeNum, ref DEVMODE lpDevMode, uint dwFlags);
+
     public const int ENUM_CURRENT_SETTINGS = -1;
     public const uint CDS_UPDATEREGISTRY = 0x01;
     public const uint CDS_NORESET = 0x10000000;
     public const uint CDS_RESET = 0x40000000;
     public const int DISP_CHANGE_SUCCESSFUL = 0;
+
+    // dmFields bits and dmDisplayOrientation values. Under DM_DISPLAYORIENTATION the
+    // pels are the post-rotation desktop extent, the opposite of CCD's source mode —
+    // see .claude/rules/30-display-apis.md.
+    public const ushort DM_SPECVERSION = 0x0401;
+    public const uint DM_POSITION = 0x00000020;
+    public const uint DM_DISPLAYORIENTATION = 0x00000080;
+    public const uint DM_BITSPERPEL = 0x00040000;
+    public const uint DM_PELSWIDTH = 0x00080000;
+    public const uint DM_PELSHEIGHT = 0x00100000;
+    public const uint DM_DISPLAYFREQUENCY = 0x00400000;
+
+    public const uint DMDO_DEFAULT = 0;
+    public const uint DMDO_90 = 1;
+    public const uint DMDO_180 = 2;
+    public const uint DMDO_270 = 3;
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     public struct DEVMODE
@@ -118,6 +158,16 @@ public static class NativeDisplayApi
         public uint dmPelsHeight;
         public uint dmDisplayFlags;
         public uint dmDisplayFrequency;
+        // Tail through dmPanningHeight brings the struct to the 220 bytes Windows
+        // expects in dmSize; a short buffer lets the OS read past what we allocated.
+        public uint dmICMMethod;
+        public uint dmICMIntent;
+        public uint dmMediaType;
+        public uint dmDitherType;
+        public uint dmReserved1;
+        public uint dmReserved2;
+        public uint dmPanningWidth;
+        public uint dmPanningHeight;
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
@@ -139,7 +189,7 @@ public static class NativeDisplayApi
     public const uint DISPLAY_DEVICE_PRIMARY_DEVICE = 0x04;
 
     // SendInput for cursor unstick
-    [DllImport("user32.dll")]
+    [DllImport("user32.dll", SetLastError = true)]
     public static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
 
     [StructLayout(LayoutKind.Sequential)]

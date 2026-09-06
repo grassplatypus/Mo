@@ -44,23 +44,9 @@ public sealed class MonitorColorService : IMonitorColorService
 
     private void OnDisplaySettingsChanged(object? sender, EventArgs e) => DestroyCache();
 
-    /// <summary>
-    /// Runs <paramref name="body"/> against the cached physical-monitor handles while
-    /// holding the cache lock.
-    /// </summary>
-    /// <remarks>
-    /// Every DDC/CI call must go through here. The previous shape returned raw handles
-    /// and let callers use them after the lock was released, which is a use-after-free:
-    /// <c>SystemEvents.DisplaySettingsChanged</c> is raised on a system thread and calls
-    /// <see cref="DestroyCache"/>, so a concurrent <c>DestroyPhysicalMonitors</c> could
-    /// free a handle mid-transaction. That race is not theoretical here — applying a
-    /// profile changes the display configuration (raising the event) and then
-    /// immediately pushes colour settings down the very handles being freed.
-    ///
-    /// Holding the lock across a DDC/CI round trip costs ~50 ms, but these calls were
-    /// already serialized in practice, and DestroyCache now simply waits its turn.
-    /// Never call WMI from inside <paramref name="body"/> — see SetWmiBrightness.
-    /// </remarks>
+    /// <summary>Runs <paramref name="body"/> against the cached physical-monitor handles
+    /// while holding the cache lock. Every DDC/CI call must go through here, and none may
+    /// call WMI inside it — see .claude/rules/40-safety-invariants.md.</summary>
     private T WithHandles<T>(Func<List<(PHYSICAL_MONITOR[] physicalMonitors, nint hMonitor, string gdiDeviceName)>, T> body)
     {
         lock (_cacheLock)
@@ -426,10 +412,8 @@ public sealed class MonitorColorService : IMonitorColorService
             return null;
         });
 
-    /// <summary>
-    /// Runs <paramref name="body"/> against the handle for a GDI device name, under the
-    /// cache lock. Returns default when the monitor is not present.
-    /// </summary>
+    /// <summary>Runs <paramref name="body"/> against the handle for a GDI device name,
+    /// under the cache lock. Returns default when the monitor is not present.</summary>
     private TResult? WithHandleFor<TResult>(string gdiDeviceName, Func<nint, TResult> body)
     {
         if (string.IsNullOrEmpty(gdiDeviceName)) return default;

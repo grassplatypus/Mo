@@ -29,10 +29,8 @@ public sealed class ExportImportService
         public bool Succeeded => Profile != null && Error == ImportError.None;
     }
 
-    /// <summary>
-    /// Adds a profile from exported JSON, reporting why it failed rather than
-    /// returning a bare null.
-    /// </summary>
+    /// <summary>Adds a profile from exported JSON, reporting why it failed rather than
+    /// returning a bare null.</summary>
     public async Task<ImportResult> ImportAsync(string json)
     {
         DisplayProfile? profile;

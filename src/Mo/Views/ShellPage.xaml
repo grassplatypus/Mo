@@ -7,15 +7,25 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <!-- LeftCompact, not Left: the rail holds two destinations plus Settings, and the
-         expanded pane spent a third of a 1000px window on them. The toggle button is
-         still there for anyone who wants the labels, and each item carries a ToolTip
-         so the icon-only state stays readable. OpenPaneLength is trimmed to match the
-         longest label rather than the 320px default. -->
+    <Page.Resources>
+        <!-- Hides the stock selection bar without vendoring the NavigationView template.
+             It lives inside each item and cannot render past it, so it can never show
+             travel; ShellPage draws its own over the pane instead. -->
+        <SolidColorBrush x:Key="NavigationViewSelectionIndicatorForeground" Color="Transparent" />
+    </Page.Resources>
+
+    <Grid x:Name="ShellRoot">
+
+    <!-- LeftCompact, not Left: three destinations did not justify a third of a 1000px
+         window. The toggle still expands it, every item carries a ToolTip, and
+         OpenPaneLength matches the longest label instead of the 320px default. -->
+    <!-- All three destinations in one list. Settings is pushed to the bottom by a margin
+         on the item above it, never by a spacer item: an extra entry is clickable, and it
+         makes Settings non-adjacent to its neighbour. -->
     <NavigationView
         x:Name="NavView"
         IsBackButtonVisible="Auto"
-        IsSettingsVisible="True"
+        IsSettingsVisible="False"
         IsPaneToggleButtonVisible="True"
         OpenPaneLength="220"
         BackRequested="NavView_BackRequested"
@@ -33,8 +43,30 @@
                     <FontIcon Glyph="&#xE706;" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
+            <NavigationViewItem x:Name="NavSettingsItem" Tag="Settings">
+                <NavigationViewItem.Icon>
+                    <FontIcon Glyph="&#xE713;" />
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
         </NavigationView.MenuItems>
 
         <Frame x:Name="ContentFrame" />
     </NavigationView>
+
+        <!-- Our selection bar, over the whole shell so nothing in the pane can clip it.
+             Positioned and animated by ShellPage; see UpdateSelectionBar. -->
+        <Canvas x:Name="IndicatorLayer" IsHitTestVisible="False">
+            <Rectangle
+                x:Name="SelectionBar"
+                Width="3"
+                Height="16"
+                RadiusX="2"
+                RadiusY="2"
+                Opacity="0">
+                <Rectangle.RenderTransform>
+                    <TranslateTransform x:Name="SelectionBarTransform" />
+                </Rectangle.RenderTransform>
+            </Rectangle>
+        </Canvas>
+    </Grid>
 </Page>

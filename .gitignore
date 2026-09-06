@@ -4,8 +4,15 @@ obj/
 *.user
 *.suo
 
-## Claude Code (local-only)
-.claude/settings.local.json
+## Claude Code — ignore everything, then re-include what the team shares.
+## Keeps settings.local.json, worktrees/ and any future runtime dir out by default.
+.claude/*
+!.claude/settings.json
+!.claude/rules/
+!.claude/hooks/
+!.claude/agents/
+!.claude/skills/
+!.claude/commands/
 *.userosscache
 *.sln.docstates
 .vs/
@@ -24,11 +31,11 @@ obj/
 *.msix
 *.msixbundle
 *.msixupload
-*.pfx
 AppPackages/
 BundleArtifacts/
 msix-unsigned/
 msix-signed/
+artifacts/
 
 ## Build
 [Dd]ebug/
@@ -46,9 +53,20 @@ bld/
 TestResults/
 [Tt]est[Rr]esult*/
 
-## Certificates
+## Signing material. A committed private key cannot be un-published: rotating the
+## certificate is the only fix, and every shipped package has to be re-signed.
+## New-SigningCertificate.ps1 writes into artifacts/, which is ignored above too.
 *.pfx
+*.p12
+*.key
+*.pem
+*.snk
 *.cer
+*.crt
+*.der
+*.p7b
+*.keystore
+*.cred
 
 ## OS
 Thumbs.db

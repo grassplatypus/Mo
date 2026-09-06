@@ -45,33 +45,40 @@ public sealed partial class DisplayTuningPage : Page
     private async Task LoadMonitorsAsync()
     {
         _loading = true;
-        List<MonitorInfo> monitors;
-        try { monitors = _displayService.GetCurrentConfiguration(); }
-        catch { monitors = []; }
+        MonitorListBusy.Visibility = Visibility.Visible;
+        MonitorListEmpty.Visibility = Visibility.Collapsed;
 
-        // Resolve caps per monitor by GDI device name, so the index used by the
-        // monitor list always lines up with the cap result regardless of how
-        // EnumDisplayMonitors orders its handles.
-        var caps = await Task.Run(() =>
+        // Both the display read and the capability probe talk to hardware, so neither
+        // belongs on the dispatcher. Caps are resolved by GDI device name so the index
+        // lines up with the monitor list however EnumDisplayMonitors ordered its handles.
+        var (monitors, caps, sizes) = await Task.Run(() =>
         {
-            var list = new List<MonitorColorCapabilities?>(monitors.Count);
-            foreach (var m in monitors)
+            List<MonitorInfo> found;
+            try { found = _displayService.GetCurrentConfiguration(); }
+            catch { found = []; }
+
+            var list = new List<MonitorColorCapabilities?>(found.Count);
+            foreach (var m in found)
             {
                 MonitorColorCapabilities? c = null;
                 try { c = _colorService.DetectCapabilitiesByDeviceName(m.GdiDeviceName); }
                 catch { }
                 list.Add(c);
             }
-            return list;
+            return (found, list, MonitorPhysicalSize.ReadAll());
         });
 
         _monitors = monitors;
         _caps = caps;
 
+        MonitorListBusy.Visibility = Visibility.Collapsed;
+        MonitorListEmpty.Visibility = monitors.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+
         MonitorList.Items.Clear();
         for (int i = 0; i < monitors.Count; i++)
         {
-            MonitorList.Items.Add(BuildMonitorRow(monitors[i], i));
+            var inches = MonitorPhysicalSize.For(monitors[i].DevicePath, sizes);
+            MonitorList.Items.Add(BuildMonitorRow(monitors[i], i, caps[i], inches));
         }
 
         if (monitors.Count > 0)
@@ -82,22 +89,36 @@ public sealed partial class DisplayTuningPage : Page
         _loading = false;
     }
 
-    private static ListViewItem BuildMonitorRow(MonitorInfo m, int idx)
+    private static ListViewItem BuildMonitorRow(
+        MonitorInfo m, int idx, MonitorColorCapabilities? caps, double? inches)
     {
         var brand = EdidManufacturer.GetBrandName(m.EdidManufacturerId);
-        var panel = new StackPanel { Spacing = 2 };
+        var panel = new StackPanel { Spacing = 3 };
+
         panel.Children.Add(new TextBlock
         {
             Text = string.IsNullOrEmpty(m.FriendlyName) ? $"Display {idx + 1}" : m.FriendlyName,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
         });
+
+        var identity = inches is { } size
+            ? $"{brand ?? "Unknown"}  ·  {size:F0}\"  ·  {m.ResolutionText}"
+            : $"{brand ?? "Unknown"}  ·  {m.ResolutionText}";
+
         panel.Children.Add(new TextBlock
         {
-            Text = $"{brand ?? "Unknown"}  ·  {m.ResolutionText}",
+            Text = identity,
             Opacity = 0.55,
             Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
         });
-        return new ListViewItem { Content = panel };
+
+        return new ListViewItem
+        {
+            Content = panel,
+            Padding = new Thickness(12, 10, 12, 10),
+            MinHeight = 0,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+        };
     }
 
     private void MonitorList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -160,12 +181,8 @@ public sealed partial class DisplayTuningPage : Page
             AmdSaturationSlider.StepFrequency = Math.Max(1, s.Step);
             AmdSaturationSlider.Value = s.Current;
             AmdSaturationValue.Text = s.Current.ToString();
-            AmdSaturationSlider.IsEnabled = true;
         }
-        else
-        {
-            AmdSaturationSlider.IsEnabled = false;
-        }
+        AmdSaturationRow.Visibility = Show(sat is not null);
 
         if (hue is { } h)
         {
@@ -174,12 +191,8 @@ public sealed partial class DisplayTuningPage : Page
             AmdHueSlider.StepFrequency = Math.Max(1, h.Step);
             AmdHueSlider.Value = h.Current;
             AmdHueValue.Text = h.Current.ToString();
-            AmdHueSlider.IsEnabled = true;
         }
-        else
-        {
-            AmdHueSlider.IsEnabled = false;
-        }
+        AmdHueRow.Visibility = Show(hue is not null);
 
         _loading = false;
     }
@@ -211,6 +224,9 @@ public sealed partial class DisplayTuningPage : Page
     private string? SelectedDeviceName() =>
         _selected >= 0 && _selected < _monitors.Count ? _monitors[_selected].GdiDeviceName : null;
 
+    private static Visibility Show(bool supported) =>
+        supported ? Visibility.Visible : Visibility.Collapsed;
+
     private void LoadDdcSection(MonitorInfo monitor)
     {
         _rgbDirty = false;
@@ -224,11 +240,13 @@ public sealed partial class DisplayTuningPage : Page
         bool hasG = caps?.SupportsGreenGain == true;
         bool hasB = caps?.SupportsBlueGain == true;
 
-        BrightnessSlider.IsEnabled = hasBri;
-        ContrastSlider.IsEnabled = hasCon;
-        RedSlider.IsEnabled = hasR;
-        GreenSlider.IsEnabled = hasG;
-        BlueSlider.IsEnabled = hasB;
+        // Hidden, not disabled. A greyed-out slider invites the user to work out why it
+        // is greyed out; a control the panel cannot honour has nothing to say.
+        BrightnessRow.Visibility = Show(hasBri);
+        ContrastRow.Visibility = Show(hasCon);
+        RedRow.Visibility = Show(hasR);
+        GreenRow.Visibility = Show(hasG);
+        BlueRow.Visibility = Show(hasB);
 
         // Capture current values if possible.
         var captured = TryCapture(_selected);
@@ -309,7 +327,9 @@ public sealed partial class DisplayTuningPage : Page
         HdrCard.Visibility = Visibility.Visible;
         _loading = true;
         HdrToggle.IsOn = state.Enabled;
-        HdrToggle.IsEnabled = !state.ForceDisabled;
+
+        // A panel that reports HDR but refuses to switch it has nothing to offer here.
+        HdrCard.Visibility = Show(!state.ForceDisabled);
         _loading = false;
     }
 
@@ -322,13 +342,9 @@ public sealed partial class DisplayTuningPage : Page
     {
         if (_loading || _selected < 0) return;
 
-        // Most monitors lock RGB Drive when a non-User color preset is selected.
-        // Switch to "User" (VCP 0x14 = 0x0B) on the first RGB touch so subsequent
-        // SetRedGain/etc. calls actually take effect.
-        // Identified by Tag rather than by comparing `sender` against each slider:
-        // `sender` is typed `object`, so those three comparisons each raised CS0252
-        // (six warnings once the XAML compiler ran) even though the reference
-        // comparison was what was meant.
+        // Most monitors lock RGB Drive under a non-User preset, so switch to User
+        // (VCP 0x14 = 0x0B) on the first RGB touch. Matched by Tag because comparing the
+        // `object` sender against each slider raises CS0252 six times.
         if (!_rgbDirty && sender is FrameworkElement { Tag: RgbSliderTag })
         {
             _rgbDirty = true;
@@ -460,6 +476,8 @@ public sealed partial class DisplayTuningPage : Page
     {
         TitleText.Text = ResourceHelper.GetString("DisplayTuningTitle");
         SubtitleText.Text = ResourceHelper.GetString("DisplayTuningSubtitle");
+        MonitorListBusyText.Text = ResourceHelper.GetString("DisplayTuningLoading");
+        MonitorListEmpty.Text = ResourceHelper.GetString("DisplayTuningNoMonitors");
         RefreshLabel.Text = ResourceHelper.GetString("Refresh");
         DdcTitle.Text = ResourceHelper.GetString("DdcCiSection");
         BrightnessLabel.Text = ResourceHelper.GetString("Brightness");

@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.DependencyInjection;
 using Mo.Core.DisplayConfiguration;
+using Mo.Helpers;
 using Mo.Interop.DisplayConfig;
 using Mo.Models;
 
@@ -8,18 +9,22 @@ namespace Mo.Services;
 
 public sealed class DisplayService : IDisplayService
 {
-    private bool UseDriverRotation
+    /// <summary>"No mode supplied" for either modeInfoIdx. On a target it asks Windows
+    /// to pick the timing itself.</summary>
+    private const uint ModeIdxInvalid = 0xFFFFFFFF;
+
+    /// <summary>Which backend the user asked for. Read at apply time, never cached: the
+    /// setting can change while the app runs.</summary>
+    private static RotationMethod SelectedMethod
     {
         get
         {
-            try
-            {
-                var settings = App.Services.GetRequiredService<ISettingsService>();
-                return settings.Settings.RotationMethod != RotationMethod.Windows;
-            }
-            catch { return false; }
+            try { return App.Services.GetRequiredService<ISettingsService>().Settings.RotationMethod; }
+            catch { return RotationMethod.Windows; }
         }
     }
+
+    private bool UseDriverRotation => SelectedMethod != RotationMethod.Windows;
     public List<MonitorInfo> GetCurrentConfiguration()
     {
         var monitors = new List<MonitorInfo>();
@@ -67,6 +72,7 @@ public sealed class DisplayService : IDisplayService
                     monitor.PositionX = mode.sourceMode.position.x;
                     monitor.PositionY = mode.sourceMode.position.y;
                     monitor.IsPrimary = mode.sourceMode.position.x == 0 && mode.sourceMode.position.y == 0;
+                    monitor.DpiScale = ReadDpiPercent(path);
 
                     // Source mode is the panel's own (unrotated) mode; MonitorInfo carries
                     // the desktop extent.
@@ -154,12 +160,44 @@ public sealed class DisplayService : IDisplayService
             // panel's unrotated mode, so a rotated monitor listed without it would be
             // offered to the editor as a landscape tile.
             var rotation = MapRotation(path.targetInfo.rotation);
-            var (width, height) = isActive && path.sourceInfo.modeInfoIdx < mc
-                ? RotationGeometry.ToDesktop(
-                    (int)modes[path.sourceInfo.modeInfoIdx].sourceMode.width,
-                    (int)modes[path.sourceInfo.modeInfoIdx].sourceMode.height,
-                    (int)rotation)
-                : (1920, 1080);
+
+            // Same GDI name lookup as GetCurrentConfiguration. Without it the mode
+            // pickers have nothing to enumerate, since EnumDisplaySettings is addressed
+            // by \\.\DISPLAYn and not by anything CCD hands out.
+            var sourceName = new DISPLAYCONFIG_SOURCE_DEVICE_NAME();
+            sourceName.header.type = DISPLAYCONFIG_DEVICE_INFO_TYPE.DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
+            sourceName.header.size = (uint)Marshal.SizeOf<DISPLAYCONFIG_SOURCE_DEVICE_NAME>();
+            sourceName.header.adapterId = path.sourceInfo.adapterId;
+            sourceName.header.id = path.sourceInfo.id;
+            string gdiName = NativeDisplayApi.DisplayConfigGetDeviceInfo(ref sourceName) == NativeDisplayApi.ERROR_SUCCESS
+                ? sourceName.viewGdiDeviceName ?? string.Empty
+                : string.Empty;
+
+            // Position and primary come from the same source mode as the dimensions.
+            // Leaving them at zero would put every monitor of a captured profile at the
+            // origin, and the apply writes those positions straight back out.
+            int width = 1920, height = 1080, posX = 0, posY = 0;
+            bool isPrimary = false;
+            if (isActive && path.sourceInfo.modeInfoIdx < mc)
+            {
+                var source = modes[path.sourceInfo.modeInfoIdx].sourceMode;
+                (width, height) = RotationGeometry.ToDesktop(
+                    (int)source.width, (int)source.height, (int)rotation);
+                posX = source.position.x;
+                posY = source.position.y;
+                isPrimary = posX == 0 && posY == 0;
+            }
+            else if (TryReadLastKnownMode(gdiName, out int lastW, out int lastH, out var lastRotation))
+            {
+                // A switched-off monitor has no source mode, and the fallback size is
+                // written to disk the moment the profile is saved. Windows remembers what
+                // it was last set to, which beats inventing 1920x1080.
+                (width, height) = (lastW, lastH);
+
+                // An inactive path reports rotation 0, which is not IDENTITY (1) and maps
+                // to None. The DEVMODE's own orientation is what those pels are in.
+                rotation = lastRotation;
+            }
 
             monitors.Add(new MonitorInfo
             {
@@ -168,10 +206,18 @@ public sealed class DisplayService : IDisplayService
                 TargetId = path.targetInfo.id,
                 FriendlyName = friendly,
                 DevicePath = devicePath,
+                GdiDeviceName = gdiName,
                 EdidManufacturerId = mfr,
                 EdidProductCodeId = prod,
                 ConnectorInstance = connector,
                 IsEnabled = isActive,
+                IsPrimary = isPrimary,
+                // Only a display Windows is driving has a scale to read. Recording a
+                // fabricated 100 here would push every such panel down to 100% the
+                // moment the profile switched it on.
+                DpiScale = isActive ? ReadDpiPercent(path) : MonitorInfo.DpiScaleUnset,
+                PositionX = posX,
+                PositionY = posY,
                 Width = width,
                 Height = height,
                 Rotation = rotation,
@@ -183,7 +229,7 @@ public sealed class DisplayService : IDisplayService
         return monitors;
     }
 
-    public DisplayApplyResult ApplyProfile(DisplayProfile profile)
+    public DisplayApplyResult ApplyProfile(DisplayProfile profile, ApplyTrigger trigger = ApplyTrigger.User)
     {
         // Phase 1: Match profile monitors against ALL connected monitors (including inactive)
         int result = NativeDisplayApi.GetDisplayConfigBufferSizes(
@@ -212,22 +258,52 @@ public sealed class DisplayService : IDisplayService
         }
 
         var currentConfig = GetCurrentConfiguration();
-        var profileIdentities = profile.Monitors.Select(m =>
-            new MonitorMatcher.MonitorIdentity(m.DevicePath, m.EdidManufacturerId, m.EdidProductCodeId, m.ConnectorInstance, m.FriendlyName)).ToList();
-        var currentIdentities = currentConfig.Select(m =>
-            new MonitorMatcher.MonitorIdentity(m.DevicePath, m.EdidManufacturerId, m.EdidProductCodeId, m.ConnectorInstance, m.FriendlyName)).ToList();
+        var profileIdentities = profile.Monitors.ToIdentities();
+        var currentIdentities = currentConfig.ToIdentities();
 
         var matchResult = MonitorMatcher.Match(profileIdentities, currentIdentities);
         if (matchResult.Matches.Count == 0 && profile.Monitors.Count > 0)
             return DisplayApplyResult.Failed;
 
-        // Try NVAPI full-profile apply first (bypasses CCD completely)
+        // The vendor branches below return early, so decide here whether this apply
+        // turns any panel — that is what strands the cursor plane. Named apart from the
+        // CCD path's hasRotationChange on purpose; the two have different scopes.
+        // Measured against the state before anything is touched. The topology extend
+        // below restores each panel from Windows' own display database, so a monitor can
+        // arrive already rotated and the post-extend paths then show nothing to change.
+        bool matchedMonitorRotates =
+            matchResult.Matches.Any(m => profile.Monitors[m.Key].Rotation != currentConfig[m.Value].Rotation);
+
+        bool vendorPathRotates = matchedMonitorRotates ||
+            // A monitor being switched on straight into a rotation has no "before" to
+            // compare against, and is the case most likely to strand the plane.
+            matchResult.UnmatchedProfile.Any(i =>
+                profile.Monitors[i].IsEnabled && profile.Monitors[i].Rotation != DisplayRotation.None);
+
+        // Which monitors are off right now. Read before the topology extend below, since
+        // that reassigns matchResult and a panel switched on by it is indistinguishable
+        // afterwards from one that was already running.
+        var offBeforeApply = matchResult.UnmatchedProfile
+            .Where(i => profile.Monitors[i].IsEnabled)
+            .ToHashSet();
+
+        // NVAPI owns the whole apply when the user picked it, bypassing CCD. Gated on the
+        // setting like the AMD branch below: before this, "Windows" still routed every
+        // NVIDIA apply through the driver, so the setting did not mean what it said.
         try
         {
             var nvService = App.Services.GetRequiredService<NvidiaRotationService>();
-            if (nvService.IsAvailable && nvService.ApplyFullProfile(profile))
+            if (SelectedMethod == RotationMethod.NvidiaDriver
+                && nvService.IsAvailable && nvService.ApplyFullProfile(profile))
             {
+                Helpers.BootLog.Write("apply.branch",
+                    $"nvapi ok, {profile.Monitors.Count(m => m.IsEnabled)} enabled, rotates={vendorPathRotates}");
+
+                // A branch that returns early owns the whole apply, scaling included.
+                // NVAPI has no scaling API, so it goes through CCD either way.
+                ApplyDpiScaling(profile);
                 UnstickCursor();
+                if (vendorPathRotates) ResetCursorPlane(trigger);
 
                 return matchResult.UnmatchedProfile.Count > 0
                     ? DisplayApplyResult.PartialMatch
@@ -243,6 +319,11 @@ public sealed class DisplayService : IDisplayService
         {
             if (TryApplyAmdFullProfile(profile, currentConfig, matchResult))
             {
+                Helpers.BootLog.Write("apply.branch", "adl ok");
+                // No cursor-plane reset here. Radeon rotates without stranding the
+                // pointer — reported from an integrated Radeon — so there is nothing
+                // to pay a blackout for. See .claude/rules/30-display-apis.md.
+                ApplyDpiScaling(profile);
                 UnstickCursor();
 
                 return matchResult.UnmatchedProfile.Count > 0
@@ -261,35 +342,32 @@ public sealed class DisplayService : IDisplayService
         // Phase 3 (CCD fallback): If inactive monitors need activation, extend topology
         if (needsTopologyExtend)
         {
-            NativeDisplayApi.SetDisplayConfig(0, null, 0, null,
-                SDC_FLAGS.SDC_TOPOLOGY_EXTEND | SDC_FLAGS.SDC_APPLY | SDC_FLAGS.SDC_ALLOW_CHANGES
-                | SDC_FLAGS.SDC_SAVE_TO_DATABASE | SDC_FLAGS.SDC_VIRTUAL_MODE_AWARE | SDC_FLAGS.SDC_PATH_PERSIST_IF_REQUIRED);
+            // Nothing but EXTEND and APPLY. Measured: adding ALLOW_CHANGES or
+            // SAVE_TO_DATABASE makes SetDisplayConfig answer 87 and no monitor comes
+            // back. See .claude/rules/30-display-apis.md.
+            int extend = NativeDisplayApi.SetDisplayConfig(0, null, 0, null,
+                SDC_FLAGS.SDC_TOPOLOGY_EXTEND | SDC_FLAGS.SDC_APPLY);
+            Helpers.BootLog.Write("apply.topology-extend", extend.ToString());
 
             // Wait and retry matching until all monitors appear or timeout
             for (int attempt = 0; attempt < 3; attempt++)
             {
                 Thread.Sleep(1000);
                 currentConfig = GetCurrentConfiguration();
-                currentIdentities = currentConfig.Select(m =>
-                    new MonitorMatcher.MonitorIdentity(m.DevicePath, m.EdidManufacturerId, m.EdidProductCodeId, m.ConnectorInstance, m.FriendlyName)).ToList();
-                matchResult = MonitorMatcher.Match(profileIdentities, currentIdentities);
+                matchResult = MonitorMatcher.Match(profileIdentities, currentConfig.ToIdentities());
                 if (matchResult.UnmatchedProfile.Count(i => profile.Monitors[i].IsEnabled) == 0)
                     break;
             }
         }
 
-        // Phase 4: Determine which monitors to disable
-        var disabledCurrentIndices = new HashSet<int>();
+        // Phase 4: Determine which monitors to disable. A profile describes the whole
+        // desktop, so a monitor it switches off and a monitor it never mentions both end
+        // up off; that is the only reading under which applying a profile is predictable.
+        var disabledCurrentIndices = new HashSet<int>(matchResult.UnmatchedCurrent);
         foreach (var (profileIdx, currentIdx) in matchResult.Matches)
         {
             if (!profile.Monitors[profileIdx].IsEnabled)
                 disabledCurrentIndices.Add(currentIdx);
-        }
-        // Handle unmatched monitors based on profile's UnmatchedAction
-        if (profile.UnmatchedAction == Models.UnmatchedMonitorAction.Disable)
-        {
-            foreach (var unmatchedCurrentIdx in matchResult.UnmatchedCurrent)
-                disabledCurrentIndices.Add(unmatchedCurrentIdx);
         }
 
         // Phase 5: Modify active paths in-place (no index remapping)
@@ -303,7 +381,16 @@ public sealed class DisplayService : IDisplayService
             QDC_FLAGS.QDC_ONLY_ACTIVE_PATHS, ref activePathCount, activePaths, ref activeModeCount, activeModes, IntPtr.Zero);
         if (result != NativeDisplayApi.ERROR_SUCCESS) return DisplayApplyResult.Failed;
 
-        bool hasRotationChange = false;
+        // GetDisplayConfigBufferSizes sizes for the worst case; the query writes back how
+        // many entries it filled. Keeping the longer array hands SetDisplayConfig
+        // uninitialised paths, which it rejects with ERROR_INVALID_PARAMETER.
+        if (activePathCount < activePaths.Length) activePaths = activePaths[..(int)activePathCount];
+        if (activeModeCount < activeModes.Length) activeModes = activeModes[..(int)activeModeCount];
+
+        // Seeded from the pre-extend comparison, not from nothing: by the time the loop
+        // below reads a path, the extend may already have applied the rotation this apply
+        // is responsible for.
+        bool hasRotationChange = matchedMonitorRotates;
         bool useDriverRotation = UseDriverRotation;
         var driverRotationTasks = new List<(MonitorInfo monitor, DisplayRotation rotation)>();
         var pathsToRemove = new HashSet<int>();
@@ -338,6 +425,13 @@ public sealed class DisplayService : IDisplayService
                 var newRotation = MapRotationBack(profileMonitor.Rotation);
                 if (activePaths[p].targetInfo.rotation != newRotation) hasRotationChange = true;
 
+                // A panel switched on by the extend above comes up at the rotation Windows
+                // remembered for it, so nothing here differs and the comparison misses it.
+                // Turning on into a rotation is the case most likely to strand the plane.
+                if (offBeforeApply.Contains(matchedProfileIdx.Value)
+                    && profileMonitor.Rotation != DisplayRotation.None)
+                    hasRotationChange = true;
+
                 if (useDriverRotation && profileMonitor.Rotation != DisplayRotation.None)
                 {
                     driverRotationTasks.Add((currentConfig[matchedCurrentIdx!.Value], profileMonitor.Rotation));
@@ -346,9 +440,14 @@ public sealed class DisplayService : IDisplayService
                 {
                     activePaths[p].targetInfo.rotation = newRotation;
                 }
+                bool rateChanged =
+                    activePaths[p].targetInfo.refreshRate.Numerator != profileMonitor.RefreshRateNumerator
+                    || activePaths[p].targetInfo.refreshRate.Denominator != profileMonitor.RefreshRateDenominator;
+
                 activePaths[p].targetInfo.refreshRate.Numerator = profileMonitor.RefreshRateNumerator;
                 activePaths[p].targetInfo.refreshRate.Denominator = profileMonitor.RefreshRateDenominator;
 
+                bool sizeChanged = false;
                 var srcIdx = activePaths[p].sourceInfo.modeInfoIdx;
                 if (srcIdx < activeModeCount)
                 {
@@ -357,41 +456,68 @@ public sealed class DisplayService : IDisplayService
 
                     var (w, h) = RotationGeometry.ToSource(
                         profileMonitor.Width, profileMonitor.Height, (int)profileMonitor.Rotation);
+                    sizeChanged = activeModes[srcIdx].sourceMode.width != (uint)w
+                        || activeModes[srcIdx].sourceMode.height != (uint)h;
                     activeModes[srcIdx].sourceMode.width = (uint)w;
                     activeModes[srcIdx].sourceMode.height = (uint)h;
                 }
+
+                // A new size or rate leaves the target mode describing the old timing,
+                // and the stale entry wins. Dropping the index asks Windows to derive
+                // one from the refresh rate, which is what a mode change needs.
+                if (rateChanged || sizeChanged)
+                    activePaths[p].targetInfo.modeInfoIdx = ModeIdxInvalid;
             }
         }
 
-        // Build final arrays (remove disabled paths if any)
-        DISPLAYCONFIG_PATH_INFO[] finalPaths;
-        if (pathsToRemove.Count > 0)
-            finalPaths = activePaths.Where((_, i) => !pathsToRemove.Contains(i)).ToArray();
-        else
-            finalPaths = activePaths;
+        // A supplied config may only carry modes its paths still point at. Both dropping
+        // a path and invalidating a target mode index orphan entries, and either one on
+        // its own makes SetDisplayConfig answer 87, so compact unconditionally.
+        var keptPaths = pathsToRemove.Count > 0
+            ? activePaths.Where((_, i) => !pathsToRemove.Contains(i)).ToArray()
+            : activePaths;
+        var (finalPaths, finalModes) = CompactModes(keptPaths, activeModes);
 
         if (finalPaths.Length == 0) return DisplayApplyResult.Failed;
 
-        // Try apply with ALLOW_CHANGES (skip validation - it can be too strict).
-        // VIRTUAL_MODE_AWARE + PATH_PERSIST_IF_REQUIRED ensures Windows 10 1903+ persists
-        // DPI/rotation-aware configuration across reboots.
+        // ALLOW_CHANGES skips validation, which is too strict to be useful here.
+        // Measured: adding SDC_PATH_PERSIST_IF_REQUIRED makes this 87 on every apply, so
+        // every success here was really the retry. See .claude/rules/30-display-apis.md.
         var persistFlags = SDC_FLAGS.SDC_USE_SUPPLIED_DISPLAY_CONFIG | SDC_FLAGS.SDC_APPLY
-            | SDC_FLAGS.SDC_SAVE_TO_DATABASE | SDC_FLAGS.SDC_ALLOW_CHANGES
-            | SDC_FLAGS.SDC_VIRTUAL_MODE_AWARE | SDC_FLAGS.SDC_PATH_PERSIST_IF_REQUIRED;
+            | SDC_FLAGS.SDC_SAVE_TO_DATABASE | SDC_FLAGS.SDC_ALLOW_CHANGES;
         result = NativeDisplayApi.SetDisplayConfig(
             (uint)finalPaths.Length, finalPaths,
-            activeModeCount, activeModes,
+            (uint)finalModes.Length, finalModes,
             persistFlags);
 
-        // Some older configs reject VIRTUAL_MODE_AWARE; retry without it.
+        int firstResult = result;
+
+        // Last resort: let Windows pick the modes rather than refuse the whole apply.
+        // Supplying no mode array means every index has to say so too; leaving real
+        // indices next to a count of zero is a second malformed call.
         if (result != NativeDisplayApi.ERROR_SUCCESS)
         {
+            var modelessPaths = (DISPLAYCONFIG_PATH_INFO[])finalPaths.Clone();
+            for (int i = 0; i < modelessPaths.Length; i++)
+            {
+                modelessPaths[i].sourceInfo.modeInfoIdx = ModeIdxInvalid;
+                modelessPaths[i].targetInfo.modeInfoIdx = ModeIdxInvalid;
+            }
+
             result = NativeDisplayApi.SetDisplayConfig(
-                (uint)finalPaths.Length, finalPaths,
-                activeModeCount, activeModes,
+                (uint)modelessPaths.Length, modelessPaths, 0, null,
                 SDC_FLAGS.SDC_USE_SUPPLIED_DISPLAY_CONFIG | SDC_FLAGS.SDC_APPLY
-                | SDC_FLAGS.SDC_SAVE_TO_DATABASE | SDC_FLAGS.SDC_ALLOW_CHANGES);
+                | SDC_FLAGS.SDC_SAVE_TO_DATABASE
+                | SDC_FLAGS.SDC_ALLOW_CHANGES);
         }
+
+        // The only record of which backend ran and what it answered. 87 here is
+        // ERROR_INVALID_PARAMETER; see .claude/rules/30-display-apis.md.
+        Helpers.BootLog.Write("apply.branch",
+            $"ccd {finalPaths.Length} paths, {finalModes.Length} modes, " +
+            $"SetDisplayConfig -> {firstResult}" +
+            (firstResult == result ? "" : $", retry -> {result}") +
+            $", rotates={hasRotationChange}, trigger={trigger}");
 
         if (result != NativeDisplayApi.ERROR_SUCCESS)
             return DisplayApplyResult.Failed;
@@ -408,7 +534,7 @@ public sealed class DisplayService : IDisplayService
                     {
                         RotationMethod.NvidiaDriver => App.Services.GetRequiredService<NvidiaRotationService>().ApplyRotation(monitor, rotation),
                         RotationMethod.AmdDriver => App.Services.GetRequiredService<AmdRotationService>().ApplyRotation(monitor, rotation),
-                        RotationMethod.IntelDriver => App.Services.GetRequiredService<IntelRotationService>().ApplyRotation(monitor, rotation),
+                        // IntelDriver lands here: IGCL exposes no rotation, so CCD does it.
                         _ => false,
                     };
                 }
@@ -419,28 +545,22 @@ public sealed class DisplayService : IDisplayService
             NativeDisplayApi.ClipCursor(IntPtr.Zero);
         }
 
+        ApplyDpiScaling(profile);
+
         if (hasRotationChange)
+        {
             UnstickCursor();
+            ResetCursorPlane(trigger);
+        }
 
         return matchResult.UnmatchedProfile.Count > 0
             ? DisplayApplyResult.PartialMatch
             : DisplayApplyResult.Success;
     }
 
-    /// <summary>
-    /// Applies a whole profile through the Radeon driver, verifying the result.
-    /// </summary>
-    /// <remarks>
-    /// The apply is checked by reading the configuration back and comparing it with the
-    /// profile. If it does not match, this reports failure so the caller falls through
-    /// to the CCD path, which then corrects whatever the driver did.
-    ///
-    /// That read-back exists because the ADL path is unverified against real Radeon
-    /// hardware — in particular whether ADL wants the panel's native resolution with a
-    /// separate orientation, which is the assumption ApplyOne encodes. A wrong guess
-    /// there would set the wrong resolution; with the check it becomes a brief detour
-    /// through CCD instead.
-    /// </remarks>
+    /// <summary>Applies a whole profile through the Radeon driver, verifying by reading
+    /// the configuration back — a mismatch returns false so CCD corrects it. That check
+    /// is what makes the resolution guess safe: .claude/rules/30-display-apis.md.</summary>
     private bool TryApplyAmdFullProfile(
         DisplayProfile profile,
         List<MonitorInfo> currentConfig,
@@ -516,17 +636,9 @@ public sealed class DisplayService : IDisplayService
     public ProfileCompatibility CheckCompatibility(DisplayProfile profile) =>
         CheckCompatibilityCore(profile, GetCurrentConfiguration(), GetAllConnectedTargetIdentities());
 
-    /// <summary>
-    /// Evaluates many profiles against a single hardware read.
-    /// </summary>
-    /// <remarks>
-    /// <see cref="CheckCompatibility"/> costs two full CCD round trips — QueryDisplayConfig
-    /// for the active paths plus another for ALL_PATHS, each followed by a
-    /// DisplayConfigGetDeviceInfo per target. Calling it in a loop to answer "which of
-    /// these profiles can I apply right now" made that 2N round trips for N profiles,
-    /// on every display change. The hardware does not change between iterations, so it
-    /// is read once here.
-    /// </remarks>
+    /// <summary>Evaluates many profiles against a single hardware read.
+    /// <see cref="CheckCompatibility"/> costs two CCD round trips each, so a loop over N
+    /// profiles cost 2N on every display change; the hardware cannot change.</summary>
     public IReadOnlyList<ProfileCompatibility> CheckCompatibilityAll(IReadOnlyList<DisplayProfile> profiles)
     {
         if (profiles.Count == 0) return [];
@@ -542,12 +654,7 @@ public sealed class DisplayService : IDisplayService
         List<MonitorInfo> currentConfig,
         List<(string devicePath, ushort mfrId, ushort prodId, uint connector, string name)> allConnected)
     {
-        var profileIdentities = profile.Monitors.Select(m =>
-            new MonitorMatcher.MonitorIdentity(m.DevicePath, m.EdidManufacturerId, m.EdidProductCodeId, m.ConnectorInstance, m.FriendlyName)).ToList();
-        var currentIdentities = currentConfig.Select(m =>
-            new MonitorMatcher.MonitorIdentity(m.DevicePath, m.EdidManufacturerId, m.EdidProductCodeId, m.ConnectorInstance, m.FriendlyName)).ToList();
-
-        var matchResult = MonitorMatcher.Match(profileIdentities, currentIdentities);
+        var matchResult = MonitorMatcher.Match(profile.Monitors.ToIdentities(), currentConfig.ToIdentities());
 
         // allConnected comes from ALL_PATHS, which distinguishes "not connected" from
         // "connected but disabled".
@@ -556,6 +663,11 @@ public sealed class DisplayService : IDisplayService
         foreach (var idx in matchResult.UnmatchedProfile)
         {
             var pm = profile.Monitors[idx];
+
+            // An entry the profile wants switched off is satisfied by the monitor not
+            // being active. It is neither missing nor about to wake up.
+            if (!pm.IsEnabled) continue;
+
             bool connectedButDisabled = allConnected.Any(t =>
                 t.devicePath == pm.DevicePath ||
                 (t.mfrId != 0 && t.mfrId == pm.EdidManufacturerId && t.prodId == pm.EdidProductCodeId && t.connector == pm.ConnectorInstance));
@@ -565,11 +677,9 @@ public sealed class DisplayService : IDisplayService
                 missingMonitors.Add(pm.FriendlyName);
         }
 
-        // A monitor that is plugged in but currently switched off is not a blocker —
-        // applying the profile turns it back on — but the user deserves to be told,
-        // because the screen coming to life is otherwise a surprise. This list was
-        // already being computed and then discarded, leaving the apply dialog's warning
-        // InfoBar permanently empty.
+        // A plugged-in but switched-off monitor is not a blocker — the apply turns it
+        // back on — but say so, since the screen waking up is otherwise a surprise.
+        // This list used to be computed and discarded, leaving the InfoBar empty.
         var warnings = new List<string>();
         if (disabledMonitors.Count > 0)
         {
@@ -617,6 +727,59 @@ public sealed class DisplayService : IDisplayService
         return result;
     }
 
+    /// <summary>Keeps only the mode entries the surviving paths point at, renumbering
+    /// their indices to match. Measured: without this, dropping a path leaves orphaned
+    /// modes and SetDisplayConfig answers 87.</summary>
+    private static (DISPLAYCONFIG_PATH_INFO[], DISPLAYCONFIG_MODE_INFO[]) CompactModes(
+        DISPLAYCONFIG_PATH_INFO[] paths, DISPLAYCONFIG_MODE_INFO[] modes)
+    {
+        var kept = new List<DISPLAYCONFIG_MODE_INFO>();
+        var moved = new Dictionary<uint, uint>();
+
+        uint Remap(uint idx)
+        {
+            if (idx == ModeIdxInvalid || idx >= modes.Length) return ModeIdxInvalid;
+            if (moved.TryGetValue(idx, out var to)) return to;
+            to = (uint)kept.Count;
+            kept.Add(modes[idx]);
+            moved[idx] = to;
+            return to;
+        }
+
+        var result = new DISPLAYCONFIG_PATH_INFO[paths.Length];
+        for (int i = 0; i < paths.Length; i++)
+        {
+            var path = paths[i];
+            path.sourceInfo.modeInfoIdx = Remap(path.sourceInfo.modeInfoIdx);
+            path.targetInfo.modeInfoIdx = Remap(path.targetInfo.modeInfoIdx);
+            result[i] = path;
+        }
+        return (result, kept.ToArray());
+    }
+
+    /// <summary>Blanks and wakes the panels so the GPU reseats the cursor plane. Every
+    /// condition here exists to keep a full-screen blackout away from someone who did
+    /// not ask for one: see .claude/rules/40-safety-invariants.md.</summary>
+    private static void ResetCursorPlane(ApplyTrigger trigger)
+    {
+        // Unattended triggers are deliberately the quiet ones. A scheduled switch must
+        // not black out a machine nobody is sitting at, and a revert must not blank a
+        // second time on top of the apply that caused it.
+        if (trigger != ApplyTrigger.User) return;
+
+        try
+        {
+            var settings = App.Services.GetRequiredService<ISettingsService>();
+            if (!settings.Settings.ResetCursorAfterRotation) return;
+        }
+        catch { return; }
+
+        CursorPlaneReset.Run();
+    }
+
+    /// <summary>Releases a cursor clip left behind by a rotation. It does not fix the
+    /// rotated-cursor-plane bug — only <see cref="ResetCursorPlane"/> does; see
+    /// .claude/rules/30-display-apis.md.</summary>
     private static void UnstickCursor()
     {
         Thread.Sleep(500);
@@ -627,16 +790,11 @@ public sealed class DisplayService : IDisplayService
             Thread.Sleep(100);
         }
 
-        NativeDisplayApi.SystemParametersInfo(
-            NativeDisplayApi.SPI_SETWORKAREA, 0, IntPtr.Zero, NativeDisplayApi.SPIF_SENDCHANGE);
-
-        NativeDisplayApi.ClipCursor(IntPtr.Zero);
         int cx = NativeDisplayApi.GetSystemMetrics(NativeDisplayApi.SM_CXSCREEN) / 2;
         int cy = NativeDisplayApi.GetSystemMetrics(NativeDisplayApi.SM_CYSCREEN) / 2;
         NativeDisplayApi.SetCursorPos(cx, cy);
         NativeDisplayApi.ClipCursor(IntPtr.Zero);
 
-        // Simulate mouse movement to force coordinate recalculation
         var input = new NativeDisplayApi.INPUT
         {
             type = NativeDisplayApi.INPUT_MOUSE,
@@ -667,6 +825,182 @@ public sealed class DisplayService : IDisplayService
         Models.DisplayRotation.Rotate270 => DISPLAYCONFIG_ROTATION.DISPLAYCONFIG_ROTATION_ROTATE270,
         _ => DISPLAYCONFIG_ROTATION.DISPLAYCONFIG_ROTATION_IDENTITY,
     };
+
+    // ── Supported modes ──
+
+    /// <summary>The mode Windows has on record for a display it is not currently driving.
+    /// The extent and the rotation come out of the same DEVMODE: the pels are in that
+    /// orientation, so pairing them with anything else records a mode the panel lacks.</summary>
+    private static bool TryReadLastKnownMode(
+        string gdiDeviceName, out int width, out int height, out Models.DisplayRotation rotation)
+    {
+        width = height = 0;
+        rotation = Models.DisplayRotation.None;
+        if (string.IsNullOrEmpty(gdiDeviceName)) return false;
+
+        var dm = new NativeDisplayApi.DEVMODE { dmSize = (ushort)Marshal.SizeOf<NativeDisplayApi.DEVMODE>() };
+        if (!NativeDisplayApi.EnumDisplaySettings(gdiDeviceName, NativeDisplayApi.ENUM_CURRENT_SETTINGS, ref dm))
+            return false;
+
+        width = (int)dm.dmPelsWidth;
+        height = (int)dm.dmPelsHeight;
+        if ((dm.dmFields & NativeDisplayApi.DM_DISPLAYORIENTATION) != 0)
+        {
+            rotation = dm.dmDisplayOrientation switch
+            {
+                NativeDisplayApi.DMDO_90 => Models.DisplayRotation.Rotate90,
+                NativeDisplayApi.DMDO_180 => Models.DisplayRotation.Rotate180,
+                NativeDisplayApi.DMDO_270 => Models.DisplayRotation.Rotate270,
+                _ => Models.DisplayRotation.None,
+            };
+        }
+        return width > 0 && height > 0;
+    }
+
+    /// <summary>Enumerates the panel's modes through GDI and normalizes every one to the
+    /// panel-native orientation, so a list read while the display is on its side still
+    /// matches one read upright.</summary>
+    public IReadOnlyList<DisplayMode> GetAvailableModes(MonitorInfo monitor)
+    {
+        var device = monitor.GdiDeviceName;
+        if (string.IsNullOrEmpty(device))
+            return [];
+
+        var seen = new HashSet<(int, int, int)>();
+        var modes = new List<DisplayMode>();
+
+        var dm = new NativeDisplayApi.DEVMODE();
+        for (int i = 0; ; i++)
+        {
+            // Reset before every call, not after: a driver may write back a smaller
+            // dmSize, and skipping the reset on a filtered entry would carry it forward.
+            dm.dmSize = (ushort)Marshal.SizeOf<NativeDisplayApi.DEVMODE>();
+            if (!NativeDisplayApi.EnumDisplaySettings(device, i, ref dm)) break;
+
+            // 8- and 16-bit legacy entries are noise on every modern panel.
+            if (dm.dmBitsPerPel < 32) continue;
+
+            // The enumeration reports pels in the display's current orientation, but
+            // dmDisplayOrientation only means anything when dmFields says it was filled
+            // in. Fall back to the rotation CCD already told us about.
+            int degrees = (dm.dmFields & NativeDisplayApi.DM_DISPLAYORIENTATION) != 0
+                ? dm.dmDisplayOrientation switch
+                {
+                    NativeDisplayApi.DMDO_90 => 90,
+                    NativeDisplayApi.DMDO_180 => 180,
+                    NativeDisplayApi.DMDO_270 => 270,
+                    _ => 0,
+                }
+                : (int)monitor.Rotation;
+
+            var (w, h) = RotationGeometry.ToSource((int)dm.dmPelsWidth, (int)dm.dmPelsHeight, degrees);
+            int hz = (int)dm.dmDisplayFrequency;
+            if (w <= 0 || h <= 0 || hz <= 1) continue;
+
+            if (seen.Add((w, h, hz)))
+                modes.Add(new DisplayMode(w, h, hz));
+        }
+
+        return [.. modes
+            .OrderByDescending(m => (long)m.Width * m.Height)
+            .ThenByDescending(m => m.Width)
+            .ThenByDescending(m => m.RefreshHz)];
+    }
+
+    // ── Per-monitor scaling ──
+
+    /// <summary>Pushes each profile monitor's scaling. Runs after the topology has
+    /// settled, since the source id a scale is addressed by only exists once the display
+    /// is part of the desktop.</summary>
+    private void ApplyDpiScaling(DisplayProfile profile)
+    {
+        List<MonitorInfo> live;
+        try { live = GetCurrentConfiguration(); }
+        catch { return; }
+
+        int changed = 0;
+        foreach (var wanted in profile.Monitors)
+        {
+            if (!wanted.IsEnabled || wanted.DpiScale <= 0) continue;
+
+            var target = live.FirstOrDefault(wanted.IsSameMonitorAs);
+            if (target == null || target.DpiScale == wanted.DpiScale) continue;
+
+            try { if (SetDpiScale(target, wanted.DpiScale)) changed++; }
+            catch { }
+        }
+
+        if (changed > 0) Helpers.BootLog.Write("apply.dpi", $"{changed} monitor(s) rescaled");
+    }
+
+    /// <summary>Scaling percentage straight off a path, for the enumeration loops that
+    /// have not built a MonitorInfo yet.</summary>
+    private static int ReadDpiPercent(DISPLAYCONFIG_PATH_INFO path)
+    {
+        var request = new DISPLAYCONFIG_SOURCE_DPI_SCALE_GET
+        {
+            header = new DISPLAYCONFIG_DEVICE_INFO_HEADER
+            {
+                type = DISPLAYCONFIG_DEVICE_INFO_TYPE.DISPLAYCONFIG_DEVICE_INFO_GET_DPI_SCALE,
+                size = (uint)Marshal.SizeOf<DISPLAYCONFIG_SOURCE_DPI_SCALE_GET>(),
+                adapterId = path.sourceInfo.adapterId,
+                id = path.sourceInfo.id,
+            },
+        };
+        return NativeDisplayApi.DisplayConfigGetDeviceInfo(ref request) == NativeDisplayApi.ERROR_SUCCESS
+            ? DpiScaling.ToPercent(request.minScaleRel, request.curScaleRel)
+            : DpiScaling.Default;
+    }
+
+    private static DISPLAYCONFIG_SOURCE_DPI_SCALE_GET BuildDpiRequest(MonitorInfo monitor) => new()
+    {
+        header = new DISPLAYCONFIG_DEVICE_INFO_HEADER
+        {
+            type = DISPLAYCONFIG_DEVICE_INFO_TYPE.DISPLAYCONFIG_DEVICE_INFO_GET_DPI_SCALE,
+            size = (uint)Marshal.SizeOf<DISPLAYCONFIG_SOURCE_DPI_SCALE_GET>(),
+            adapterId = new LUID { LowPart = (uint)(monitor.AdapterId & 0xFFFFFFFF), HighPart = (int)(monitor.AdapterId >> 32) },
+            id = monitor.SourceId,
+        },
+    };
+
+    public DpiScaleState GetDpiScale(MonitorInfo monitor)
+    {
+        var request = BuildDpiRequest(monitor);
+        if (NativeDisplayApi.DisplayConfigGetDeviceInfo(ref request) != NativeDisplayApi.ERROR_SUCCESS)
+            return new DpiScaleState(DpiScaling.Default, []);
+
+        return new DpiScaleState(
+            DpiScaling.ToPercent(request.minScaleRel, request.curScaleRel),
+            DpiScaling.AvailablePercentages(request.minScaleRel, request.maxScaleRel));
+    }
+
+    public bool SetDpiScale(MonitorInfo monitor, int percent)
+    {
+        var request = BuildDpiRequest(monitor);
+        if (NativeDisplayApi.DisplayConfigGetDeviceInfo(ref request) != NativeDisplayApi.ERROR_SUCCESS)
+            return false;
+
+        // A percentage off the ladder entirely is refused; one on the ladder but past
+        // what this display allows is clamped into range, since a profile carried over
+        // from a larger monitor is better served by the nearest scale than by nothing.
+        if (!DpiScaling.TryToRelative(request.minScaleRel, request.maxScaleRel, percent, out int relative))
+            return false;
+
+        if (relative == request.curScaleRel) return true;
+
+        var set = new DISPLAYCONFIG_SOURCE_DPI_SCALE_SET
+        {
+            header = new DISPLAYCONFIG_DEVICE_INFO_HEADER
+            {
+                type = DISPLAYCONFIG_DEVICE_INFO_TYPE.DISPLAYCONFIG_DEVICE_INFO_SET_DPI_SCALE,
+                size = (uint)Marshal.SizeOf<DISPLAYCONFIG_SOURCE_DPI_SCALE_SET>(),
+                adapterId = request.header.adapterId,
+                id = request.header.id,
+            },
+            scaleRel = relative,
+        };
+        return NativeDisplayApi.DisplayConfigSetDeviceInfo(ref set) == NativeDisplayApi.ERROR_SUCCESS;
+    }
 
     // ── HDR / Advanced Color ──
 

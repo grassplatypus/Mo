@@ -15,6 +15,10 @@ public class ExportImportServiceTests
 
         public event EventHandler<DisplayProfile>? ProfileApplied;
 
+        // Empty accessors, not a suppressed CS0067: this fake never applies anything, so
+        // there is no backing field to be unused.
+        public event EventHandler? ApplyWorkFinished { add { } remove { } }
+
         public Task LoadAllAsync() => Task.CompletedTask;
 
         public Task SaveProfileAsync(DisplayProfile profile)

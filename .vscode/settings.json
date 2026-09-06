@@ -1,0 +1,34 @@
+{
+  "dotnet.defaultSolution": "Mo.slnx",
+  "dotnet.server.useOmnisharp": false,
+  "dotnet.unitTests.runSettingsPath": "",
+  "omnisharp.enableEditorConfigSupport": true,
+
+  "files.exclude": {
+    "**/bin": true,
+    "**/obj": true,
+    "**/.vs": true,
+    ".claude/worktrees": true
+  },
+  "search.exclude": {
+    "**/bin": true,
+    "**/obj": true,
+    "artifacts": true,
+    ".claude/worktrees": true
+  },
+  "files.watcherExclude": {
+    "**/bin/**": true,
+    "**/obj/**": true,
+    "**/artifacts/**": true,
+    "**/.claude/worktrees/**": true
+  },
+
+  "[csharp]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "ms-dotnettools.csharp"
+  },
+  "[xml]": {
+    "files.encoding": "utf8bom"
+  },
+  "powershell.codeFormatting.preset": "OTBS"
+}
