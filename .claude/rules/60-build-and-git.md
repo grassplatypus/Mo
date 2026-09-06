@@ -107,7 +107,17 @@ the script does; installation works from `TrustedPeople`.
 
 ## CI/CD
 
-- **ZIP**: `dotnet publish` with the .NET 10 SDK (trimming + R2R).
+- **ZIP**: `dotnet publish` with the .NET 10 SDK, through
+  `Properties/PublishProfiles/win-<platform>.pubxml`, the same call
+  `Publish-Release.ps1` makes, so CI and the installer ship the same binaries.
+
+  **Self-contained, not trimmed.** An earlier workflow passed `PublishTrimmed=true`,
+  which nothing local does, so the trimmed build was one nobody had run. Once
+  `TreatWarningsAsErrors` went on it stopped building at all: ILLink reports
+  `IL2104` for `Microsoft.Windows.SDK.NET`, `WinRT.Runtime`, `NvAPIWrapper` and
+  `System.Management`, and the publish ends on `NETSDK1144`. Trimming a WinUI 3 app
+  that resolves WinRT types by reflection is the risk those warnings describe. Do not
+  silence them to turn it back on.
 - **MSIX**: `msbuild` from VS MSBuild, for the reason above.
 - **Installer**: `ISCC` on `installer/Mo.iss`, x64 only, since the script sets
   `ArchitecturesAllowed=x64compatible`. The runner image usually carries Inno Setup;
