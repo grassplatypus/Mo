@@ -89,6 +89,8 @@
   <data name="Refresh" xml:space="preserve"><value>Refresh</value></data>
   <data name="DdcCiSection" xml:space="preserve"><value>Brightness &amp; Color</value></data>
   <data name="DdcCiUnsupported" xml:space="preserve"><value>This monitor cannot be adjusted from software.</value></data>
+  <data name="GainIgnoredTitle" xml:space="preserve"><value>This monitor is not taking the color change.</value></data>
+  <data name="GainIgnoredMessage" xml:space="preserve"><value>Switch its color mode to user in the monitor's own menu, then try again.</value></data>
   <data name="ResetDefaults" xml:space="preserve"><value>Reset</value></data>
   <data name="ColorPreset" xml:space="preserve"><value>Color preset</value></data>
   <data name="ColorPresetDesc" xml:space="preserve"><value>Switch between sRGB, warm/cool color temperatures, and your custom preset.</value></data>
