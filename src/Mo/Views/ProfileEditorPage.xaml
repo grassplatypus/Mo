@@ -44,7 +44,16 @@
 
         <!-- Scrollable Content -->
         <ScrollViewer Grid.Row="1" Padding="24,16,24,0">
-            <StackPanel Spacing="16" MaxWidth="800">
+            <!-- The cap is on the column, not the panel: Stretch plus MaxWidth makes
+                 WinUI place the panel by its natural width and draw it at the capped one.
+                 The middle column outweighs the gutters, so only leftover space splits. -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="800*" MaxWidth="800" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="1" Spacing="16">
 
                 <!-- Description -->
                 <TextBox
@@ -90,13 +99,11 @@
                     <StackPanel Spacing="8">
                         <TextBlock x:Name="AvailableMonitorsTitle" Style="{StaticResource BodyStrongTextBlockStyle}" />
                         <TextBlock x:Name="AvailableMonitorsDesc" Opacity="0.6" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap" />
-                        <ItemsRepeater x:Name="AvailableMonitorsList" ItemsSource="{x:Bind AvailableMonitors, Mode=OneWay}">
-                            <ItemsRepeater.Layout>
-                                <StackLayout Spacing="6" />
-                            </ItemsRepeater.Layout>
-                            <ItemsRepeater.ItemTemplate>
+                        <ItemsControl x:Name="AvailableMonitorsList" ItemsSource="{x:Bind AvailableMonitors, Mode=OneWay}"
+                                      HorizontalContentAlignment="Stretch">
+                            <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="local:AvailableMonitorItem">
-                                    <Grid Padding="10,8" CornerRadius="6"
+                                    <Grid Padding="10,8" Margin="0,0,0,6" CornerRadius="6"
                                           Background="{ThemeResource SubtleFillColorSecondaryBrush}"
                                           Opacity="{x:Bind RowOpacity}"
                                           DoubleTapped="AvailableRow_DoubleTapped"
@@ -126,8 +133,8 @@
                                         </Button>
                                     </Grid>
                                 </DataTemplate>
-                            </ItemsRepeater.ItemTemplate>
-                        </ItemsRepeater>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </StackPanel>
                 </Grid>
 
@@ -394,6 +401,7 @@
                 <!-- Bottom spacer -->
                 <Border Height="16" />
             </StackPanel>
+            </Grid>
         </ScrollViewer>
 
         <!-- Action bar -->

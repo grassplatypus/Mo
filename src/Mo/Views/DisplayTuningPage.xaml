@@ -50,10 +50,12 @@
         <ListView Grid.Row="1" x:Name="MonitorList" SelectionChanged="MonitorList_SelectionChanged"
                   VerticalAlignment="Top" />
 
-        <StackPanel Grid.Row="1" x:Name="MonitorListBusy" Orientation="Horizontal" Spacing="10"
-                    HorizontalAlignment="Center" Margin="0,24,0,0">
-            <ProgressRing IsActive="True" Width="20" Height="20" />
-            <TextBlock x:Name="MonitorListBusyText" VerticalAlignment="Center" Opacity="0.7"
+        <!-- Stacked, not side by side: the column is 240px and the caption is a
+             sentence, so a horizontal row overflows and clips on both sides. -->
+        <StackPanel Grid.Row="1" x:Name="MonitorListBusy" Spacing="10" Margin="0,24,0,0">
+            <ProgressRing IsActive="True" Width="20" Height="20" HorizontalAlignment="Center" />
+            <TextBlock x:Name="MonitorListBusyText" Opacity="0.7"
+                       TextWrapping="Wrap" TextAlignment="Center"
                        Style="{StaticResource CaptionTextBlockStyle}" />
         </StackPanel>
 
@@ -150,6 +152,8 @@
                             <Slider Grid.Column="1" x:Name="BlueSlider" Tag="rgb" Minimum="0" Maximum="100" ValueChanged="Slider_ValueChanged" />
                             <TextBlock Grid.Column="2" x:Name="BlueValue" HorizontalAlignment="Right" VerticalAlignment="Center" />
                         </Grid>
+
+                        <InfoBar x:Name="GainIgnoredBar" Severity="Warning" IsOpen="False" IsClosable="False" />
 
                         <TextBlock x:Name="DdcEmptyText" Opacity="0.6" Style="{StaticResource CaptionTextBlockStyle}" Visibility="Collapsed" />
                     </StackPanel>

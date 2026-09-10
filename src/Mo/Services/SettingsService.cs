@@ -7,6 +7,7 @@ namespace Mo.Services;
 public sealed class SettingsService : ISettingsService
 {
     private readonly string _settingsFilePath;
+    private readonly SemaphoreSlim _saveLock = new(1, 1);
     private bool _loaded;
 
     public SettingsService()
@@ -62,16 +63,23 @@ public sealed class SettingsService : ISettingsService
         _loaded = true;
     }
 
+    // Serialized: callers fire this and forget (MainWindow, SettingsViewModel), so two
+    // saves used to race on the one .tmp path and throw from whichever lost, unobserved.
     public async Task SaveAsync()
     {
         var json = JsonSerializer.Serialize(Settings, MoJsonContext.Default.AppSettings);
-        // Write to a temp file then atomically replace, so a crash or power loss
-        // mid-write can never leave a truncated settings.json behind — the exact
-        // corruption Program.QuarantineCorruptUserData exists to clean up after.
-        var tmp = _settingsFilePath + ".tmp";
-        await File.WriteAllTextAsync(tmp, json).ConfigureAwait(false);
-        try { File.Move(tmp, _settingsFilePath, overwrite: true); }
-        catch { File.Copy(tmp, _settingsFilePath, overwrite: true); try { File.Delete(tmp); } catch { } }
+        await _saveLock.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            // Write to a temp file then atomically replace, so a crash or power loss
+            // mid-write can never leave a truncated settings.json behind, the exact
+            // corruption Program.QuarantineCorruptUserData exists to clean up after.
+            var tmp = _settingsFilePath + ".tmp";
+            await File.WriteAllTextAsync(tmp, json).ConfigureAwait(false);
+            try { File.Move(tmp, _settingsFilePath, overwrite: true); }
+            catch { File.Copy(tmp, _settingsFilePath, overwrite: true); try { File.Delete(tmp); } catch { } }
+        }
+        finally { _saveLock.Release(); }
     }
 
     private static string GetSettingsFilePath()

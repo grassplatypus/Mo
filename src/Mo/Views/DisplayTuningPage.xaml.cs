@@ -230,6 +230,7 @@ public sealed partial class DisplayTuningPage : Page
     private void LoadDdcSection(MonitorInfo monitor)
     {
         _rgbDirty = false;
+        GainIgnoredBar.IsOpen = false;
         var caps = _selected >= 0 && _selected < _caps.Count ? _caps[_selected] : null;
         bool any = caps?.SupportsAny == true;
         DdcEmptyText.Visibility = any ? Visibility.Collapsed : Visibility.Visible;
@@ -385,6 +386,8 @@ public sealed partial class DisplayTuningPage : Page
         if (System.Threading.Interlocked.CompareExchange(ref _inFlight, 1, 0) != 0) return;
         _ = Task.Run(async () =>
         {
+            int verifyIndex = -1;
+            MonitorColorSettings? verifySent = null;
             try
             {
                 while (_pending)
@@ -398,9 +401,16 @@ public sealed partial class DisplayTuningPage : Page
                     snapshot = (await tcs.Task) ?? new MonitorColorSettings();
                     if (!snapshot.HasValues || index < 0 || index >= _monitors.Count) continue;
 
-                    try { _colorService.ApplyToMonitorByDeviceName(_monitors[index].GdiDeviceName, snapshot); }
+                    try
+                    {
+                        _colorService.ApplyToMonitorByDeviceName(_monitors[index].GdiDeviceName, snapshot);
+                        verifyIndex = index;
+                        verifySent = snapshot;
+                    }
                     catch { }
                 }
+
+                if (verifySent != null) VerifyGainsTook(verifyIndex, verifySent);
             }
             finally
             {
@@ -409,6 +419,24 @@ public sealed partial class DisplayTuningPage : Page
                 // restart so we don't miss it.
                 if (_pending) KickApplyWorker();
             }
+        });
+    }
+
+    // A panel can accept a gain write and do nothing with it, and the slider then lies.
+    // Read the channels back once the drag settles and say so when none of them moved.
+    private void VerifyGainsTook(int index, MonitorColorSettings sent)
+    {
+        if (!_rgbDirty) return;
+
+        var back = TryCapture(index);
+        bool ignored = GainReadBack.WasIgnored(
+            (sent.RedGain, back?.RedGain),
+            (sent.GreenGain, back?.GreenGain),
+            (sent.BlueGain, back?.BlueGain));
+
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (index == _selected) GainIgnoredBar.IsOpen = ignored;
         });
     }
 
@@ -484,6 +512,8 @@ public sealed partial class DisplayTuningPage : Page
         ContrastLabel.Text = ResourceHelper.GetString("Contrast");
         ResetBtn.Content = ResourceHelper.GetString("ResetDefaults");
         DdcEmptyText.Text = ResourceHelper.GetString("DdcCiUnsupported");
+        GainIgnoredBar.Title = ResourceHelper.GetString("GainIgnoredTitle");
+        GainIgnoredBar.Message = ResourceHelper.GetString("GainIgnoredMessage");
         PresetLabel.Text = ResourceHelper.GetString("ColorPreset");
         PresetDesc.Text = ResourceHelper.GetString("ColorPresetDesc");
         HdrLabel.Text = ResourceHelper.GetString("Hdr");
