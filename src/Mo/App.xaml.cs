@@ -225,11 +225,13 @@ public partial class App : Application
         {
             var detail = SystemInfoHelper.BuildErrorReport(ex);
 
+            // AcceptsReturn before Text: a single-line TextBox drops everything after
+            // the first break, which left this box showing only the report's ``` fence.
             var detailBox = new TextBox
             {
+                AcceptsReturn = true,
                 Text = detail,
                 IsReadOnly = true,
-                AcceptsReturn = true,
                 TextWrapping = TextWrapping.Wrap,
                 FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
                 FontSize = 11,
